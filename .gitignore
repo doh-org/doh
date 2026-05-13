@@ -124,8 +124,9 @@ $RECYCLE.BIN/
 .env.production
 
 # Supabase
-.supabase/
-supabase/.env
+supabase/
+
+docs/
 
 # local claude.md
 CLAUDE.local.md
