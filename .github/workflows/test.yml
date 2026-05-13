@@ -1,0 +1,72 @@
+name: test
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            mobile:
+              - 'mobile/**'
+
+  test-backend:
+    needs: changes
+    if: |
+      needs.changes.outputs.backend == 'true' &&
+      (
+        (github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'bugfix/'))) ||
+        (github.base_ref == 'main' && github.head_ref == 'staging')
+      )
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.8'
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - run: go test ./...
+      - run: go vet ./...
+
+  test-mobile:
+    needs: changes
+    if: |
+      needs.changes.outputs.mobile == 'true' &&
+      (
+        (github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'bugfix/'))) ||
+        (github.base_ref == 'main' && github.head_ref == 'staging')
+      )
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          cache: true
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
