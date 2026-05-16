@@ -131,3 +131,4 @@ docs/
 # local claude.md
 CLAUDE.local.md
 .mcp.json
+.claude

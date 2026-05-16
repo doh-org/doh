@@ -1,0 +1,17 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'trip.freezed.dart';
+
+@freezed
+class Trip with _$Trip {
+  const factory Trip({
+    required String id,
+    required String ownerId,
+    required String title,
+    String? description,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? deletedAt,
+    required DateTime createdAt,
+  }) = _Trip;
+}
