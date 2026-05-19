@@ -5,7 +5,7 @@ part 'trip_route.freezed.dart';
 enum TransportMode { car, foot, publictransit, bicycle }
 
 @freezed
-class TripRoute with _$TripRoute {
+abstract class TripRoute with _$TripRoute {
   const factory TripRoute({
     required String id,
     required String tripId,
@@ -19,7 +19,7 @@ class TripRoute with _$TripRoute {
 }
 
 @freezed
-class RouteWaypoint with _$RouteWaypoint {
+abstract class RouteWaypoint with _$RouteWaypoint {
   const factory RouteWaypoint({
     required String id,
     required String routeId,
