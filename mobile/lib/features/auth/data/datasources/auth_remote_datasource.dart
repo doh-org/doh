@@ -1,4 +1,4 @@
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,39 +14,39 @@ class AuthRemoteDatasource {
   const AuthRemoteDatasource(this._supabase);
   final SupabaseClient _supabase;
 
-  Future<UserModel> loginWithKakao() async {
-    // 카카오 SDK로 토큰 획득
-    final token = await UserApi.instance.loginWithKakaoAccount();
-    final idToken = token.idToken;
+  Future<UserModel> loginWithEmail(String email, String password) async {
+    await _supabase.auth.signInWithPassword(email: email, password: password);
+    return _fetchCurrentUser();
+  }
 
-    // Supabase에 카카오 토큰으로 로그인
-    await _supabase.auth.signInWithIdToken(
-      provider: OAuthProvider.kakao,
-      idToken: idToken ?? '',
-    );
-
-    final userId = _supabase.auth.currentUser!.id;
+  Future<UserModel> signUp(String email, String password, String nickname) async {
+    final res = await _supabase.auth.signUp(email: email, password: password);
+    if (res.session == null || res.user == null) {
+      throw Exception('이메일 인증 후 로그인해주세요.');
+    }
+    final userId = res.user!.id;
     final data = await _supabase
         .from('users')
+        .upsert({'id': userId, 'nickname': nickname})
         .select()
-        .eq('id', userId)
         .single();
-
     return UserModel.fromJson(data);
   }
 
   Future<void> logout() => _supabase.auth.signOut();
 
   Future<UserModel?> getCurrentUser() async {
-    final authUser = _supabase.auth.currentUser;
-    if (authUser == null) return null;
+    if (_supabase.auth.currentUser == null) return null;
+    return _fetchCurrentUser();
+  }
 
+  Future<UserModel> _fetchCurrentUser() async {
+    final userId = _supabase.auth.currentUser!.id;
     final data = await _supabase
         .from('users')
         .select()
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-    return data == null ? null : UserModel.fromJson(data);
+        .eq('id', userId)
+        .single();
+    return UserModel.fromJson(data);
   }
 }

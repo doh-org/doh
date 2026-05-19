@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../domain/entities/user.dart';
@@ -16,8 +17,14 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDatasource _datasource;
 
   @override
-  Future<User> loginWithKakao() async {
-    final model = await _datasource.loginWithKakao();
+  Future<User> loginWithEmail(String email, String password) async {
+    final model = await _datasource.loginWithEmail(email, password);
+    return model.toEntity();
+  }
+
+  @override
+  Future<User> signUp(String email, String password, String nickname) async {
+    final model = await _datasource.signUp(email, password, nickname);
     return model.toEntity();
   }
 
