@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
+import '../../../markers/presentation/pages/marker_detail_page.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
-import '../../../trips/data/repositories/trip_repository_impl.dart';
+import '../../../markers/presentation/widgets/marker_bottom_sheet.dart';
+import '../../../trips/domain/entities/trip.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../providers/map_provider.dart';
 import '../widgets/day_filter_bar.dart';
 import '../widgets/map_view.dart';
 import '../widgets/place_card.dart';
+import 'search_page.dart';
 
 class MapPage extends ConsumerStatefulWidget {
   const MapPage({required this.tripId, super.key});
@@ -21,6 +24,13 @@ class MapPage extends ConsumerStatefulWidget {
 
 class _MapPageState extends ConsumerState<MapPage> {
   int _selectedDay = 0;
+  late String _selectedTripId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTripId = widget.tripId;
+  }
 
   List<TripMarker> _filterByDay(
     List<TripMarker> markers,
@@ -38,10 +48,9 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(currentLocationProvider);
-    final gmMarkersAsync = ref.watch(markersProvider(widget.tripId));
-    final entityMarkersAsync = ref.watch(markerEntitiesProvider(widget.tripId));
-    final categoriesAsync = ref.watch(categoriesProvider(widget.tripId));
-    final tripAsync = ref.watch(tripDetailNotifierProvider(widget.tripId));
+    final entityMarkersAsync = ref.watch(markerEntitiesProvider(_selectedTripId));
+    final categoriesAsync = ref.watch(categoriesProvider(_selectedTripId));
+    final tripAsync = ref.watch(tripDetailNotifierProvider(_selectedTripId));
 
     final trip = tripAsync.valueOrNull;
     final categories = categoriesAsync.valueOrNull ?? [];
@@ -54,82 +63,141 @@ class _MapPageState extends ConsumerState<MapPage> {
     final filteredMarkers =
         _filterByDay(allMarkers, trip?.startDate, _selectedDay);
 
+    const defaultLat = 37.5665;
+    const defaultLng = 126.9780;
+    final location =
+        locationAsync.valueOrNull ?? (lat: defaultLat, lng: defaultLng);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
-      body: locationAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (location) => Stack(
-          children: [
-            // ── 지도 ──────────────────────────────────────
-            Positioned.fill(
-              child: MapView(
-                initialLocation: location,
-                markers: gmMarkersAsync.valueOrNull ?? {},
-                tripId: widget.tripId,
-              ),
-            ),
-
-            // ── 상단 버튼 (뒤로 / 옵션) ──────────────────
-            SafeArea(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 22),
-                    onPressed: () => Navigator.pop(context),
+      body: Stack(
+        children: [
+          // ── 지도 ──────────────────────────────────────
+          Positioned.fill(
+            child: MapView(
+              initialLat: location.lat,
+              initialLng: location.lng,
+              markers: allMarkers,
+              tripId: _selectedTripId,
+              onLongTap: (lat, lng) {
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (_) => MarkerBottomSheet(
+                    tripId: _selectedTripId,
+                    latitude: lat,
+                    longitude: lng,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.more_horiz, size: 24),
-                    onPressed: () {},
+                );
+              },
+            ),
+          ),
+
+          // ── 상단 버튼 (뒤로 / 옵션) ──────────────────
+          SafeArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 22),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz, size: 24),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+
+          // ── 검색바 ────────────────────────────────────
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 52, left: 16, right: 16),
+              child: _SearchBar(
+                onTap: () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => SearchPage(tripId: _selectedTripId),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // ── 여행 폴더 선택 pill ───────────────────────
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 112, left: 16),
+              child: _TripSelectorPill(
+                title: trip?.title ?? '여행 선택',
+                onTap: () async {
+                  final selected = await showModalBottomSheet<Trip>(
+                    context: context,
+                    builder: (_) => const _TripSelectorSheet(),
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _selectedTripId = selected.id;
+                      _selectedDay = 0;
+                    });
+                  }
+                },
+              ),
+            ),
+          ),
+
+          // ── 현위치 FAB ────────────────────────────────
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.of(context).size.height * 0.45 + 16,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.white,
+              elevation: 4,
+              onPressed: () async {
+                final loc = ref.read(currentLocationProvider).valueOrNull;
+                if (loc == null) return;
+                await ref
+                    .read(mapControllerProvider.notifier)
+                    .moveCamera(loc.lat, loc.lng);
+              },
+              child: const Icon(
+                Icons.my_location,
+                color: Color(0xFFFE8505),
+              ),
+            ),
+          ),
+
+          // ── 바텀 시트 ────────────────────────────────
+          DraggableScrollableSheet(
+            initialChildSize: 0.45,
+            minChildSize: 0.45,
+            maxChildSize: 0.88,
+            builder: (_, scrollController) => _PlaceListSheet(
+              scrollController: scrollController,
+              placeCount: allMarkers.length,
+              tripTitle: trip?.title ?? '',
+              dayCount: dayCount,
+              selectedDay: _selectedDay,
+              onDaySelected: (d) => setState(() => _selectedDay = d),
+              markers: filteredMarkers,
+              categoryMap: categoryMap,
+              onMarkerTap: (m) async {
+                final deleted = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute<bool>(
+                    builder: (_) => MarkerDetailPage(marker: m),
                   ),
-                ],
-              ),
+                );
+                if (deleted == true) {
+                  ref.invalidate(markerEntitiesProvider(_selectedTripId));
+                }
+              },
             ),
-
-            // ── 검색바 ────────────────────────────────────
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 52, left: 16, right: 16),
-                child: _SearchBar(
-                  onTap: () {
-                    // TODO: 장소 검색 페이지로 이동
-                  },
-                ),
-              ),
-            ),
-
-            // ── 여행 폴더 선택 pill ───────────────────────
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 112, left: 16),
-                child: _TripSelectorPill(
-                  title: trip?.title ?? '여행 선택',
-                  onTap: () {
-                    // TODO: 여행 선택 bottom sheet
-                  },
-                ),
-              ),
-            ),
-
-            // ── 바텀 시트 ────────────────────────────────
-            DraggableScrollableSheet(
-              initialChildSize: 0.45,
-              minChildSize: 0.45,
-              maxChildSize: 0.88,
-              builder: (_, scrollController) => _PlaceListSheet(
-                scrollController: scrollController,
-                placeCount: allMarkers.length,
-                tripTitle: trip?.title ?? '',
-                dayCount: dayCount,
-                selectedDay: _selectedDay,
-                onDaySelected: (d) => setState(() => _selectedDay = d),
-                markers: filteredMarkers,
-                categoryMap: categoryMap,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -232,6 +300,80 @@ class _TripSelectorPill extends StatelessWidget {
   }
 }
 
+// ── 여행 선택 시트 ──────────────────────────────────────────────────────────
+class _TripSelectorSheet extends ConsumerWidget {
+  const _TripSelectorSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tripsAsync = ref.watch(tripsProvider);
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Text(
+              '여행 선택',
+              style: TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF070707),
+              ),
+            ),
+          ),
+          tripsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('오류: $e'),
+            ),
+            data: (trips) => ListView.builder(
+              shrinkWrap: true,
+              itemCount: trips.length,
+              itemBuilder: (context, i) {
+                final t = trips[i];
+                return ListTile(
+                  leading: const Icon(
+                    Icons.folder_outlined,
+                    color: Color(0xFFFE8505),
+                  ),
+                  title: Text(
+                    t.title,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: t.description != null
+                      ? Text(
+                          t.description!,
+                          style: const TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 12,
+                            color: Color(0xFFB2B2B2),
+                          ),
+                        )
+                      : null,
+                  onTap: () => Navigator.pop(context, t),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
 // ── 바텀 시트 내용 ──────────────────────────────────────────────────────────
 class _PlaceListSheet extends StatelessWidget {
   const _PlaceListSheet({
@@ -243,6 +385,7 @@ class _PlaceListSheet extends StatelessWidget {
     required this.onDaySelected,
     required this.markers,
     required this.categoryMap,
+    this.onMarkerTap,
   });
 
   final ScrollController scrollController;
@@ -253,6 +396,7 @@ class _PlaceListSheet extends StatelessWidget {
   final ValueChanged<int> onDaySelected;
   final List<TripMarker> markers;
   final Map<String, Category> categoryMap;
+  final void Function(TripMarker marker)? onMarkerTap;
 
   @override
   Widget build(BuildContext context) {
@@ -319,9 +463,7 @@ class _PlaceListSheet extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // TODO: 상세 페이지 이동
-                  },
+                  onPressed: () {},
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -382,9 +524,7 @@ class _PlaceListSheet extends StatelessWidget {
                         categoryColor: _parseCategoryColor(cat?.color),
                         categoryIcon: _categoryIcon(cat?.name),
                         likeCount: 0,
-                        onTap: () {
-                          // TODO: 마커 상세로 이동
-                        },
+                        onTap: () => onMarkerTap?.call(m),
                       );
                     },
                   ),
@@ -398,7 +538,7 @@ class _PlaceListSheet extends StatelessWidget {
     if (hex == null) return const Color(0x8095A5A6);
     try {
       final val = int.parse(hex.replaceFirst('#', ''), radix: 16);
-      return Color(val).withAlpha(128); // 50% opacity
+      return Color(val).withAlpha(128);
     } catch (_) {
       return const Color(0x8095A5A6);
     }

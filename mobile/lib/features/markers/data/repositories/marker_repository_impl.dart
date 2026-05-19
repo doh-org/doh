@@ -1,10 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
 import '../datasources/marker_remote_datasource.dart';
+import '../models/category_model.dart';
+import '../models/marker_model.dart';
 
 part 'marker_repository_impl.g.dart';
 
@@ -33,13 +37,13 @@ class MarkerRepositoryImpl implements MarkerRepository {
     String? memo,
     required MarkerSource source,
   }) async {
-    final createdBy = Supabase.instance.client.auth.currentUser!.id;
+    final createdBy = Supabase.instance.client.auth.currentUser?.id ?? AppConfig.devUserId;
+    // lat/lng → PostGIS WKT: POINT(X Y) = POINT(경도 위도)
     final model = await _datasource.createMarker({
       'trip_id': tripId,
       'created_by': createdBy,
       'name': name,
-      'latitude': latitude,
-      'longitude': longitude,
+      'location': 'POINT($longitude $latitude)',
       if (categoryId != null) 'category_id': categoryId,
       if (address != null) 'address': address,
       if (memo != null) 'memo': memo,

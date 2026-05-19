@@ -6,7 +6,7 @@ part 'marker_model.freezed.dart';
 part 'marker_model.g.dart';
 
 @freezed
-class MarkerModel with _$MarkerModel {
+abstract class MarkerModel with _$MarkerModel {
   const factory MarkerModel({
     required String id,
     @JsonKey(name: 'trip_id') required String tripId,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/repositories/member_repository.dart';
+import '../../data/repositories/member_repository_impl.dart';
 import '../providers/member_provider.dart';
 import '../widgets/member_tile.dart';
 

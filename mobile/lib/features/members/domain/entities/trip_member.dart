@@ -5,7 +5,7 @@ part 'trip_member.freezed.dart';
 enum MemberRole { owner, editor }
 
 @freezed
-class TripMember with _$TripMember {
+abstract class TripMember with _$TripMember {
   const factory TripMember({
     required String id,
     required String tripId,
@@ -16,7 +16,7 @@ class TripMember with _$TripMember {
 }
 
 @freezed
-class Invitation with _$Invitation {
+abstract class Invitation with _$Invitation {
   const factory Invitation({
     required String id,
     required String tripId,

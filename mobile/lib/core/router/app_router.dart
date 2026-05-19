@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
@@ -14,7 +16,11 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     initialLocation: '/trips',
     redirect: (context, state) {
-      // TODO: 인증 상태 확인 후 리다이렉트
+      // TODO: 개발 완료 후 인증 체크 활성화
+      // final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
+      // final isOnLogin = state.matchedLocation == '/login';
+      // if (!isLoggedIn && !isOnLogin) return '/login';
+      // if (isLoggedIn && isOnLogin) return '/trips';
       return null;
     },
     routes: [

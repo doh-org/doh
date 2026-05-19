@@ -1,9 +1,12 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../domain/entities/trip.dart';
 import '../../domain/repositories/trip_repository.dart';
 import '../datasources/trip_remote_datasource.dart';
+import '../models/trip_model.dart';
 
 part 'trip_repository_impl.g.dart';
 
@@ -34,7 +37,7 @@ class TripRepositoryImpl implements TripRepository {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final ownerId = Supabase.instance.client.auth.currentUser!.id;
+    final ownerId = Supabase.instance.client.auth.currentUser?.id ?? AppConfig.devUserId;
     final model = await _datasource.createTrip({
       'owner_id': ownerId,
       'title': title,
