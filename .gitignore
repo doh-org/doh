@@ -123,6 +123,9 @@ $RECYCLE.BIN/
 .env.staging
 .env.production
 
+# Flutter dart-define secrets
+mobile/dart_defines.json
+
 # Supabase
 supabase/
 
