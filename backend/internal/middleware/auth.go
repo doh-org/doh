@@ -12,10 +12,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const UserIDKey = "user_id"
+const (
+	UserIDKey    = "user_id"
+	UserEmailKey = "user_email"
+)
+
+type supabaseClaims struct {
+	jwt.RegisteredClaims
+	Email string `json:"email"`
+}
 
 // Auth validates a Supabase ES256 JWT. Verifies alg, exp, iss.
-// On success, injects user_id into the Gin context.
+// On success, injects user_id and user_email into the Gin context.
 func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL, supabaseAnonKey string, client *http.Client) gin.HandlerFunc {
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
@@ -38,7 +46,7 @@ func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL, supabaseAnonKey string,
 
 		token, err := parser.ParseWithClaims(
 			tokenStr,
-			&jwt.RegisteredClaims{},
+			&supabaseClaims{},
 			func(t *jwt.Token) (any, error) {
 				kid, _ := t.Header["kid"].(string)
 				pub, ok := keys[kid]
@@ -54,7 +62,7 @@ func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL, supabaseAnonKey string,
 			return
 		}
 
-		claims, ok := token.Claims.(*jwt.RegisteredClaims)
+		claims, ok := token.Claims.(*supabaseClaims)
 		if !ok || claims.Subject == "" {
 			slog.Warn("jwt claims invalid: empty subject")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "인증이 필요합니다."})
@@ -68,6 +76,7 @@ func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL, supabaseAnonKey string,
 		}
 
 		c.Set(UserIDKey, claims.Subject)
+		c.Set(UserEmailKey, claims.Email)
 		c.Next()
 	}
 }

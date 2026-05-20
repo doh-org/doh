@@ -41,7 +41,7 @@ type LoginRequest struct {
 }
 
 type UserResponse struct {
-	ID        string    `json:"id"`
+	Email     string    `json:"email"`
 	Nickname  string    `json:"nickname"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -116,7 +116,7 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*AuthResponse,
 		return nil, ErrAuthFailed
 	}
 
-	user, err := s.fetchUser(ctx, session.User.ID, session.AccessToken)
+	user, err := s.fetchUser(ctx, session.User.ID, req.Email, session.AccessToken)
 	if err != nil {
 		return nil, ErrAuthFailed
 	}
@@ -152,7 +152,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, e
 		return nil, ErrAuthFailed
 	}
 
-	user, err := s.fetchUser(ctx, session.User.ID, session.AccessToken)
+	user, err := s.fetchUser(ctx, session.User.ID, req.Email, session.AccessToken)
 	if err != nil {
 		return nil, ErrAuthFailed
 	}
@@ -182,13 +182,14 @@ func (s *Service) Logout(ctx context.Context, accessToken string) error {
 	return nil
 }
 
-func (s *Service) Me(ctx context.Context, userID, accessToken string) (*UserResponse, error) {
-	return s.fetchUser(ctx, userID, accessToken)
+func (s *Service) Me(ctx context.Context, userID, email, accessToken string) (*UserResponse, error) {
+	return s.fetchUser(ctx, userID, email, accessToken)
 }
 
 // fetchUser는 PostgREST로 public.users에서 프로필을 조회한다. RLS 자동 적용.
-func (s *Service) fetchUser(ctx context.Context, userID, accessToken string) (*UserResponse, error) {
-	url := fmt.Sprintf("%s/rest/v1/users?id=eq.%s&select=id,nickname,created_at",
+// email은 JWT 클레임에서 전달받아 응답에 포함한다.
+func (s *Service) fetchUser(ctx context.Context, userID, email, accessToken string) (*UserResponse, error) {
+	url := fmt.Sprintf("%s/rest/v1/users?id=eq.%s&select=nickname,created_at",
 		s.supabaseURL, userID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -217,6 +218,7 @@ func (s *Service) fetchUser(ctx context.Context, userID, accessToken string) (*U
 	if err := json.Unmarshal(body, &user); err != nil {
 		return nil, err
 	}
+	user.Email = email
 	return &user, nil
 }
 
