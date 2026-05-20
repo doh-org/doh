@@ -71,9 +71,10 @@ func (h *Handler) Logout(c *gin.Context) {
 
 func (h *Handler) Me(c *gin.Context) {
 	userID := c.GetString("user_id")
+	email := c.GetString("user_email")
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 
-	user, err := h.svc.Me(c.Request.Context(), userID, token)
+	user, err := h.svc.Me(c.Request.Context(), userID, email, token)
 	if err != nil {
 		slog.Error("me error", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "서버 오류가 발생했습니다."})
