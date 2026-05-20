@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,7 +16,10 @@ const UserIDKey = "user_id"
 
 // Auth validates a Supabase ES256 JWT. Verifies alg, exp, iss.
 // On success, injects user_id into the Gin context.
-func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL string) gin.HandlerFunc {
+func Auth(keys map[string]*ecdsa.PublicKey, supabaseURL, supabaseAnonKey string, client *http.Client) gin.HandlerFunc {
+	if client == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
+	}
 	expectedIssuer := supabaseURL + "/auth/v1"
 	parser := jwt.NewParser(
 		jwt.WithValidMethods([]string{"ES256"}),

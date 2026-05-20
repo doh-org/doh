@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-const turnstileURL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-
+var turnstileURL    = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 var turnstileClient = &http.Client{Timeout: 5 * time.Second}
 
 type turnstileResponse struct {
