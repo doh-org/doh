@@ -71,11 +71,15 @@ type Service struct {
 }
 
 func NewService(supabaseURL, anonKey, turnstileKey string) *Service {
+	return NewServiceWithClient(supabaseURL, anonKey, turnstileKey, &http.Client{Timeout: 10 * time.Second})
+}
+
+func NewServiceWithClient(supabaseURL, anonKey, turnstileKey string, client *http.Client) *Service {
 	return &Service{
 		supabaseURL:        supabaseURL,
 		supabaseAnonKey:    anonKey,
 		turnstileSecretKey: turnstileKey,
-		httpClient:         &http.Client{Timeout: 10 * time.Second},
+		httpClient:         client,
 	}
 }
 

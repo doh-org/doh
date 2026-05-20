@@ -49,7 +49,7 @@ func main() {
 		public.POST("/login", h.Login)
 
 		protected := authGroup.Group("")
-		protected.Use(middleware.Auth(keys, cfg.SupabaseURL))
+		protected.Use(middleware.Auth(keys, cfg.SupabaseURL, cfg.SupabaseAnonKey, nil))
 		protected.POST("/logout", h.Logout)
 		protected.GET("/me", h.Me)
 	}
