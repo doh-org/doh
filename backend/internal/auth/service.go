@@ -16,8 +16,9 @@ import (
 
 // 센티널 에러
 var (
-	ErrCaptcha    = errors.New("captcha failed")
-	ErrAuthFailed = errors.New("auth failed")
+	ErrCaptcha      = errors.New("captcha failed")
+	ErrAuthFailed   = errors.New("auth failed")
+	ErrEmailExists  = errors.New("email already exists")
 )
 
 // ValidationError는 입력 검증 실패를 나타낸다.
@@ -50,6 +51,11 @@ type AuthResponse struct {
 	AccessToken  string       `json:"access_token"`
 	RefreshToken string       `json:"refresh_token"`
 	User         UserResponse `json:"user"`
+}
+
+// supabaseError는 Supabase Auth 에러 응답 타입이다.
+type supabaseError struct {
+	ErrorCode string `json:"error_code"`
 }
 
 // supabaseSession은 Supabase Auth API 응답 내부 타입이다.
@@ -113,6 +119,9 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*AuthResponse,
 	}
 	session, err := s.callAuth(ctx, http.MethodPost, "/auth/v1/signup", body, "")
 	if err != nil {
+		if errors.Is(err, ErrEmailExists) {
+			return nil, ErrEmailExists
+		}
 		return nil, ErrAuthFailed
 	}
 
@@ -252,6 +261,10 @@ func (s *Service) callAuth(ctx context.Context, method, path string, body map[st
 	}
 	if resp.StatusCode >= 400 {
 		slog.Error("supabase auth error", "status", resp.StatusCode, "body", string(respBody))
+		var supaErr supabaseError
+		if json.Unmarshal(respBody, &supaErr) == nil && supaErr.ErrorCode == "user_already_exists" {
+			return nil, ErrEmailExists
+		}
 		return nil, fmt.Errorf("supabase auth error: status %d", resp.StatusCode)
 	}
 
@@ -265,7 +278,13 @@ func (s *Service) callAuth(ctx context.Context, method, path string, body map[st
 // --- 입력 검증 헬퍼 ---
 
 func validateEmail(email string) error {
-	if !strings.Contains(email, "@") || len(email) < 3 {
+	atIdx := strings.Index(email, "@")
+	if atIdx < 1 || strings.Count(email, "@") != 1 {
+		return &ValidationError{Message: "올바른 이메일 형식이 아닙니다."}
+	}
+	domain := email[atIdx+1:]
+	dotIdx := strings.LastIndex(domain, ".")
+	if dotIdx < 1 || len(domain[dotIdx+1:]) < 2 {
 		return &ValidationError{Message: "올바른 이메일 형식이 아닙니다."}
 	}
 	return nil

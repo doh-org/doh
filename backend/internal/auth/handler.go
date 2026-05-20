@@ -90,6 +90,8 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
 	case errors.Is(err, ErrCaptcha):
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "보안 인증에 실패했습니다."})
+	case errors.Is(err, ErrEmailExists):
+		c.JSON(http.StatusConflict, gin.H{"error": "이미 존재하는 이메일입니다."})
 	case errors.Is(err, ErrAuthFailed):
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "이메일 또는 비밀번호를 확인해주세요."})
 	default:
