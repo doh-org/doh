@@ -52,6 +52,9 @@ GitHub와 상호작용할 때 GitHub CLI를 주요 수단으로 사용
 - Commit format: `type(scope): description` (극도로 간결하게)
 - Types: feat, fix, refactor, docs, test, chore
 - Tag prefix: v (예: v1.0.0)
+- Branch 규칙: `{type}/{side}-{feature}`
+  - side: `front` (Flutter) | `back` (Go) | 생략 가능 (양쪽 공통)
+  - 예시: `feature/back-users`, `feature/front-folders`, `fix/back-auth`
 
 ## PR
 - PR 제목 형식: `type(scope): description`
@@ -65,6 +68,11 @@ GitHub와 상호작용할 때 GitHub CLI를 주요 수단으로 사용
 ## Plans
 계획 마지막에 미해결 질문 목록 추가.
 극도로 간결하게, 문법보다 간결함 우선.
+파일 위치: `docs/plan/`
+파일명 규칙: `{side}-{branch}-plan.md`
+- side: `front` (Flutter) | `back` (Go)
+- branch: 브랜치명 기능 부분 (예: `users`, `folder`)
+- 예시: `back-users-plan.md`, `front-folder-plan.md`
 
 ## Architecture Rules
 - Go: handler → service → repository 레이어 구분
