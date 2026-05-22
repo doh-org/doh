@@ -42,6 +42,7 @@ type LoginRequest struct {
 }
 
 type UserResponse struct {
+	ID        string    `json:"user_id"`
 	Email     string    `json:"email"`
 	Nickname  string    `json:"nickname"`
 	CreatedAt time.Time `json:"created_at"`
@@ -227,6 +228,7 @@ func (s *Service) fetchUser(ctx context.Context, userID, email, accessToken stri
 	if err := json.Unmarshal(body, &user); err != nil {
 		return nil, err
 	}
+	user.ID = userID
 	user.Email = email
 	return &user, nil
 }

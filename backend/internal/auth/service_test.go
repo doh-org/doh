@@ -91,4 +91,7 @@ func TestService_Me(t *testing.T) {
 	if user.Email != "test@example.com" {
 		t.Errorf("email=%q want test@example.com", user.Email)
 	}
+	if user.ID != "fake-user-id" {
+		t.Errorf("ID=%q want fake-user-id", user.ID)
+	}
 }

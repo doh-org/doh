@@ -240,7 +240,7 @@ func TestLogin_MissingCaptcha(t *testing.T) {
 
 // --- Me ---
 
-// 유효 JWT로 GET /me → 200 + email 포함, id 미포함(보안) 확인
+// 유효 JWT로 GET /me → 200 + email, user_id 포함 확인
 func TestMe_Authorized(t *testing.T) {
 	router, fs, keys := setup(t)
 	w := get(t, router, "/api/v1/auth/me", validToken(t, fs, keys))
@@ -252,8 +252,8 @@ func TestMe_Authorized(t *testing.T) {
 	if resp["email"] == nil {
 		t.Error("expected email in response")
 	}
-	if resp["id"] != nil {
-		t.Error("id must not be in response")
+	if resp["user_id"] == nil {
+		t.Error("expected user_id in response")
 	}
 }
 
