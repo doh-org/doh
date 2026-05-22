@@ -35,6 +35,9 @@ dependencies:
   # Auth
   kakao_flutter_sdk_user: ^1.9.5
 
+  # Storage
+  shared_preferences: ^2.3.4
+
   # Utilities
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
