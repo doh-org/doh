@@ -1,9 +1,11 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/trip_route.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../datasources/route_remote_datasource.dart';
+import '../models/route_model.dart';
 
 part 'route_repository_impl.g.dart';
 

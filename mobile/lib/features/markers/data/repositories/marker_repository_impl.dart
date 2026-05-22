@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -5,6 +6,8 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
 import '../datasources/marker_remote_datasource.dart';
+import '../models/category_model.dart';
+import '../models/marker_model.dart';
 
 part 'marker_repository_impl.g.dart';
 

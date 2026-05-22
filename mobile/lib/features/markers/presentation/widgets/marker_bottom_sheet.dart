@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
 import '../providers/marker_provider.dart';
@@ -73,8 +74,8 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
             autofocus: true,
           ),
           const SizedBox(height: 12),
-          categoriesAsync.whenData(
-            (categories) => Wrap(
+          categoriesAsync.when(
+            data: (categories) => Wrap(
               spacing: 8,
               children: categories
                   .map((c) => CategoryChip(
@@ -85,6 +86,8 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
                       ))
                   .toList(),
             ),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           const SizedBox(height: 16),
           SizedBox(
