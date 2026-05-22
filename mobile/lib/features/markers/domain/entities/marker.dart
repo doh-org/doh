@@ -5,7 +5,7 @@ part 'marker.freezed.dart';
 enum MarkerSource { search, longpress, share }
 
 @freezed
-class TripMarker with _$TripMarker {
+abstract class TripMarker with _$TripMarker {
   const factory TripMarker({
     required String id,
     required String tripId,

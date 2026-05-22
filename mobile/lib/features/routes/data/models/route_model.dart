@@ -6,7 +6,7 @@ part 'route_model.freezed.dart';
 part 'route_model.g.dart';
 
 @freezed
-class RouteModel with _$RouteModel {
+abstract class RouteModel with _$RouteModel {
   const factory RouteModel({
     required String id,
     @JsonKey(name: 'trip_id') required String tripId,

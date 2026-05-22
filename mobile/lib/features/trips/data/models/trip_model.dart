@@ -6,7 +6,7 @@ part 'trip_model.freezed.dart';
 part 'trip_model.g.dart';
 
 @freezed
-class TripModel with _$TripModel {
+abstract class TripModel with _$TripModel {
   const factory TripModel({
     required String id,
     @JsonKey(name: 'owner_id') required String ownerId,
