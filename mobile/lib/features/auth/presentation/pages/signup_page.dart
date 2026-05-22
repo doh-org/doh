@@ -8,16 +8,17 @@ import '../../domain/entities/user.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_text_field.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class SignupPage extends ConsumerStatefulWidget {
+  const SignupPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<SignupPage> createState() => _SignupPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _SignupPageState extends ConsumerState<SignupPage> {
   final _emailCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
+  final _nicknameCtrl = TextEditingController();
   String? _errorMessage;
   bool _obscurePw = true;
 
@@ -25,6 +26,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void dispose() {
     _emailCtrl.dispose();
     _pwCtrl.dispose();
+    _nicknameCtrl.dispose();
     super.dispose();
   }
 
@@ -40,11 +42,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     };
   }
 
-  void _onLogin() {
+  void _onSignUp() {
     setState(() => _errorMessage = null);
-    ref.read(authNotifierProvider.notifier).loginWithEmail(
+    ref.read(authNotifierProvider.notifier).signUp(
           _emailCtrl.text.trim(),
           _pwCtrl.text,
+          _nicknameCtrl.text.trim(),
         );
   }
 
@@ -68,7 +71,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: [
               const SizedBox(height: 80),
               const Text(
-                'Doh',
+                '회원가입',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
                   fontSize: 28,
@@ -96,6 +99,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   onPressed: () => setState(() => _obscurePw = !_obscurePw),
                 ),
               ),
+              const SizedBox(height: 4),
+              const Text(
+                '8자 이상, 대문자·소문자·숫자 포함',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.gray,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AuthTextField(
+                controller: _nicknameCtrl,
+                hintText: '닉네임',
+              ),
               const SizedBox(height: 8),
               if (_errorMessage != null)
                 Text(
@@ -111,7 +129,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _onLogin,
+                  onPressed: isLoading ? null : _onSignUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,
@@ -130,7 +148,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ),
                         )
                       : const Text(
-                          '로그인',
+                          '회원가입',
                           style: TextStyle(
                             fontFamily: 'Pretendard',
                             fontSize: 20,
@@ -144,7 +162,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    '계정이 없으신가요? ',
+                    '이미 계정이 있으신가요? ',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
                       fontSize: 14,
@@ -152,9 +170,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => context.push('/signup'),
+                    onTap: () => context.pop(),
                     child: const Text(
-                      '회원가입',
+                      '로그인',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
                         fontSize: 14,
@@ -164,94 +182,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 32),
-              const Row(
-                children: [
-                  Expanded(child: Divider(color: AppColors.gray)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      '또는',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.gray,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: AppColors.gray)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: null,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: AppColors.white,
-                    side: const BorderSide(color: AppColors.gray),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Google로 계속하기',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.dark,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEE500),
-                    disabledBackgroundColor: const Color(0xFFFEE500),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '카카오로 계속하기',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.dark,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF03C75A),
-                    disabledBackgroundColor: const Color(0xFF03C75A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '네이버로 계속하기',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
               ),
               const SizedBox(height: 32),
             ],
