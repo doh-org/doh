@@ -1,7 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/storage/token_storage.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/usecases/login_email_usecase.dart';
 import '../../domain/usecases/login_kakao_usecase.dart';
+import '../../domain/usecases/logout_usecase.dart';
+import '../../domain/usecases/signup_usecase.dart';
 
 part 'auth_provider.g.dart';
 
@@ -9,19 +13,38 @@ part 'auth_provider.g.dart';
 class AuthNotifier extends _$AuthNotifier {
   @override
   Future<User?> build() async {
-    // TODO: authRepository를 keepAlive로 provide 후 getCurrentUser 호출
-    return null;
+    final tokenStorage = ref.read(tokenStorageProvider);
+    final token = await tokenStorage.getAccessToken();
+    if (token == null) return null;
+    return tokenStorage.getUser();
+  }
+
+  Future<void> loginWithEmail(String email, String password) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard<User?>(
+      () => ref.read(loginEmailUsecaseProvider).call(email, password),
+    );
+  }
+
+  Future<void> signUp(String email, String password, String nickname) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard<User?>(
+      () => ref.read(signUpUsecaseProvider).call(email, password, nickname),
+    );
   }
 
   Future<void> loginWithKakao() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    state = await AsyncValue.guard<User?>(
       () => ref.read(loginKakaoUsecaseProvider).call(),
     );
   }
 
   Future<void> logout() async {
-    // TODO: logout usecase
+    state = const AsyncLoading();
+    try {
+      await ref.read(logoutUsecaseProvider).call();
+    } catch (_) {}
     state = const AsyncData(null);
   }
 }
