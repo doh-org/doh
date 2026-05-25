@@ -1,14 +1,33 @@
 package bootstrap
 
-// Application은 앱 수명주기 동안 공유되는 인프라 의존성을 보관한다.
+import (
+	"context"
+	"crypto/ecdsa"
+	"log/slog"
+	"os"
+
+	"doh/backend/api/middleware"
+)
+
 type Application struct {
-	Env *Env
+	Env        *Env
+	PublicKeys map[string]*ecdsa.PublicKey
 }
 
 func App() Application {
 	env, err := NewEnv()
 	if err != nil {
-		panic(err)
+		slog.Error("config load failed", "err", err)
+		os.Exit(1)
 	}
-	return Application{Env: env}
+
+	jwksURL := env.SupabaseURL + "/auth/v1/.well-known/jwks.json"
+	keys, err := middleware.FetchPublicKeys(context.Background(), jwksURL)
+	if err != nil {
+		slog.Error("jwks fetch failed", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("jwks loaded", "key_count", len(keys))
+
+	return Application{Env: env, PublicKeys: keys}
 }

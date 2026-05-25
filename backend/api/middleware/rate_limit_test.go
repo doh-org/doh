@@ -55,12 +55,10 @@ func TestRateLimit_IndependentByIP(t *testing.T) {
 		ipLimiters.Delete(ip2)
 	})
 
-	// ip1 버킷 소진
 	for i := 0; i < 10; i++ {
 		doPost(router, ip1)
 	}
 
-	// ip2는 영향 없음
 	if code := doPost(router, ip2); code == http.StatusTooManyRequests {
 		t.Error("ip2 should not be rate limited by ip1 exhaustion")
 	}
