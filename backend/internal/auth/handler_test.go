@@ -13,8 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"doh/backend/api/middleware"
 	"doh/backend/internal/auth"
-	"doh/backend/internal/middleware"
 	"doh/backend/testutil"
 )
 

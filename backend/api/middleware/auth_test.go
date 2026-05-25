@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"doh/backend/internal/middleware"
+	"doh/backend/api/middleware"
 	"doh/backend/testutil"
 )
 

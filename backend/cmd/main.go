@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -9,53 +8,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"doh/backend/internal/auth"
-	"doh/backend/internal/config"
-	"doh/backend/internal/middleware"
+	"doh/backend/api/route"
+	"doh/backend/bootstrap"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("config load failed", "err", err)
-		os.Exit(1)
-	}
+	app := bootstrap.App()
 
-	jwksURL := cfg.SupabaseURL + "/auth/v1/.well-known/jwks.json"
-	keys, err := middleware.FetchPublicKeys(context.Background(), jwksURL)
-	if err != nil {
-		slog.Error("jwks fetch failed", "err", err)
-		os.Exit(1)
-	}
-	slog.Info("jwks loaded", "key_count", len(keys))
-
-	if cfg.Env == "production" {
+	if app.Env.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
-
-	svc := auth.NewService(cfg.SupabaseURL, cfg.SupabaseAnonKey, cfg.TurnstileSecretKey)
-	h := auth.NewHandler(svc)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	v1 := router.Group("/api/v1")
-	{
-		authGroup := v1.Group("/auth")
-
-		public := authGroup.Group("")
-		public.Use(middleware.RateLimit())
-		public.POST("/signup", h.Signup)
-		public.POST("/login", h.Login)
-
-		protected := authGroup.Group("")
-		protected.Use(middleware.Auth(keys, cfg.SupabaseURL, cfg.SupabaseAnonKey, nil))
-		protected.POST("/logout", h.Logout)
-		protected.GET("/me", h.Me)
-	}
+	route.Setup(app.Env, app.PublicKeys, router)
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
+		Addr:              ":" + app.Env.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
@@ -63,7 +33,7 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	slog.Info("server starting", "port", cfg.Port, "env", cfg.Env)
+	slog.Info("server starting", "port", app.Env.Port, "env", app.Env.Env)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "err", err)
 		os.Exit(1)
