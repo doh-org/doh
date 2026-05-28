@@ -16,7 +16,6 @@ import (
 	"doh/backend/domain"
 )
 
-const markerSelectCols = "id,trip_id,category_id,created_by,name,ST_Y(location::geometry) as latitude,ST_X(location::geometry) as longitude,address,memo,source,detail,visit_time,created_at"
 const markerViewCols = "id,trip_id,category_id,created_by,name,latitude,longitude,address,memo,source,detail,visit_time,created_at"
 
 type markerRepository struct {
@@ -193,53 +192,25 @@ func (r *markerRepository) CreateMarker(ctx context.Context, token, tripID, user
 		body["address"] = *input.Address
 	}
 
-	// return=representation 우선 시도
-	postURL := r.supabaseURL + "/rest/v1/markers?" + url.Values{"select": {markerSelectCols}}.Encode()
-	resp, err := r.restReq(ctx, http.MethodPost, postURL, body, token, "return=representation")
+	markerID, err := newUUID()
 	if err != nil {
 		return nil, err
 	}
+	body["id"] = markerID
 
-	var marker *domain.Marker
-	if resp.StatusCode == http.StatusCreated {
-		b, err := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
-		resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-		var rows []markerRow
-		if err := json.Unmarshal(b, &rows); err != nil {
-			return nil, err
-		}
-		if len(rows) > 0 {
-			m := rows[0].toDomain()
-			marker = &m
-		}
-	} else {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusForbidden {
-			return nil, fmt.Errorf("createMarker: status %d body %s", resp.StatusCode, b)
-		}
-		// return=minimal fallback + pre-generated ID
-		markerID, err := newUUID()
-		if err != nil {
-			return nil, err
-		}
-		body["id"] = markerID
-		resp2, err := r.restReq(ctx, http.MethodPost, r.supabaseURL+"/rest/v1/markers", body, token, "return=minimal")
-		if err != nil {
-			return nil, err
-		}
-		b2, _ := io.ReadAll(io.LimitReader(resp2.Body, 1024))
-		resp2.Body.Close()
-		if resp2.StatusCode != http.StatusCreated && resp2.StatusCode != http.StatusNoContent {
-			return nil, fmt.Errorf("createMarker fallback: status %d body %s", resp2.StatusCode, b2)
-		}
-		marker, err = r.GetMarker(ctx, token, tripID, markerID)
-		if err != nil {
-			return nil, err
-		}
+	resp, err := r.restReq(ctx, http.MethodPost, r.supabaseURL+"/rest/v1/markers", body, token, "return=minimal")
+	if err != nil {
+		return nil, err
+	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		return nil, fmt.Errorf("createMarker: status %d body %s", resp.StatusCode, b)
+	}
+
+	marker, err := r.GetMarker(ctx, token, tripID, markerID)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := r.addWaypoint(ctx, token, tripID, marker.ID); err != nil {
@@ -334,33 +305,20 @@ func (r *markerRepository) UpdateMarker(ctx context.Context, token, tripID, mark
 	params := url.Values{}
 	params.Set("id", "eq."+markerID)
 	params.Set("trip_id", "eq."+tripID)
-	params.Set("select", markerSelectCols)
 
-	resp, err := r.restReq(ctx, http.MethodPatch, r.supabaseURL+"/rest/v1/markers?"+params.Encode(), body, token, "return=representation")
+	resp, err := r.restReq(ctx, http.MethodPatch, r.supabaseURL+"/rest/v1/markers?"+params.Encode(), body, token, "return=minimal")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
-	if err != nil {
-		return nil, err
-	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
 		return nil, domain.ErrNotFound
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("updateMarker: status %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("updateMarker: status %d body %s", resp.StatusCode, b)
 	}
-	var rows []markerRow
-	if err := json.Unmarshal(b, &rows); err != nil {
-		return nil, err
-	}
-	if len(rows) == 0 {
-		return nil, domain.ErrNotFound
-	}
-	m := rows[0].toDomain()
-	return &m, nil
+	return r.GetMarker(ctx, token, tripID, markerID)
 }
 
 func (r *markerRepository) DeleteMarker(ctx context.Context, token, tripID, markerID string) error {
