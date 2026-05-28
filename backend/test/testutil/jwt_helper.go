@@ -30,7 +30,6 @@ func NewTestKeys(t *testing.T) *TestKeys {
 	}
 }
 
-// Sign은 ES256 JWT를 생성해 반환한다.
 func (k *TestKeys) Sign(subject, email, issuer string, exp time.Time) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
 		"sub":   subject,
