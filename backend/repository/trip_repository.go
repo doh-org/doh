@@ -198,16 +198,10 @@ func (r *tripRepository) UpdateTrip(ctx context.Context, token, tripID string, i
 }
 
 func (r *tripRepository) DeleteTrip(ctx context.Context, token, tripID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	b, err := json.Marshal(map[string]any{"deleted_at": now})
-	if err != nil {
-		return err
-	}
-
 	url := fmt.Sprintf("%s/rest/v1/trips?id=eq.%s", r.supabaseURL, tripID)
-	slog.Info("[trip] repo.DeleteTrip: request", "url", url, "deleted_at", now)
+	slog.Info("[trip] repo.DeleteTrip: request", "url", url)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return err
 	}
