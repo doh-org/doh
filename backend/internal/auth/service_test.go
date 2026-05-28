@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"doh/backend/internal/auth"
-	"doh/backend/testutil"
+	"doh/backend/test/testutil"
 )
 
 func setupService(t *testing.T) (*auth.Service, *testutil.FakeSupabase) {

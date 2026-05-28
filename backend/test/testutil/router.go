@@ -6,16 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"doh/backend/api/controller"
 	"doh/backend/api/middleware"
 	"doh/backend/internal/auth"
+	"doh/backend/repository"
+	"doh/backend/usecase"
 )
 
 func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// NewTestRouter는 실제 미들웨어·핸들러를 연결한 테스트용 Gin 라우터를 반환한다.
-// supabaseURL에 FakeSupabase.Server.URL을, client에 FakeSupabase.Server.Client()를 전달한다.
 func NewTestRouter(
 	t *testing.T,
 	supabaseURL string,
@@ -39,6 +40,29 @@ func NewTestRouter(
 	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	protected.POST("/logout", h.Logout)
 	protected.GET("/me", h.Me)
+
+	return r
+}
+
+func NewTestTripRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	tr := repository.NewTripRepository(supabaseURL, "fake-anon-key", client)
+	tu := usecase.NewTripUsecase(tr)
+	tc := controller.NewTripController(tu)
+
+	r := gin.New()
+	trips := r.Group("/api/v1/trips")
+	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	trips.POST("/add", tc.CreateTrip)
+	trips.GET("", tc.GetTrips)
+	trips.GET("/:tripId", tc.GetTrip)
+	trips.PATCH("/:tripId", tc.UpdateTrip)
+	trips.DELETE("/:tripId", tc.DeleteTrip)
 
 	return r
 }

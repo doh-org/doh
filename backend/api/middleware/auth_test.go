@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"doh/backend/api/middleware"
-	"doh/backend/testutil"
+	"doh/backend/test/testutil"
 )
 
 func init() {

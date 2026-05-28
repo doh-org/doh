@@ -15,7 +15,7 @@ import (
 
 	"doh/backend/api/middleware"
 	"doh/backend/internal/auth"
-	"doh/backend/testutil"
+	"doh/backend/test/testutil"
 )
 
 func init() {
