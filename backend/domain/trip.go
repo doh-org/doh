@@ -38,6 +38,14 @@ type TripInvitation struct {
 	ExpiredAt string `json:"expired_at"`
 }
 
+type CreateTripInput struct {
+	Title       string  `json:"title"`
+	Description *string `json:"description"`
+	Destination *string `json:"destination"`
+	StartDate   *string `json:"start_date"`
+	EndDate     *string `json:"end_date"`
+}
+
 type UpdateTripInput struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
@@ -47,6 +55,7 @@ type UpdateTripInput struct {
 }
 
 type TripRepository interface {
+	CreateTrip(ctx context.Context, token, ownerID string, input CreateTripInput) (*Trip, error)
 	GetTrips(ctx context.Context, token string) ([]Trip, error)
 	GetTrip(ctx context.Context, token, tripID string) (*Trip, error)
 	UpdateTrip(ctx context.Context, token, tripID string, input UpdateTripInput) (*Trip, error)
@@ -54,6 +63,7 @@ type TripRepository interface {
 }
 
 type TripUsecase interface {
+	CreateTrip(ctx context.Context, userID, token string, input CreateTripInput) (*Trip, error)
 	GetTrips(ctx context.Context, token string) ([]Trip, error)
 	GetTrip(ctx context.Context, token, tripID string) (*Trip, error)
 	UpdateTrip(ctx context.Context, userID, token, tripID string, input UpdateTripInput) (*Trip, error)

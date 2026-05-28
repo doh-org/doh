@@ -17,10 +17,10 @@ func NewTripRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *
 	tu := usecase.NewTripUsecase(tr)
 	tc := controller.NewTripController(tu)
 
-	protected := group.Group("")
-	protected.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
-	protected.GET("", tc.GetTrips)
-	protected.GET("/:tripId", tc.GetTrip)
-	protected.PATCH("/:tripId", tc.UpdateTrip)
-	protected.DELETE("/:tripId", tc.DeleteTrip)
+	group.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
+	group.POST("/add", tc.CreateTrip)
+	group.GET("", tc.GetTrips)
+	group.GET("/:tripId", tc.GetTrip)
+	group.PATCH("/:tripId", tc.UpdateTrip)
+	group.DELETE("/:tripId", tc.DeleteTrip)
 }
