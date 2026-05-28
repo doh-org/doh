@@ -1,6 +1,15 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+var (
+	ErrNotFound  = errors.New("not found")
+	ErrForbidden = errors.New("forbidden")
+)
 
 type Trip struct {
 	ID          string     `json:"id"`
@@ -28,6 +37,8 @@ type TripInvitation struct {
 	ExpiredAt string `json:"expired_at"`
 }
 
-type TripRepository interface{}
+type TripRepository interface {
+	GetTrip(ctx context.Context, token, tripID string) (*Trip, error)
+}
 
 type TripUsecase interface{}
