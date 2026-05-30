@@ -22,8 +22,9 @@ dependencies:
   go_router: ^14.8.1
 
   # Maps
-  google_maps_flutter: ^2.10.0
+  flutter_naver_map: ^1.3.0
   geolocator: ^13.0.2
+  table_calendar: ^3.1.2
 
   # Network
   dio: ^5.8.0+1
@@ -31,9 +32,6 @@ dependencies:
 
   # External app navigation (티맵, 카카오맵)
   url_launcher: ^6.3.1
-
-  # Auth
-  kakao_flutter_sdk_user: ^1.9.5
 
   # Storage
   shared_preferences: ^2.3.4
