@@ -64,8 +64,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       isScrollControlled: true,
       builder: (_) => MarkerBottomSheet(
         tripId: widget.tripId,
-        latitude: loc?.lat ?? 37.5665,
-        longitude: loc?.lng ?? 126.9780,
+        latitude: loc?.latitude ?? 37.5665,
+        longitude: loc?.longitude ?? 126.9780,
         initialName: _query.isEmpty ? null : _query,
       ),
     );
