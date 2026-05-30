@@ -67,4 +67,18 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User?> getCurrentUser() => _tokenStorage.getUser();
+
+  @override
+  Future<User> getMe() async {
+    try {
+      final model = await _datasource.getMe();
+      final user = model.toEntity();
+      await _tokenStorage.updateUser(user);
+      return user;
+    } on DioException catch (e) {
+      final error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
 }

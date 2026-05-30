@@ -6,4 +6,5 @@ abstract interface class AuthRepository {
   Future<User> signUp(String email, String password, String nickname);
   Future<void> logout();
   Future<User?> getCurrentUser();
+  Future<User> getMe();
 }

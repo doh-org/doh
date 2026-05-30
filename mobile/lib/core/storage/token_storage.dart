@@ -55,6 +55,14 @@ class TokenStorage {
     );
   }
 
+  Future<void> updateUser(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userIdKey, user.id);
+    await prefs.setString(_userEmailKey, user.email);
+    await prefs.setString(_userNicknameKey, user.nickname);
+    await prefs.setString(_userCreatedAtKey, user.createdAt.toIso8601String());
+  }
+
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_accessKey);

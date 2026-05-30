@@ -52,6 +52,11 @@ class AuthRemoteDatasource {
     await _dio.post('/api/v1/auth/logout');
   }
 
+  Future<UserResponseModel> getMe() async {
+    final response = await _dio.get('/api/v1/auth/me');
+    return UserResponseModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<UserModel> loginWithKakao() {
     throw UnimplementedError('카카오 로그인 미구현');
   }

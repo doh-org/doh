@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/storage/token_storage.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_email_usecase.dart';
 import '../../domain/usecases/login_kakao_usecase.dart';
@@ -46,5 +47,12 @@ class AuthNotifier extends _$AuthNotifier {
       await ref.read(logoutUsecaseProvider).call();
     } catch (_) {}
     state = const AsyncData(null);
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      final user = await ref.read(authRepositoryProvider).getMe();
+      state = AsyncData(user);
+    } catch (_) {}
   }
 }
