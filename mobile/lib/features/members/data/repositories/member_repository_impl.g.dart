@@ -6,7 +6,7 @@ part of 'member_repository_impl.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$memberRepositoryHash() => r'5c7e597e396a0e762f10910f248882586f53018d';
+String _$memberRepositoryHash() => r'f96ac0c8060bd8a6f5956217863aa1b8a702b669';
 
 /// See also [memberRepository].
 @ProviderFor(memberRepository)

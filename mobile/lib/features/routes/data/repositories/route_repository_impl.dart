@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/trip_route.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../datasources/route_remote_datasource.dart';
@@ -10,12 +10,15 @@ import '../models/route_model.dart';
 part 'route_repository_impl.g.dart';
 
 @riverpod
-RouteRepository routeRepository(Ref ref) =>
-    RouteRepositoryImpl(ref.watch(routeRemoteDatasourceProvider));
+RouteRepository routeRepository(Ref ref) => RouteRepositoryImpl(
+      ref.watch(routeRemoteDatasourceProvider),
+      ref.watch(authNotifierProvider).valueOrNull?.id ?? '',
+    );
 
 class RouteRepositoryImpl implements RouteRepository {
-  const RouteRepositoryImpl(this._datasource);
+  const RouteRepositoryImpl(this._datasource, this._userId);
   final RouteRemoteDatasource _datasource;
+  final String _userId;
 
   @override
   Future<List<TripRoute>> getRoutes(String tripId) async {
@@ -30,10 +33,9 @@ class RouteRepositoryImpl implements RouteRepository {
     required TransportMode transportMode,
     String? description,
   }) async {
-    final createdBy = Supabase.instance.client.auth.currentUser!.id;
     final model = await _datasource.createRoute({
       'trip_id': tripId,
-      'created_by': createdBy,
+      'created_by': _userId,
       'title': title,
       'transport_mode': transportMode.name,
       if (description != null) 'description': description,

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/trip_member.dart';
 import '../../domain/repositories/member_repository.dart';
 import '../datasources/member_remote_datasource.dart';
@@ -8,12 +9,15 @@ import '../datasources/member_remote_datasource.dart';
 part 'member_repository_impl.g.dart';
 
 @riverpod
-MemberRepository memberRepository(Ref ref) =>
-    MemberRepositoryImpl(ref.watch(memberRemoteDatasourceProvider));
+MemberRepository memberRepository(Ref ref) => MemberRepositoryImpl(
+      ref.watch(memberRemoteDatasourceProvider),
+      ref.watch(authNotifierProvider).valueOrNull?.id ?? '',
+    );
 
 class MemberRepositoryImpl implements MemberRepository {
-  const MemberRepositoryImpl(this._datasource);
+  const MemberRepositoryImpl(this._datasource, this._userId);
   final MemberRemoteDatasource _datasource;
+  final String _userId;
 
   @override
   Future<List<TripMember>> getMembers(String tripId) async {
@@ -31,7 +35,7 @@ class MemberRepositoryImpl implements MemberRepository {
 
   @override
   Future<Invitation> inviteMember(String tripId, String email) async {
-    final data = await _datasource.inviteMember(tripId, email);
+    final data = await _datasource.inviteMember(tripId, email, _userId);
     return Invitation(
       id: data['id'] as String,
       tripId: data['trip_id'] as String,
