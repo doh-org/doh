@@ -41,11 +41,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _onLogin() {
+    final email = _emailCtrl.text.trim();
+    final pw = _pwCtrl.text;
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _errorMessage = '올바른 이메일을 입력해주세요.');
+      return;
+    }
+    if (pw.isEmpty) {
+      setState(() => _errorMessage = '비밀번호를 입력해주세요.');
+      return;
+    }
     setState(() => _errorMessage = null);
-    ref.read(authNotifierProvider.notifier).loginWithEmail(
-          _emailCtrl.text.trim(),
-          _pwCtrl.text,
-        );
+    ref.read(authNotifierProvider.notifier).loginWithEmail(email, pw);
   }
 
   @override

@@ -42,13 +42,31 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     };
   }
 
+  bool _isValidPassword(String pw) =>
+      pw.length >= 8 &&
+      pw.contains(RegExp(r'[A-Z]')) &&
+      pw.contains(RegExp(r'[a-z]')) &&
+      pw.contains(RegExp(r'[0-9]'));
+
   void _onSignUp() {
+    final email = _emailCtrl.text.trim();
+    final pw = _pwCtrl.text;
+    final nickname = _nicknameCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _errorMessage = '올바른 이메일을 입력해주세요.');
+      return;
+    }
+    if (!_isValidPassword(pw)) {
+      setState(() =>
+          _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
+      return;
+    }
+    if (nickname.isEmpty) {
+      setState(() => _errorMessage = '닉네임을 입력해주세요.');
+      return;
+    }
     setState(() => _errorMessage = null);
-    ref.read(authNotifierProvider.notifier).signUp(
-          _emailCtrl.text.trim(),
-          _pwCtrl.text,
-          _nicknameCtrl.text.trim(),
-        );
+    ref.read(authNotifierProvider.notifier).signUp(email, pw, nickname);
   }
 
   @override
