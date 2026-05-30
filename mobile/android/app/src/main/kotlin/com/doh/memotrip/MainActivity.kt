@@ -1,4 +1,4 @@
-package com.doh.doh
+package com.doh.memotrip
 
 import io.flutter.embedding.android.FlutterActivity
 
