@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/trip.dart';
 import '../../domain/repositories/trip_repository.dart';
@@ -35,34 +34,42 @@ class TripRepositoryImpl implements TripRepository {
     String? description,
     DateTime? startDate,
     DateTime? endDate,
+    String? coverColor,
   }) async {
-    final ownerId = Supabase.instance.client.auth.currentUser!.id;
     final model = await _datasource.createTrip({
-      'owner_id': ownerId,
       'title': title,
       if (description != null) 'description': description,
-      if (startDate != null) 'start_date': startDate.toIso8601String(),
-      if (endDate != null) 'end_date': endDate.toIso8601String(),
+      if (startDate != null) 'start_date': _formatDate(startDate),
+      if (endDate != null) 'end_date': _formatDate(endDate),
+      // cover_color: 백엔드 컬럼 추가 후 연결
     });
     return model.toEntity();
   }
 
   @override
-  Future<Trip> updateTrip(String tripId, {
+  Future<Trip> updateTrip(
+    String tripId, {
     String? title,
     String? description,
     DateTime? startDate,
     DateTime? endDate,
+    String? coverColor,
   }) async {
     final model = await _datasource.updateTrip(tripId, {
       if (title != null) 'title': title,
       if (description != null) 'description': description,
-      if (startDate != null) 'start_date': startDate.toIso8601String(),
-      if (endDate != null) 'end_date': endDate.toIso8601String(),
+      if (startDate != null) 'start_date': _formatDate(startDate),
+      if (endDate != null) 'end_date': _formatDate(endDate),
+      // cover_color: 백엔드 컬럼 추가 후 연결
     });
     return model.toEntity();
   }
 
   @override
   Future<void> deleteTrip(String tripId) => _datasource.deleteTrip(tripId);
+
+  String _formatDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }

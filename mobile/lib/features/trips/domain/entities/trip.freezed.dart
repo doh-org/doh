@@ -20,6 +20,7 @@ mixin _$Trip {
   String? get description;
   DateTime? get startDate;
   DateTime? get endDate;
+  String? get coverColor;
   DateTime? get deletedAt;
   DateTime get createdAt;
 
@@ -43,6 +44,8 @@ mixin _$Trip {
             (identical(other.startDate, startDate) ||
                 other.startDate == startDate) &&
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
+            (identical(other.coverColor, coverColor) ||
+                other.coverColor == coverColor) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -51,11 +54,11 @@ mixin _$Trip {
 
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, deletedAt, createdAt);
+      startDate, endDate, coverColor, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'Trip(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'Trip(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -71,6 +74,7 @@ abstract mixin class $TripCopyWith<$Res> {
       String? description,
       DateTime? startDate,
       DateTime? endDate,
+      String? coverColor,
       DateTime? deletedAt,
       DateTime createdAt});
 }
@@ -93,6 +97,7 @@ class _$TripCopyWithImpl<$Res> implements $TripCopyWith<$Res> {
     Object? description = freezed,
     Object? startDate = freezed,
     Object? endDate = freezed,
+    Object? coverColor = freezed,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -121,6 +126,10 @@ class _$TripCopyWithImpl<$Res> implements $TripCopyWith<$Res> {
           ? _self.endDate
           : endDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      coverColor: freezed == coverColor
+          ? _self.coverColor
+          : coverColor // ignore: cast_nullable_to_non_nullable
+              as String?,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
@@ -233,6 +242,7 @@ extension TripPatterns on Trip {
             String? description,
             DateTime? startDate,
             DateTime? endDate,
+            String? coverColor,
             DateTime? deletedAt,
             DateTime createdAt)?
         $default, {
@@ -241,8 +251,16 @@ extension TripPatterns on Trip {
     final _that = this;
     switch (_that) {
       case _Trip() when $default != null:
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         return orElse();
     }
@@ -270,6 +288,7 @@ extension TripPatterns on Trip {
             String? description,
             DateTime? startDate,
             DateTime? endDate,
+            String? coverColor,
             DateTime? deletedAt,
             DateTime createdAt)
         $default,
@@ -277,8 +296,16 @@ extension TripPatterns on Trip {
     final _that = this;
     switch (_that) {
       case _Trip():
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -305,6 +332,7 @@ extension TripPatterns on Trip {
             String? description,
             DateTime? startDate,
             DateTime? endDate,
+            String? coverColor,
             DateTime? deletedAt,
             DateTime createdAt)?
         $default,
@@ -312,8 +340,16 @@ extension TripPatterns on Trip {
     final _that = this;
     switch (_that) {
       case _Trip() when $default != null:
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         return null;
     }
@@ -330,6 +366,7 @@ class _Trip implements Trip {
       this.description,
       this.startDate,
       this.endDate,
+      this.coverColor,
       this.deletedAt,
       required this.createdAt});
 
@@ -345,6 +382,8 @@ class _Trip implements Trip {
   final DateTime? startDate;
   @override
   final DateTime? endDate;
+  @override
+  final String? coverColor;
   @override
   final DateTime? deletedAt;
   @override
@@ -371,6 +410,8 @@ class _Trip implements Trip {
             (identical(other.startDate, startDate) ||
                 other.startDate == startDate) &&
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
+            (identical(other.coverColor, coverColor) ||
+                other.coverColor == coverColor) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -379,11 +420,11 @@ class _Trip implements Trip {
 
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, deletedAt, createdAt);
+      startDate, endDate, coverColor, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'Trip(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'Trip(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -400,6 +441,7 @@ abstract mixin class _$TripCopyWith<$Res> implements $TripCopyWith<$Res> {
       String? description,
       DateTime? startDate,
       DateTime? endDate,
+      String? coverColor,
       DateTime? deletedAt,
       DateTime createdAt});
 }
@@ -422,6 +464,7 @@ class __$TripCopyWithImpl<$Res> implements _$TripCopyWith<$Res> {
     Object? description = freezed,
     Object? startDate = freezed,
     Object? endDate = freezed,
+    Object? coverColor = freezed,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -450,6 +493,10 @@ class __$TripCopyWithImpl<$Res> implements _$TripCopyWith<$Res> {
           ? _self.endDate
           : endDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      coverColor: freezed == coverColor
+          ? _self.coverColor
+          : coverColor // ignore: cast_nullable_to_non_nullable
+              as String?,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable

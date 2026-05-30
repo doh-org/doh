@@ -11,6 +11,7 @@ abstract class Trip with _$Trip {
     String? description,
     DateTime? startDate,
     DateTime? endDate,
+    String? coverColor,
     DateTime? deletedAt,
     required DateTime createdAt,
   }) = _Trip;
