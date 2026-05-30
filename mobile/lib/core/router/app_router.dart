@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
+import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/trips/presentation/pages/trip_create_page.dart';
@@ -23,10 +24,16 @@ GoRouter appRouter(Ref ref) {
     refreshListenable: notifier,
     redirect: (context, state) {
       final authState = ref.read(authNotifierProvider);
-      if (authState.isLoading) return null;
+      final loc = state.matchedLocation;
+
+      if (authState.isLoading) {
+        final isAuthOrSplash = loc == '/login' ||
+            loc == '/signup' ||
+            loc == '/splash';
+        return isAuthOrSplash ? null : '/splash';
+      }
 
       final isAuthenticated = authState.valueOrNull != null;
-      final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/signup';
 
       if (!isAuthenticated && !isAuthRoute) return '/login';
@@ -34,6 +41,10 @@ GoRouter appRouter(Ref ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashPage(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
