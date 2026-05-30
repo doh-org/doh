@@ -1,59 +1,43 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../models/trip_model.dart';
 
 part 'trip_remote_datasource.g.dart';
 
 @riverpod
 TripRemoteDatasource tripRemoteDatasource(Ref ref) =>
-    TripRemoteDatasource(Supabase.instance.client);
+    TripRemoteDatasource(ref.watch(apiClientProvider));
 
 class TripRemoteDatasource {
-  const TripRemoteDatasource(this._supabase);
-  final SupabaseClient _supabase;
+  const TripRemoteDatasource(this._dio);
+  final Dio _dio;
 
   Future<List<TripModel>> getTrips() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final data = await _supabase
-        .from('trip_members')
-        .select('trips(*)')
-        .eq('user_id', userId);
-
-    return (data as List)
-        .map((e) => TripModel.fromJson(e['trips'] as Map<String, dynamic>))
+    final response = await _dio.get('/api/v1/trips');
+    return (response.data as List)
+        .map((e) => TripModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   Future<TripModel> getTrip(String tripId) async {
-    final data = await _supabase
-        .from('trips')
-        .select()
-        .eq('id', tripId)
-        .single();
-    return TripModel.fromJson(data);
+    final response = await _dio.get('/api/v1/trips/$tripId');
+    return TripModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<TripModel> createTrip(Map<String, dynamic> body) async {
-    final data = await _supabase.from('trips').insert(body).select().single();
-    return TripModel.fromJson(data);
+    final response = await _dio.post('/api/v1/trips/add', data: body);
+    return TripModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<TripModel> updateTrip(String tripId, Map<String, dynamic> body) async {
-    final data = await _supabase
-        .from('trips')
-        .update(body)
-        .eq('id', tripId)
-        .select()
-        .single();
-    return TripModel.fromJson(data);
+    final response = await _dio.patch('/api/v1/trips/$tripId', data: body);
+    return TripModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<void> deleteTrip(String tripId) async {
-    await _supabase
-        .from('trips')
-        .update({'deleted_at': DateTime.now().toIso8601String()})
-        .eq('id', tripId);
+    await _dio.delete('/api/v1/trips/$tripId');
   }
 }
