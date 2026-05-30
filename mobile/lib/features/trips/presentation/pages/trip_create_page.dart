@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../data/repositories/trip_repository_impl.dart';
 import '../../domain/repositories/trip_repository.dart';
 
@@ -29,11 +27,6 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) return;
 
-    if (kDebugMode) {
-      context.go('/trips/${AppConfig.devTripId}/map');
-      return;
-    }
-
     setState(() => _loading = true);
     try {
       final trip = await ref.read(tripRepositoryProvider).createTrip(
@@ -43,12 +36,6 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 : _descController.text.trim(),
           );
       if (mounted) context.go('/trips/${trip.id}/map');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
-      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

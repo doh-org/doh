@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/entities/marker.dart';
 import '../../data/repositories/marker_repository_impl.dart';
+import '../../domain/entities/marker.dart';
+import '../../domain/repositories/marker_repository.dart';
 
 class MarkerDetailPage extends ConsumerWidget {
   const MarkerDetailPage({required this.marker, super.key});

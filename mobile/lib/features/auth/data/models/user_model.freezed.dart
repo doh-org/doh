@@ -15,6 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserModel {
   String get id;
+  String? get email;
   String get nickname;
   @JsonKey(name: 'deleted_at')
   DateTime? get deletedAt;
@@ -37,6 +38,7 @@ mixin _$UserModel {
         (other.runtimeType == runtimeType &&
             other is UserModel &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.email, email) || other.email == email) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
             (identical(other.deletedAt, deletedAt) ||
@@ -48,11 +50,11 @@ mixin _$UserModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, nickname, deletedAt, createdAt);
+      Object.hash(runtimeType, id, email, nickname, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'UserModel(id: $id, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'UserModel(id: $id, email: $email, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -63,6 +65,7 @@ abstract mixin class $UserModelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String? email,
       String nickname,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
@@ -81,6 +84,7 @@ class _$UserModelCopyWithImpl<$Res> implements $UserModelCopyWith<$Res> {
   @override
   $Res call({
     Object? id = null,
+    Object? email = freezed,
     Object? nickname = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
@@ -90,6 +94,10 @@ class _$UserModelCopyWithImpl<$Res> implements $UserModelCopyWith<$Res> {
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      email: freezed == email
+          ? _self.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String?,
       nickname: null == nickname
           ? _self.nickname
           : nickname // ignore: cast_nullable_to_non_nullable
@@ -201,6 +209,7 @@ extension UserModelPatterns on UserModel {
   TResult maybeWhen<TResult extends Object?>(
     TResult Function(
             String id,
+            String? email,
             String nickname,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
@@ -210,8 +219,8 @@ extension UserModelPatterns on UserModel {
     final _that = this;
     switch (_that) {
       case _UserModel() when $default != null:
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         return orElse();
     }
@@ -234,6 +243,7 @@ extension UserModelPatterns on UserModel {
   TResult when<TResult extends Object?>(
     TResult Function(
             String id,
+            String? email,
             String nickname,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)
@@ -242,8 +252,8 @@ extension UserModelPatterns on UserModel {
     final _that = this;
     switch (_that) {
       case _UserModel():
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -265,6 +275,7 @@ extension UserModelPatterns on UserModel {
   TResult? whenOrNull<TResult extends Object?>(
     TResult? Function(
             String id,
+            String? email,
             String nickname,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
@@ -273,8 +284,8 @@ extension UserModelPatterns on UserModel {
     final _that = this;
     switch (_that) {
       case _UserModel() when $default != null:
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         return null;
     }
@@ -286,6 +297,7 @@ extension UserModelPatterns on UserModel {
 class _UserModel implements UserModel {
   const _UserModel(
       {required this.id,
+      this.email,
       required this.nickname,
       @JsonKey(name: 'deleted_at') this.deletedAt,
       @JsonKey(name: 'created_at') required this.createdAt});
@@ -294,6 +306,8 @@ class _UserModel implements UserModel {
 
   @override
   final String id;
+  @override
+  final String? email;
   @override
   final String nickname;
   @override
@@ -324,6 +338,7 @@ class _UserModel implements UserModel {
         (other.runtimeType == runtimeType &&
             other is _UserModel &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.email, email) || other.email == email) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
             (identical(other.deletedAt, deletedAt) ||
@@ -335,11 +350,11 @@ class _UserModel implements UserModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, nickname, deletedAt, createdAt);
+      Object.hash(runtimeType, id, email, nickname, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'UserModel(id: $id, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'UserModel(id: $id, email: $email, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -353,6 +368,7 @@ abstract mixin class _$UserModelCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String? email,
       String nickname,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
@@ -371,6 +387,7 @@ class __$UserModelCopyWithImpl<$Res> implements _$UserModelCopyWith<$Res> {
   @pragma('vm:prefer-inline')
   $Res call({
     Object? id = null,
+    Object? email = freezed,
     Object? nickname = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
@@ -380,6 +397,10 @@ class __$UserModelCopyWithImpl<$Res> implements _$UserModelCopyWith<$Res> {
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      email: freezed == email
+          ? _self.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String?,
       nickname: null == nickname
           ? _self.nickname
           : nickname // ignore: cast_nullable_to_non_nullable

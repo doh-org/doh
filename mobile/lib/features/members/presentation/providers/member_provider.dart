@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../data/repositories/member_repository_impl.dart';
 import '../../domain/entities/trip_member.dart';
+import '../../domain/repositories/member_repository.dart';
 
 part 'member_provider.g.dart';
 

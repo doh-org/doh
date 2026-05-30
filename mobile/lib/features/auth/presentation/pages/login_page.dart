@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/errors/app_exception.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../domain/entities/user.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_text_field.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -12,105 +16,252 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _nicknameCtrl = TextEditingController();
-  bool _isSignUp = false;
+  final _pwCtrl = TextEditingController();
+  String? _errorMessage;
+  bool _obscurePw = true;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _nicknameCtrl.dispose();
+    _pwCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final notifier = ref.read(authNotifierProvider.notifier);
-    if (_isSignUp) {
-      await notifier.signUp(_emailCtrl.text.trim(), _passwordCtrl.text, _nicknameCtrl.text.trim());
-    } else {
-      await notifier.loginWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
+  String _messageFromError(Object error) {
+    return switch (error) {
+      ValidationException e => e.message,
+      AuthException e => e.message,
+      ConflictException e => e.message,
+      CaptchaException e => e.message,
+      NetworkException e => e.message,
+      AppException e => e.message,
+      _ => '연결에 실패했습니다. 다시 시도해주세요.',
+    };
+  }
+
+  void _onLogin() {
+    final email = _emailCtrl.text.trim();
+    final pw = _pwCtrl.text;
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _errorMessage = '올바른 이메일을 입력해주세요.');
+      return;
     }
+    if (pw.isEmpty) {
+      setState(() => _errorMessage = '비밀번호를 입력해주세요.');
+      return;
+    }
+    setState(() => _errorMessage = null);
+    ref.read(authNotifierProvider.notifier).loginWithEmail(email, pw);
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<dynamic>>(authNotifierProvider, (_, next) {
-      if (next is AsyncData && next.value != null) {
-        context.go('/trips');
-      }
-      if (next is AsyncError) {
-        final msg = next.error is Exception
-            ? next.error.toString().replaceFirst('Exception: ', '')
-            : '오류가 발생했습니다. 다시 시도해주세요.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+    ref.listen<AsyncValue<User?>>(authNotifierProvider, (_, next) {
+      if (next.hasError) {
+        setState(() => _errorMessage = _messageFromError(next.error!));
       }
     });
 
     final isLoading = ref.watch(authNotifierProvider).isLoading;
 
     return Scaffold(
-      body: Center(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const FlutterLogo(size: 72),
-                const SizedBox(height: 40),
-                TextFormField(
-                  controller: _emailCtrl,
-                  decoration: const InputDecoration(labelText: '이메일'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? '올바른 이메일을 입력해주세요.' : null,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 80),
+              const Text(
+                'Memotrip',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black,
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _passwordCtrl,
-                  decoration: const InputDecoration(labelText: '비밀번호'),
-                  obscureText: true,
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? '6자 이상 입력해주세요.' : null,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              AuthTextField(
+                controller: _emailCtrl,
+                hintText: '이메일',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              AuthTextField(
+                controller: _pwCtrl,
+                hintText: '비밀번호',
+                obscureText: _obscurePw,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePw ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.gray,
+                  ),
+                  onPressed: () => setState(() => _obscurePw = !_obscurePw),
                 ),
-                if (_isSignUp) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _nicknameCtrl,
-                    decoration: const InputDecoration(labelText: '닉네임'),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? '닉네임을 입력해주세요.' : null,
+              ),
+              const SizedBox(height: 8),
+              if (_errorMessage != null)
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.error,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : _onLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    disabledBackgroundColor: AppColors.primary.withAlpha(128),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: AppColors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          '로그인',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '계정이 없으신가요? ',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 14,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push('/signup'),
+                    child: const Text(
+                      '회원가입',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.blue,
+                      ),
+                    ),
                   ),
                 ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(_isSignUp ? '회원가입' : '로그인'),
+              ),
+              const SizedBox(height: 32),
+              const Row(
+                children: [
+                  Expanded(child: Divider(color: AppColors.gray)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      '또는',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.gray,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: AppColors.gray)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: null,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: AppColors.white,
+                    side: const BorderSide(color: AppColors.gray),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Google로 계속하기',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.dark,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => setState(() => _isSignUp = !_isSignUp),
-                  child: Text(_isSignUp ? '이미 계정이 있어요' : '계정이 없어요'),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEE500),
+                    disabledBackgroundColor: const Color(0xFFFEE500),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '카카오로 계속하기',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.dark,
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF03C75A),
+                    disabledBackgroundColor: const Color(0xFF03C75A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '네이버로 계속하기',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
           ),
         ),
       ),

@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
+import '../../domain/repositories/marker_repository.dart';
 import '../providers/marker_provider.dart';
 import 'category_chip.dart';
 
 class MarkerBottomSheet extends ConsumerStatefulWidget {
   const MarkerBottomSheet({
     required this.tripId,
-    required this.latitude,
-    required this.longitude,
-    this.initialName,
+    required this.latLng,
     super.key,
   });
 
   final String tripId;
-  final double latitude;
-  final double longitude;
-  final String? initialName;
+  final LatLng latLng;
 
   @override
   ConsumerState<MarkerBottomSheet> createState() => _MarkerBottomSheetState();
@@ -28,14 +26,6 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
   final _nameController = TextEditingController();
   String? _selectedCategoryId;
   bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.initialName != null) {
-      _nameController.text = widget.initialName!;
-    }
-  }
 
   @override
   void dispose() {
@@ -51,12 +41,12 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
       await ref.read(markerRepositoryProvider).createMarker(
             tripId: widget.tripId,
             name: _nameController.text.trim(),
-            latitude: widget.latitude,
-            longitude: widget.longitude,
+            latitude: widget.latLng.latitude,
+            longitude: widget.latLng.longitude,
             categoryId: _selectedCategoryId,
             source: MarkerSource.longpress,
           );
-      ref.invalidate(markerEntitiesProvider(widget.tripId));
+      ref.invalidate(markersProvider(widget.tripId));
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -84,7 +74,7 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
             autofocus: true,
           ),
           const SizedBox(height: 12),
-          categoriesAsync.maybeWhen(
+          categoriesAsync.when(
             data: (categories) => Wrap(
               spacing: 8,
               children: categories
@@ -96,7 +86,8 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
                       ))
                   .toList(),
             ),
-            orElse: () => const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           const SizedBox(height: 16),
           SizedBox(

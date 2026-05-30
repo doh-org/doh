@@ -9,6 +9,7 @@ part 'user_model.g.dart';
 abstract class UserModel with _$UserModel {
   const factory UserModel({
     required String id,
+    String? email,
     required String nickname,
     @JsonKey(name: 'deleted_at') DateTime? deletedAt,
     @JsonKey(name: 'created_at') required DateTime createdAt,
@@ -21,6 +22,7 @@ abstract class UserModel with _$UserModel {
 extension UserModelX on UserModel {
   User toEntity() => User(
         id: id,
+        email: email ?? '',
         nickname: nickname,
         deletedAt: deletedAt,
         createdAt: createdAt,

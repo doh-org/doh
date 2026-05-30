@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../domain/entities/trip_route.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../datasources/route_remote_datasource.dart';
@@ -31,7 +30,7 @@ class RouteRepositoryImpl implements RouteRepository {
     required TransportMode transportMode,
     String? description,
   }) async {
-    final createdBy = Supabase.instance.client.auth.currentUser?.id ?? AppConfig.devUserId;
+    final createdBy = Supabase.instance.client.auth.currentUser!.id;
     final model = await _datasource.createRoute({
       'trip_id': tripId,
       'created_by': createdBy,

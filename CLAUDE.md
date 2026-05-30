@@ -52,6 +52,9 @@ GitHub와 상호작용할 때 GitHub CLI를 주요 수단으로 사용
 - Commit format: `type(scope): description` (극도로 간결하게)
 - Types: feat, fix, refactor, docs, test, chore
 - Tag prefix: v (예: v1.0.0)
+- Branch 규칙: `{type}/{side}-{feature}`
+  - side: `front` (Flutter) | `back` (Go) | 생략 가능 (양쪽 공통)
+  - 예시: `feature/back-users`, `feature/front-folders`, `fix/back-auth`
 
 ## PR
 - PR 제목 형식: `type(scope): description`
@@ -65,6 +68,11 @@ GitHub와 상호작용할 때 GitHub CLI를 주요 수단으로 사용
 ## Plans
 계획 마지막에 미해결 질문 목록 추가.
 극도로 간결하게, 문법보다 간결함 우선.
+파일 위치: `docs/plan/`
+파일명 규칙: `{side}-{branch}-plan.md`
+- side: `front` (Flutter) | `back` (Go)
+- branch: 브랜치명 기능 부분 (예: `users`, `folder`)
+- 예시: `back-users-plan.md`, `front-folder-plan.md`
 
 ## Architecture Rules
 - Go: handler → service → repository 레이어 구분
@@ -137,6 +145,23 @@ E2E 테스트에는 ≥1개의 성공 경로와 ≥1개의 실패 경로를 포�
 코드를 입력 → 처리 → 반환 구조로 구성한다.
 실패는 구체적인 오류/메시지로 보고한다.
 테스트는 사용 예제로도 동작하게 하고, 경계/실패 사례를 포함한다.
+① 의존성은 내부에서 생성하지 말고 외부에서 주입하라
+  (Hardcoded Dependency, Embedded Collaborator 공통)
+
+  협력 객체(http.Client, DB 커넥션 등)를 생성자나 함수 내부에서 new하면, 호출자가 그 동작을 바꿀 방법이 없다. 의존성은 인터페이스로 선언하고 외부에서
+  넣어라. 테스트 가능성은 이 원칙을 지키는지 여부로 바로 드러난다.
+
+  ② 교체 가능해야 할 값을 상수로 굳히지 마라
+  (Compile-time Constant Coupling)
+
+  환경마다 달라질 수 있는 URL·타임아웃·키는 const가 아니라 var로 선언해 Seam(동작을 바꿀 수 있는 지점)을 열어둬라. "지금은 하나뿐이니까 상수"라는 판단이
+  나중에 테스트·배포 환경 분리를 막는다.
+
+  ③ 상태는 전역이 아닌 인스턴스에 귀속시켜라
+  (Global Mutable State → Test Pollution)
+
+  전역 변수는 테스트 간 경계를 없앤다. 상태가 필요하면 구조체 필드로 캡슐화하고, 호출자가 인스턴스를 만들어 수명을 제어하게 하라. 전역 상태가 불가피하다면
+  테스트마다 고유 키로 격리하고 Cleanup으로 반드시 정리하라.
 
 ## 안티 패턴 규칙 (Anti-Pattern Rules)
 전체 문맥을 읽지 않고 코드를 수정하지 않는다.

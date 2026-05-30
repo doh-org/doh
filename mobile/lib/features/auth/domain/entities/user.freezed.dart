@@ -15,6 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$User {
   String get id;
+  String get email;
   String get nickname;
   DateTime? get deletedAt;
   DateTime get createdAt;
@@ -32,6 +33,7 @@ mixin _$User {
         (other.runtimeType == runtimeType &&
             other is User &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.email, email) || other.email == email) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
             (identical(other.deletedAt, deletedAt) ||
@@ -42,11 +44,11 @@ mixin _$User {
 
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, nickname, deletedAt, createdAt);
+      Object.hash(runtimeType, id, email, nickname, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'User(id: $id, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'User(id: $id, email: $email, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -56,7 +58,11 @@ abstract mixin class $UserCopyWith<$Res> {
       _$UserCopyWithImpl;
   @useResult
   $Res call(
-      {String id, String nickname, DateTime? deletedAt, DateTime createdAt});
+      {String id,
+      String email,
+      String nickname,
+      DateTime? deletedAt,
+      DateTime createdAt});
 }
 
 /// @nodoc
@@ -72,6 +78,7 @@ class _$UserCopyWithImpl<$Res> implements $UserCopyWith<$Res> {
   @override
   $Res call({
     Object? id = null,
+    Object? email = null,
     Object? nickname = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
@@ -80,6 +87,10 @@ class _$UserCopyWithImpl<$Res> implements $UserCopyWith<$Res> {
       id: null == id
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _self.email
+          : email // ignore: cast_nullable_to_non_nullable
               as String,
       nickname: null == nickname
           ? _self.nickname
@@ -190,16 +201,16 @@ extension UserPatterns on User {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String id, String nickname, DateTime? deletedAt,
-            DateTime createdAt)?
+    TResult Function(String id, String email, String nickname,
+            DateTime? deletedAt, DateTime createdAt)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _User() when $default != null:
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         return orElse();
     }
@@ -220,15 +231,15 @@ extension UserPatterns on User {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(
-            String id, String nickname, DateTime? deletedAt, DateTime createdAt)
+    TResult Function(String id, String email, String nickname,
+            DateTime? deletedAt, DateTime createdAt)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _User():
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -248,15 +259,15 @@ extension UserPatterns on User {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String id, String nickname, DateTime? deletedAt,
-            DateTime createdAt)?
+    TResult? Function(String id, String email, String nickname,
+            DateTime? deletedAt, DateTime createdAt)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _User() when $default != null:
-        return $default(
-            _that.id, _that.nickname, _that.deletedAt, _that.createdAt);
+        return $default(_that.id, _that.email, _that.nickname, _that.deletedAt,
+            _that.createdAt);
       case _:
         return null;
     }
@@ -268,12 +279,15 @@ extension UserPatterns on User {
 class _User implements User {
   const _User(
       {required this.id,
+      required this.email,
       required this.nickname,
       this.deletedAt,
       required this.createdAt});
 
   @override
   final String id;
+  @override
+  final String email;
   @override
   final String nickname;
   @override
@@ -295,6 +309,7 @@ class _User implements User {
         (other.runtimeType == runtimeType &&
             other is _User &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.email, email) || other.email == email) &&
             (identical(other.nickname, nickname) ||
                 other.nickname == nickname) &&
             (identical(other.deletedAt, deletedAt) ||
@@ -305,11 +320,11 @@ class _User implements User {
 
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, nickname, deletedAt, createdAt);
+      Object.hash(runtimeType, id, email, nickname, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'User(id: $id, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'User(id: $id, email: $email, nickname: $nickname, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -320,7 +335,11 @@ abstract mixin class _$UserCopyWith<$Res> implements $UserCopyWith<$Res> {
   @override
   @useResult
   $Res call(
-      {String id, String nickname, DateTime? deletedAt, DateTime createdAt});
+      {String id,
+      String email,
+      String nickname,
+      DateTime? deletedAt,
+      DateTime createdAt});
 }
 
 /// @nodoc
@@ -336,6 +355,7 @@ class __$UserCopyWithImpl<$Res> implements _$UserCopyWith<$Res> {
   @pragma('vm:prefer-inline')
   $Res call({
     Object? id = null,
+    Object? email = null,
     Object? nickname = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
@@ -344,6 +364,10 @@ class __$UserCopyWithImpl<$Res> implements _$UserCopyWith<$Res> {
       id: null == id
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      email: null == email
+          ? _self.email
+          : email // ignore: cast_nullable_to_non_nullable
               as String,
       nickname: null == nickname
           ? _self.nickname

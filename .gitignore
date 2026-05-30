@@ -122,9 +122,7 @@ $RECYCLE.BIN/
 .env.development
 .env.staging
 .env.production
-
-# Flutter dart-define secrets
-mobile/dart_defines.json
+/mobile/dart_defines.json
 
 # Supabase
 supabase/
@@ -135,3 +133,12 @@ docs/
 CLAUDE.local.md
 .mcp.json
 .claude
+
+# local
+.vscode/
+
+# Flutter build artifacts
+mobile/android/app/.gradle/
+mobile/devtools_options.yaml
+mobile/flutter_*.png
+mobile/ios/

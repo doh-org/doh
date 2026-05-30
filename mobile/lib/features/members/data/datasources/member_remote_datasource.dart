@@ -2,8 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/config/app_config.dart';
-
 part 'member_remote_datasource.g.dart';
 
 @riverpod
@@ -24,7 +22,7 @@ class MemberRemoteDatasource {
 
   Future<Map<String, dynamic>> inviteMember(
       String tripId, String email) async {
-    final invitedBy = _supabase.auth.currentUser?.id ?? AppConfig.devUserId;
+    final invitedBy = _supabase.auth.currentUser!.id;
     final data = await _supabase
         .from('trip_invitations')
         .insert({

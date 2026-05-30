@@ -12,7 +12,7 @@ class NavigateRouteUsecase {
 
     final uri = switch (mode) {
       TransportMode.car => _buildTimapUrl(waypoints),
-      _ => _buildNaverMapUrl(mode, waypoints),
+      _ => _buildKakaoMapUrl(mode, waypoints),
     };
 
     if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -41,26 +41,19 @@ class NavigateRouteUsecase {
     );
   }
 
-  // 네이버맵 도보/대중교통/자전거
-  Uri _buildNaverMapUrl(TransportMode mode, List<TripMarker> waypoints) {
+  // 카카오맵 도보/대중교통
+  Uri _buildKakaoMapUrl(TransportMode mode, List<TripMarker> waypoints) {
     final dest = waypoints.last;
-    final routeType = switch (mode) {
-      TransportMode.foot => 'foot',
-      TransportMode.publictransit => 'public',
-      TransportMode.bicycle => 'bicycle',
-      _ => 'foot',
+    final modeParam = switch (mode) {
+      TransportMode.foot => 'FOOT',
+      TransportMode.publictransit => 'PUBLIC',
+      TransportMode.bicycle => 'BICYCLE',
+      _ => 'FOOT',
     };
 
-    return Uri(
-      scheme: 'nmap',
-      host: 'route',
-      pathSegments: [routeType],
-      queryParameters: {
-        'dlat': '${dest.latitude}',
-        'dlng': '${dest.longitude}',
-        'dname': dest.name,
-        'appname': 'com.doh.memotrip',
-      },
+    return Uri.parse(
+      'kakaomap://route?ep=${dest.latitude},${dest.longitude}'
+      '&by=$modeParam',
     );
   }
 }

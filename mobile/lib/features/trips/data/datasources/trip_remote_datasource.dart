@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../models/trip_model.dart';
 
 part 'trip_remote_datasource.g.dart';
@@ -16,7 +15,7 @@ class TripRemoteDatasource {
   final SupabaseClient _supabase;
 
   Future<List<TripModel>> getTrips() async {
-    final userId = _supabase.auth.currentUser?.id ?? AppConfig.devUserId;
+    final userId = _supabase.auth.currentUser!.id;
     final data = await _supabase
         .from('trip_members')
         .select('trips(*)')
