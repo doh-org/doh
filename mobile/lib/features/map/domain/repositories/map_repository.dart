@@ -1,5 +1,5 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 abstract interface class MapRepository {
-  Future<LatLng> getCurrentLocation();
+  Future<NLatLng> getCurrentLocation();
 }

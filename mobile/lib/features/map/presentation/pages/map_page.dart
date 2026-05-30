@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
-import '../../../trips/data/repositories/trip_repository_impl.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../providers/map_provider.dart';
 import '../widgets/day_filter_bar.dart';
@@ -38,7 +37,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(currentLocationProvider);
-    final gmMarkersAsync = ref.watch(markersProvider(widget.tripId));
     final entityMarkersAsync = ref.watch(markerEntitiesProvider(widget.tripId));
     final categoriesAsync = ref.watch(categoriesProvider(widget.tripId));
     final tripAsync = ref.watch(tripDetailNotifierProvider(widget.tripId));
@@ -65,7 +63,6 @@ class _MapPageState extends ConsumerState<MapPage> {
             Positioned.fill(
               child: MapView(
                 initialLocation: location,
-                markers: gmMarkersAsync.valueOrNull ?? {},
                 tripId: widget.tripId,
               ),
             ),
