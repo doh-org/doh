@@ -75,7 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: [
               const SizedBox(height: 80),
               const Text(
-                'Doh',
+                'Memotrip',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
                   fontSize: 28,
