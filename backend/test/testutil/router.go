@@ -44,6 +44,31 @@ func NewTestRouter(
 	return r
 }
 
+func NewTestMarkerRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	mr := repository.NewMarkerRepository(supabaseURL, "fake-anon-key", client)
+	tr := repository.NewTripRepository(supabaseURL, "fake-anon-key", client)
+	mu := usecase.NewMarkerUsecase(mr, tr)
+	mc := controller.NewMarkerController(mu)
+
+	r := gin.New()
+	trips := r.Group("/api/v1/trips")
+	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	markers := trips.Group("/:tripId/markers")
+	markers.GET("", mc.GetMarkers)
+	markers.GET("/:markerId", mc.GetMarker)
+	markers.POST("/add", mc.CreateMarker)
+	markers.PATCH("/:markerId", mc.UpdateMarker)
+	markers.DELETE("/:markerId", mc.DeleteMarker)
+
+	return r
+}
+
 func NewTestTripRouter(
 	t *testing.T,
 	supabaseURL string,
