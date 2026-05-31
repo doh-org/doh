@@ -19,6 +19,8 @@ type Trip struct {
 	Destination *string    `json:"destination,omitempty"`
 	StartDate   *string    `json:"start_date,omitempty"`
 	EndDate     *string    `json:"end_date,omitempty"`
+	CoverColor  *string    `json:"cover_color"`
+	MarkerNum   int        `json:"marker_num"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 }
@@ -44,6 +46,7 @@ type CreateTripInput struct {
 	Destination *string `json:"destination"`
 	StartDate   *string `json:"start_date"`
 	EndDate     *string `json:"end_date"`
+	CoverColor  *string `json:"cover_color"`
 }
 
 type UpdateTripInput struct {
@@ -52,6 +55,7 @@ type UpdateTripInput struct {
 	Destination *string `json:"destination"`
 	StartDate   *string `json:"start_date"`
 	EndDate     *string `json:"end_date"`
+	CoverColor  *string `json:"cover_color"`
 }
 
 type TripRepository interface {
