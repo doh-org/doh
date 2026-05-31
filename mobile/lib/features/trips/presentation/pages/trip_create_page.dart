@@ -314,9 +314,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
-                  withinRangeDecoration: BoxDecoration(
-                    color: AppColors.folderOrange.withAlpha(51),
-                  ),
+                  rangeHighlightColor: AppColors.folderOrange.withAlpha(51),
                   withinRangeTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 12,
