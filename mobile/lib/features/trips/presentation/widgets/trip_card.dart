@@ -97,10 +97,10 @@ class TripCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(15, 0, 15, 10),
                   child: RichText(
-                    text: const TextSpan(
-                      style: TextStyle(fontFamily: 'Pretendard'),
+                    text: TextSpan(
+                      style: const TextStyle(fontFamily: 'Pretendard'),
                       children: [
-                        TextSpan(
+                        const TextSpan(
                           text: 'Total ',
                           style: TextStyle(
                             fontSize: 12,
@@ -109,8 +109,8 @@ class TripCard extends StatelessWidget {
                           ),
                         ),
                         TextSpan(
-                          text: '12',
-                          style: TextStyle(
+                          text: '${trip.markerNum}',
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: AppColors.folderOrange,
