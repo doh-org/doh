@@ -12,6 +12,7 @@ abstract class Trip with _$Trip {
     DateTime? startDate,
     DateTime? endDate,
     String? coverColor,
+    @Default(0) int markerNum,
     DateTime? deletedAt,
     required DateTime createdAt,
   }) = _Trip;
