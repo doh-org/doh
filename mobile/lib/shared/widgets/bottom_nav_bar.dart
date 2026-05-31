@@ -8,26 +8,41 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Color(0x1A000000), offset: Offset(0, -1), blurRadius: 4),
-        ],
-      ),
-      // #20 justify-center gap-60
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: null),
-          const SizedBox(width: 60),
-          _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
-          const SizedBox(width: 60),
-          _NavItem(icon: Icons.favorite_border, label: '좋아요', index: 2, current: currentIndex, onTap: null),
-          const SizedBox(width: 60),
-          _NavItem(icon: Icons.person_outline, label: '내 정보', index: 3, current: currentIndex, onTap: null),
-        ],
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return ColoredBox(
+      color: Colors.white,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(17),
+            topRight: Radius.circular(17),
+          ),
+          boxShadow: [
+            BoxShadow(color: Color(0x1A000000), offset: Offset(0, -1), blurRadius: 4),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 64,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: null),
+                  const SizedBox(width: 60),
+                  _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
+                  const SizedBox(width: 60),
+                  _NavItem(icon: Icons.favorite_border, label: '좋아요', index: 2, current: currentIndex, onTap: null),
+                  const SizedBox(width: 60),
+                  _NavItem(icon: Icons.person_outline, label: '내 정보', index: 3, current: currentIndex, onTap: null),
+                ],
+              ),
+            ),
+            SizedBox(height: bottomInset),
+          ],
+        ),
       ),
     );
   }

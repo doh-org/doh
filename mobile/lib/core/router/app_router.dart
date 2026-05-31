@@ -56,6 +56,7 @@ GoRouter appRouter(Ref ref) {
       // 탭바 공유 shell (목록만)
       ShellRoute(
         builder: (_, __, child) => Scaffold(
+          backgroundColor: Colors.white,
           body: child,
           bottomNavigationBar: const BottomNavBar(currentIndex: 1),
         ),
