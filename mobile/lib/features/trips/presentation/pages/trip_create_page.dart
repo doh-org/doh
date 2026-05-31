@@ -31,7 +31,12 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   }
 
   Future<void> _loadExisting() async {
-    final trip = await ref.read(tripRepositoryProvider).getTrip(widget.tripId!);
+    // tripsProvider 캐시에서 먼저 탐색, 없으면 네트워크 요청
+    final cached = ref.read(tripsProvider).valueOrNull;
+    final found = cached?.where((t) => t.id == widget.tripId);
+    final trip = (found != null && found.isNotEmpty)
+        ? found.first
+        : await ref.read(tripRepositoryProvider).getTrip(widget.tripId!);
     if (!mounted) return;
     final idx = AppColors.coverColorHexes.indexOf(trip.coverColor ?? '');
     setState(() {
@@ -49,14 +54,17 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   }
 
   String _nightsLabel() {
-    if (_startDate == null || _endDate == null) return '';
-    final nights = _endDate!.difference(_startDate!).inDays;
+    if (_startDate == null) return '';
+    final end = _endDate ?? _startDate!;
+    final nights = end.difference(_startDate!).inDays;
+    if (nights == 0) return '1일';
     return '$nights박 ${nights + 1}일';
   }
 
   Future<void> _submit() async {
     if (_titleCtrl.text.trim().isEmpty) return;
-    if (_startDate == null || _endDate == null) return;
+    if (_startDate == null) return;
+    final effectiveEnd = _endDate ?? _startDate;
     setState(() => _loading = true);
     try {
       final repo = ref.read(tripRepositoryProvider);
@@ -66,14 +74,14 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
           widget.tripId!,
           title: _titleCtrl.text.trim(),
           startDate: _startDate,
-          endDate: _endDate,
+          endDate: effectiveEnd,
           coverColor: colorHex,
         );
       } else {
         await repo.createTrip(
           title: _titleCtrl.text.trim(),
           startDate: _startDate,
-          endDate: _endDate,
+          endDate: effectiveEnd,
           coverColor: colorHex,
         );
       }

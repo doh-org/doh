@@ -18,8 +18,10 @@ class TripCard extends StatelessWidget {
   String _dateRange() {
     final s = trip.startDate;
     final e = trip.endDate;
-    if (s == null || e == null) return '';
-    return '${s.year}.${_p(s.month)}.${_p(s.day)} ~ ${e.year}.${_p(e.month)}.${_p(e.day)}';
+    if (s == null) return '';
+    final sStr = '${s.year}.${_p(s.month)}.${_p(s.day)}';
+    if (e == null || (s.year == e.year && s.month == e.month && s.day == e.day)) return sStr;
+    return '$sStr ~ ${e.year}.${_p(e.month)}.${_p(e.day)}';
   }
 
   String _p(int v) => v.toString().padLeft(2, '0');
