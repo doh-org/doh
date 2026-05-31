@@ -7,7 +7,7 @@ part of 'trip_remote_datasource.dart';
 // **************************************************************************
 
 String _$tripRemoteDatasourceHash() =>
-    r'dd18fc6663eb9587d8dbf54f5f1edabfe04310a0';
+    r'f34554be84f2bdf5aa7e01576bda562e80746703';
 
 /// See also [tripRemoteDatasource].
 @ProviderFor(tripRemoteDatasource)

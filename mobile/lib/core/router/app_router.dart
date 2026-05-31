@@ -10,6 +10,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/map/presentation/pages/map_page.dart';
 import '../../features/trips/presentation/pages/trip_create_page.dart';
 import '../../features/trips/presentation/pages/trip_list_page.dart';
+import '../../shared/widgets/bottom_nav_bar.dart';
 
 part 'app_router.g.dart';
 
@@ -27,9 +28,8 @@ GoRouter appRouter(Ref ref) {
       final loc = state.matchedLocation;
 
       if (authState.isLoading) {
-        final isAuthOrSplash = loc == '/login' ||
-            loc == '/signup' ||
-            loc == '/splash';
+        final isAuthOrSplash =
+            loc == '/login' || loc == '/signup' || loc == '/splash';
         return isAuthOrSplash ? null : '/splash';
       }
 
@@ -43,31 +43,46 @@ GoRouter appRouter(Ref ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const SplashPage(),
+        builder: (_, __) => const SplashPage(),
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginPage(),
+        builder: (_, __) => const LoginPage(),
       ),
       GoRoute(
         path: '/signup',
-        builder: (context, state) => const SignupPage(),
+        builder: (_, __) => const SignupPage(),
       ),
-      GoRoute(
-        path: '/trips',
-        builder: (context, state) => const TripListPage(),
+      // 탭바 공유 shell (목록만)
+      ShellRoute(
+        builder: (_, __, child) => Scaffold(
+          backgroundColor: Colors.white,
+          body: child,
+          bottomNavigationBar: const BottomNavBar(currentIndex: 1),
+        ),
         routes: [
           GoRoute(
-            path: 'create',
-            builder: (context, state) => const TripCreatePage(),
-          ),
-          GoRoute(
-            path: ':tripId/map',
-            builder: (context, state) => MapPage(
-              tripId: state.pathParameters['tripId']!,
-            ),
+            path: '/trips',
+            builder: (_, __) => const TripListPage(),
           ),
         ],
+      ),
+      // 탭바 없는 독립 화면
+      GoRoute(
+        path: '/trips/create',
+        builder: (_, __) => const TripCreatePage(),
+      ),
+      GoRoute(
+        path: '/trips/:tripId/edit',
+        builder: (_, state) => TripCreatePage(
+          tripId: state.pathParameters['tripId'],
+        ),
+      ),
+      GoRoute(
+        path: '/trips/:tripId/map',
+        builder: (_, state) => MapPage(
+          tripId: state.pathParameters['tripId']!,
+        ),
       ),
     ],
   );

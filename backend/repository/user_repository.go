@@ -113,7 +113,6 @@ func (r *userRepository) GetProfile(ctx context.Context, userID, email, accessTo
 	if err := json.Unmarshal(body, &user); err != nil {
 		return nil, err
 	}
-	user.UserID = userID
 	user.Email = email
 	return &user, nil
 }

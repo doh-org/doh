@@ -15,6 +15,24 @@ class AppColors {
   static const error = Color(0xFFEC2113);
   static const white = Color(0xFFFFFFFF);
 
+  // 폴더 화면 전용
+  static const folderOrange = Color(0xFFFE8505);
+
+  // 커버 색상 팔레트 (50% fill)
+  static const List<Color> coverColors = [
+    Color(0x80F1F2F4), // 회색
+    Color(0x80FE8505), // 주황
+    Color(0x802A6FDB), // 파랑
+    Color(0x8039DA57), // 초록
+    Color(0x80F6DF0C), // 노랑
+    Color(0x80EC1E13), // 빨강
+  ];
+
+  // 커버 색상 hex 문자열 (API 저장용)
+  static const List<String> coverColorHexes = [
+    '#F1F2F4', '#FE8505', '#2A6FDB', '#39DA57', '#F6DF0C', '#EC1E13',
+  ];
+
   // 카테고리
   static const catFood = Color(0xFFFF6B6B);
   static const catCafe = Color(0xFFFFB347);

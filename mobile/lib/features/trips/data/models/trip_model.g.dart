@@ -17,6 +17,8 @@ _TripModel _$TripModelFromJson(Map<String, dynamic> json) => _TripModel(
       endDate: json['end_date'] == null
           ? null
           : DateTime.parse(json['end_date'] as String),
+      coverColor: json['cover_color'] as String?,
+      markerNum: (json['marker_num'] as num?)?.toInt() ?? 0,
       deletedAt: json['deleted_at'] == null
           ? null
           : DateTime.parse(json['deleted_at'] as String),
@@ -31,6 +33,8 @@ Map<String, dynamic> _$TripModelToJson(_TripModel instance) =>
       'description': instance.description,
       'start_date': instance.startDate?.toIso8601String(),
       'end_date': instance.endDate?.toIso8601String(),
+      'cover_color': instance.coverColor,
+      'marker_num': instance.markerNum,
       'deleted_at': instance.deletedAt?.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
     };
