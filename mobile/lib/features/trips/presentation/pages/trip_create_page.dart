@@ -231,12 +231,12 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
               children: [
                 const _Label(label: '여행 기간', required: true),
                 const Spacer(),
-                if (_startDate != null && _endDate != null)
+                if (_startDate != null)
                   Text(
                     _nightsLabel(),
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 10,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.folderOrange,
                     ),
