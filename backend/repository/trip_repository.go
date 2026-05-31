@@ -49,9 +49,6 @@ func (r *tripRepository) CreateTrip(ctx context.Context, token string, ownerID s
 	if input.EndDate != nil {
 		body["end_date"] = *input.EndDate
 	}
-	if input.CoverColor != nil {
-		body["cover_color"] = *input.CoverColor
-	}
 
 	b, err := json.Marshal(body)
 	if err != nil {
@@ -269,9 +266,6 @@ func buildUpdateBody(input domain.UpdateTripInput) map[string]any {
 	}
 	if input.EndDate != nil {
 		m["end_date"] = *input.EndDate
-	}
-	if input.CoverColor != nil {
-		m["cover_color"] = *input.CoverColor
 	}
 	return m
 }
