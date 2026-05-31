@@ -16,6 +16,7 @@ class TripListPage extends ConsumerStatefulWidget {
 
 class _TripListPageState extends ConsumerState<TripListPage> {
   String _query = '';
+  bool _searchActive = false;
   final _searchCtrl = TextEditingController();
 
   @override
@@ -24,150 +25,98 @@ class _TripListPageState extends ConsumerState<TripListPage> {
     super.dispose();
   }
 
+  void _toggleSearch() {
+    setState(() {
+      _searchActive = !_searchActive;
+      if (!_searchActive) {
+        _query = '';
+        _searchCtrl.clear();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
-    final user = ref.watch(authNotifierProvider).valueOrNull;
-    final nickname = user?.nickname ?? '';
+    final nickname = ref.watch(authNotifierProvider).valueOrNull?.nickname ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: const Color(0xFFF1F2F4),
       body: SafeArea(
-        child: tripsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
-          data: (trips) {
-            final totalDays = trips
-                .where((t) => t.startDate != null && t.endDate != null)
-                .fold<int>(
-                  0,
-                  (sum, t) =>
-                      sum + t.endDate!.difference(t.startDate!).inDays + 1,
-                );
-            final filtered = _query.isEmpty
-                ? trips
-                : trips
-                    .where((t) => t.title.contains(_query))
-                    .toList();
-
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 헤더
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            RichText(
-                              text: TextSpan(
-                                style: const TextStyle(fontFamily: 'Pretendard'),
-                                children: [
-                                  TextSpan(
-                                    text: nickname,
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.folderOrange,
-                                    ),
-                                  ),
-                                  const TextSpan(
-                                    text: '님의\n',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: AppColors.dark,
-                                    ),
-                                  ),
-                                  const TextSpan(
-                                    text: '여행',
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => context.push('/trips/create'),
-                              child: const Icon(
-                                Icons.add,
-                                size: 28,
-                                color: AppColors.folderOrange,
-                              ),
-                            ),
-                          ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(nickname: nickname),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Row(
+                children: [
+                  if (_searchActive) ...[
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        onChanged: (v) => setState(() => _query = v),
+                        style: const TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 10,
+                          color: Color(0xFF070707),
                         ),
-                        const SizedBox(height: 16),
-                        // 검색바
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(17),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x1A000000),
-                                offset: Offset(1, 1),
-                                blurRadius: 4,
-                              ),
-                            ],
+                        decoration: const InputDecoration(
+                          border: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF1F2125)),
                           ),
-                          child: TextField(
-                            controller: _searchCtrl,
-                            onChanged: (v) => setState(() => _query = v),
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 14,
-                            ),
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: AppColors.gray,
-                                size: 20,
-                              ),
-                              hintText: '서울, 제주...',
-                              hintStyle: TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 14,
-                                color: AppColors.gray,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding:
-                                  EdgeInsets.symmetric(vertical: 14),
-                            ),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF1F2125)),
                           ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF1F2125)),
+                          ),
+                          hintText: '폴더 명을 입력하세요.',
+                          hintStyle: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 10,
+                            color: Color(0xFFB2B2B2),
+                          ),
+                          isDense: true,
+                          contentPadding: EdgeInsets.only(bottom: 8),
                         ),
-                        const SizedBox(height: 16),
-                        // 통계바
-                        Row(
-                          children: [
-                            _StatItem(
-                              value: '${trips.length}',
-                              label: '여행',
-                            ),
-                            const SizedBox(width: 24),
-                            const _StatItem(value: '-', label: '장소'),
-                            const SizedBox(width: 24),
-                            _StatItem(value: '$totalDays', label: '일'),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      ),
+                    ),
+                  ] else
+                    const Spacer(),
+                  GestureDetector(
+                    onTap: _toggleSearch,
+                    child: const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 20, 10, 20),
+                      child: Icon(Icons.search, size: 20, color: AppColors.dark),
                     ),
                   ),
-                ),
-                if (filtered.isEmpty)
-                  const SliverFillRemaining(child: SizedBox.shrink())
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    sliver: SliverList.separated(
+                  GestureDetector(
+                    onTap: () => context.push('/trips/create'),
+                    child: const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 20, 10, 20),
+                      child: Icon(Icons.add, size: 20, color: AppColors.folderOrange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                child: tripsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('$e')),
+                  data: (trips) {
+                    final filtered = _query.isEmpty
+                        ? trips
+                        : trips.where((t) => t.title.contains(_query)).toList();
+                    if (filtered.isEmpty) return const SizedBox.shrink();
+                    return ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, __) => const SizedBox(height: 20),
                       itemBuilder: (_, i) => TripCard(
                         trip: filtered[i],
                         onTap: () =>
@@ -175,45 +124,74 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                         onEditTap: () =>
                             context.push('/trips/${filtered[i].id}/edit'),
                       ),
-                    ),
-                  ),
-              ],
-            );
-          },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
-  const _StatItem({required this.value, required this.label});
-  final String value;
-  final String label;
+// 헤더: 123px, ⋯ top-right · 닉네임 bottom-left
+class _Header extends StatelessWidget {
+  const _Header({required this.nickname});
+  final String nickname;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: 'Pretendard',
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black,
+    return SizedBox(
+      height: 123,
+      child: Stack(
+        children: [
+          const Positioned(
+            right: 15,
+            top: 7,
+            child: Icon(Icons.more_horiz, size: 20, color: AppColors.dark),
           ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Pretendard',
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: AppColors.gray,
+          // 닉네임: 헤더 하단 좌측 (pb-10, px-20)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 10,
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontFamily: 'Pretendard'),
+                children: [
+                  TextSpan(
+                    text: nickname,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.folderOrange,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: '님의\n',
+                    // #3 님의 → Bold 18px
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: '여행',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
