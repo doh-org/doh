@@ -13,18 +13,19 @@ class BottomNavBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-            color: Color(0x1A000000),
-            offset: Offset(0, -1),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Color(0x1A000000), offset: Offset(0, -1), blurRadius: 4),
         ],
       ),
+      // #20 justify-center gap-60
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: null),
+          const SizedBox(width: 60),
           _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
+          const SizedBox(width: 60),
           _NavItem(icon: Icons.favorite_border, label: '좋아요', index: 2, current: currentIndex, onTap: null),
+          const SizedBox(width: 60),
           _NavItem(icon: Icons.person_outline, label: '내 정보', index: 3, current: currentIndex, onTap: null),
         ],
       ),
@@ -52,25 +53,23 @@ class _NavItem extends StatelessWidget {
     final active = index == current;
     final color = active ? AppColors.folderOrange : AppColors.gray;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Pretendard',
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 25),
+          const SizedBox(height: 1), // #22 mt-26 - icon-25 = 1px
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
