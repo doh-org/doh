@@ -168,26 +168,35 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
             const SizedBox(height: 8),
             Stack(
               children: [
-                TextField(
-                  controller: _titleCtrl,
-                  maxLength: 14,
-                  onChanged: (_) => setState(() {}),
-                  style: const TextStyle(fontFamily: 'Pretendard', fontSize: 14),
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    hintText: '서울 맛집 여행, 수원 가을 여행...',
-                    hintStyle: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 14,
-                      color: Color(0xFFB2B2B2),
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    textSelectionTheme: const TextSelectionThemeData(
+                      selectionHandleColor: AppColors.primary,
+                      selectionColor: Color(0x33FF8830),
                     ),
-                    filled: true,
-                    fillColor: Color(0xFFF1F2F4),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(17)),
-                      borderSide: BorderSide.none,
+                  ),
+                  child: TextField(
+                    controller: _titleCtrl,
+                    maxLength: 14,
+                    onChanged: (_) => setState(() {}),
+                    cursorColor: AppColors.dark,
+                    style: const TextStyle(fontFamily: 'Pretendard', fontSize: 14),
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      hintText: '서울 맛집 여행, 수원 가을 여행...',
+                      hintStyle: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 14,
+                        color: Color(0xFFB2B2B2),
+                      ),
+                      filled: true,
+                      fillColor: Color(0xFFF1F2F4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(17)),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.fromLTRB(10, 20, 64, 20),
                     ),
-                    contentPadding: EdgeInsets.fromLTRB(10, 20, 64, 20),
                   ),
                 ),
                 Positioned(
