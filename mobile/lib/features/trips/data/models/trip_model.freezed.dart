@@ -25,6 +25,8 @@ mixin _$TripModel {
   DateTime? get endDate;
   @JsonKey(name: 'cover_color')
   String? get coverColor;
+  @JsonKey(name: 'marker_num')
+  int get markerNum;
   @JsonKey(name: 'deleted_at')
   DateTime? get deletedAt;
   @JsonKey(name: 'created_at')
@@ -55,6 +57,8 @@ mixin _$TripModel {
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
             (identical(other.coverColor, coverColor) ||
                 other.coverColor == coverColor) &&
+            (identical(other.markerNum, markerNum) ||
+                other.markerNum == markerNum) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -64,11 +68,11 @@ mixin _$TripModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, coverColor, deletedAt, createdAt);
+      startDate, endDate, coverColor, markerNum, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, markerNum: $markerNum, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -85,6 +89,7 @@ abstract mixin class $TripModelCopyWith<$Res> {
       @JsonKey(name: 'start_date') DateTime? startDate,
       @JsonKey(name: 'end_date') DateTime? endDate,
       @JsonKey(name: 'cover_color') String? coverColor,
+      @JsonKey(name: 'marker_num') int markerNum,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
 }
@@ -108,6 +113,7 @@ class _$TripModelCopyWithImpl<$Res> implements $TripModelCopyWith<$Res> {
     Object? startDate = freezed,
     Object? endDate = freezed,
     Object? coverColor = freezed,
+    Object? markerNum = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -140,6 +146,10 @@ class _$TripModelCopyWithImpl<$Res> implements $TripModelCopyWith<$Res> {
           ? _self.coverColor
           : coverColor // ignore: cast_nullable_to_non_nullable
               as String?,
+      markerNum: null == markerNum
+          ? _self.markerNum
+          : markerNum // ignore: cast_nullable_to_non_nullable
+              as int,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
@@ -253,6 +263,7 @@ extension TripModelPatterns on TripModel {
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
             @JsonKey(name: 'cover_color') String? coverColor,
+            @JsonKey(name: 'marker_num') int markerNum,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
         $default, {
@@ -269,6 +280,7 @@ extension TripModelPatterns on TripModel {
             _that.startDate,
             _that.endDate,
             _that.coverColor,
+            _that.markerNum,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -299,6 +311,7 @@ extension TripModelPatterns on TripModel {
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
             @JsonKey(name: 'cover_color') String? coverColor,
+            @JsonKey(name: 'marker_num') int markerNum,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)
         $default,
@@ -314,6 +327,7 @@ extension TripModelPatterns on TripModel {
             _that.startDate,
             _that.endDate,
             _that.coverColor,
+            _that.markerNum,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -343,6 +357,7 @@ extension TripModelPatterns on TripModel {
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
             @JsonKey(name: 'cover_color') String? coverColor,
+            @JsonKey(name: 'marker_num') int markerNum,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
         $default,
@@ -358,6 +373,7 @@ extension TripModelPatterns on TripModel {
             _that.startDate,
             _that.endDate,
             _that.coverColor,
+            _that.markerNum,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -377,6 +393,7 @@ class _TripModel implements TripModel {
       @JsonKey(name: 'start_date') this.startDate,
       @JsonKey(name: 'end_date') this.endDate,
       @JsonKey(name: 'cover_color') this.coverColor,
+      @JsonKey(name: 'marker_num') this.markerNum = 0,
       @JsonKey(name: 'deleted_at') this.deletedAt,
       @JsonKey(name: 'created_at') required this.createdAt});
   factory _TripModel.fromJson(Map<String, dynamic> json) =>
@@ -400,6 +417,9 @@ class _TripModel implements TripModel {
   @override
   @JsonKey(name: 'cover_color')
   final String? coverColor;
+  @override
+  @JsonKey(name: 'marker_num')
+  final int markerNum;
   @override
   @JsonKey(name: 'deleted_at')
   final DateTime? deletedAt;
@@ -437,6 +457,8 @@ class _TripModel implements TripModel {
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
             (identical(other.coverColor, coverColor) ||
                 other.coverColor == coverColor) &&
+            (identical(other.markerNum, markerNum) ||
+                other.markerNum == markerNum) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -446,11 +468,11 @@ class _TripModel implements TripModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, coverColor, deletedAt, createdAt);
+      startDate, endDate, coverColor, markerNum, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, markerNum: $markerNum, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -470,6 +492,7 @@ abstract mixin class _$TripModelCopyWith<$Res>
       @JsonKey(name: 'start_date') DateTime? startDate,
       @JsonKey(name: 'end_date') DateTime? endDate,
       @JsonKey(name: 'cover_color') String? coverColor,
+      @JsonKey(name: 'marker_num') int markerNum,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
 }
@@ -493,6 +516,7 @@ class __$TripModelCopyWithImpl<$Res> implements _$TripModelCopyWith<$Res> {
     Object? startDate = freezed,
     Object? endDate = freezed,
     Object? coverColor = freezed,
+    Object? markerNum = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -525,6 +549,10 @@ class __$TripModelCopyWithImpl<$Res> implements _$TripModelCopyWith<$Res> {
           ? _self.coverColor
           : coverColor // ignore: cast_nullable_to_non_nullable
               as String?,
+      markerNum: null == markerNum
+          ? _self.markerNum
+          : markerNum // ignore: cast_nullable_to_non_nullable
+              as int,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable

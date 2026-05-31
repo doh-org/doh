@@ -53,33 +53,42 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                 children: [
                   if (_searchActive) ...[
                     Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        autofocus: true,
-                        onChanged: (v) => setState(() => _query = v),
-                        style: const TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 14,
-                          color: Color(0xFF070707),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          textSelectionTheme: const TextSelectionThemeData(
+                            selectionHandleColor: AppColors.primary,
+                            selectionColor: Color(0x33FF8830),
+                          ),
                         ),
-                        decoration: const InputDecoration(
-                          border: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF1F2125)),
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF1F2125)),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF1F2125)),
-                          ),
-                          hintText: '폴더 명을 입력하세요.',
-                          hintStyle: TextStyle(
+                        child: TextField(
+                          controller: _searchCtrl,
+                          autofocus: true,
+                          onChanged: (v) => setState(() => _query = v),
+                          cursorColor: AppColors.dark,
+                          style: const TextStyle(
                             fontFamily: 'Pretendard',
                             fontSize: 14,
-                            color: Color(0xFFB2B2B2),
+                            color: Color(0xFF070707),
                           ),
-                          isDense: true,
-                          contentPadding: EdgeInsets.only(bottom: 8),
+                          decoration: const InputDecoration(
+                            border: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFF1F2125)),
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFF1F2125)),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFF1F2125)),
+                            ),
+                            hintText: '폴더 명을 입력하세요.',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 14,
+                              color: Color(0xFFB2B2B2),
+                            ),
+                            isDense: true,
+                            contentPadding: EdgeInsets.only(bottom: 8),
+                          ),
                         ),
                       ),
                     ),
@@ -170,7 +179,7 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                   const TextSpan(
-                    text: '님의\n',
+                    text: ' 님의\n',
                     // #3 님의 → Bold 18px
                     style: TextStyle(
                       fontSize: 18,
