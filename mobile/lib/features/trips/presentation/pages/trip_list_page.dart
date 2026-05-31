@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,12 +43,42 @@ class _TripListPageState extends ConsumerState<TripListPage> {
     final nickname = ref.watch(authNotifierProvider).valueOrNull?.nickname ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F2F4),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            _Header(nickname: nickname),
+            // 회색 배경 → 카드 영역 절반까지 그라디언트 페이드
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 290,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: 0,
+                  sigmaY: 10,
+                  tileMode: TileMode.clamp,
+                ),
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, 0.62, 1.0],
+                      colors: [
+                        Color(0xFFF1F2F4),
+                        Color(0xFFF1F2F4),
+                        Color(0x00F1F2F4),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Header(nickname: nickname),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               child: Row(
@@ -112,32 +144,31 @@ class _TripListPageState extends ConsumerState<TripListPage> {
               ),
             ),
             Expanded(
-              child: Container(
-                color: Colors.white,
-                child: tripsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('$e')),
-                  data: (trips) {
-                    final filtered = _query.isEmpty
-                        ? trips
-                        : trips.where((t) => t.title.contains(_query)).toList();
-                    if (filtered.isEmpty) return const SizedBox.shrink();
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 20),
-                      itemBuilder: (_, i) => TripCard(
-                        trip: filtered[i],
-                        onTap: () =>
-                            context.push('/trips/${filtered[i].id}/map'),
-                        onEditTap: () =>
-                            context.push('/trips/${filtered[i].id}/edit'),
-                      ),
-                    );
-                  },
-                ),
+              child: tripsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('$e')),
+                data: (trips) {
+                  final filtered = _query.isEmpty
+                      ? trips
+                      : trips.where((t) => t.title.contains(_query)).toList();
+                  if (filtered.isEmpty) return const SizedBox.shrink();
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 20),
+                    itemBuilder: (_, i) => TripCard(
+                      trip: filtered[i],
+                      onTap: () =>
+                          context.push('/trips/${filtered[i].id}/map'),
+                      onEditTap: () =>
+                          context.push('/trips/${filtered[i].id}/edit'),
+                    ),
+                  );
+                },
               ),
             ),
+          ],
+        ),
           ],
         ),
       ),
