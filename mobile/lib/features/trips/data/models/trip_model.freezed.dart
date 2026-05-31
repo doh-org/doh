@@ -23,6 +23,8 @@ mixin _$TripModel {
   DateTime? get startDate;
   @JsonKey(name: 'end_date')
   DateTime? get endDate;
+  @JsonKey(name: 'cover_color')
+  String? get coverColor;
   @JsonKey(name: 'deleted_at')
   DateTime? get deletedAt;
   @JsonKey(name: 'created_at')
@@ -51,6 +53,8 @@ mixin _$TripModel {
             (identical(other.startDate, startDate) ||
                 other.startDate == startDate) &&
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
+            (identical(other.coverColor, coverColor) ||
+                other.coverColor == coverColor) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -60,11 +64,11 @@ mixin _$TripModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, deletedAt, createdAt);
+      startDate, endDate, coverColor, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -80,6 +84,7 @@ abstract mixin class $TripModelCopyWith<$Res> {
       String? description,
       @JsonKey(name: 'start_date') DateTime? startDate,
       @JsonKey(name: 'end_date') DateTime? endDate,
+      @JsonKey(name: 'cover_color') String? coverColor,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
 }
@@ -102,6 +107,7 @@ class _$TripModelCopyWithImpl<$Res> implements $TripModelCopyWith<$Res> {
     Object? description = freezed,
     Object? startDate = freezed,
     Object? endDate = freezed,
+    Object? coverColor = freezed,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -130,6 +136,10 @@ class _$TripModelCopyWithImpl<$Res> implements $TripModelCopyWith<$Res> {
           ? _self.endDate
           : endDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      coverColor: freezed == coverColor
+          ? _self.coverColor
+          : coverColor // ignore: cast_nullable_to_non_nullable
+              as String?,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
@@ -242,6 +252,7 @@ extension TripModelPatterns on TripModel {
             String? description,
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
+            @JsonKey(name: 'cover_color') String? coverColor,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
         $default, {
@@ -250,8 +261,16 @@ extension TripModelPatterns on TripModel {
     final _that = this;
     switch (_that) {
       case _TripModel() when $default != null:
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         return orElse();
     }
@@ -279,6 +298,7 @@ extension TripModelPatterns on TripModel {
             String? description,
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
+            @JsonKey(name: 'cover_color') String? coverColor,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)
         $default,
@@ -286,8 +306,16 @@ extension TripModelPatterns on TripModel {
     final _that = this;
     switch (_that) {
       case _TripModel():
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -314,6 +342,7 @@ extension TripModelPatterns on TripModel {
             String? description,
             @JsonKey(name: 'start_date') DateTime? startDate,
             @JsonKey(name: 'end_date') DateTime? endDate,
+            @JsonKey(name: 'cover_color') String? coverColor,
             @JsonKey(name: 'deleted_at') DateTime? deletedAt,
             @JsonKey(name: 'created_at') DateTime createdAt)?
         $default,
@@ -321,8 +350,16 @@ extension TripModelPatterns on TripModel {
     final _that = this;
     switch (_that) {
       case _TripModel() when $default != null:
-        return $default(_that.id, _that.ownerId, _that.title, _that.description,
-            _that.startDate, _that.endDate, _that.deletedAt, _that.createdAt);
+        return $default(
+            _that.id,
+            _that.ownerId,
+            _that.title,
+            _that.description,
+            _that.startDate,
+            _that.endDate,
+            _that.coverColor,
+            _that.deletedAt,
+            _that.createdAt);
       case _:
         return null;
     }
@@ -339,6 +376,7 @@ class _TripModel implements TripModel {
       this.description,
       @JsonKey(name: 'start_date') this.startDate,
       @JsonKey(name: 'end_date') this.endDate,
+      @JsonKey(name: 'cover_color') this.coverColor,
       @JsonKey(name: 'deleted_at') this.deletedAt,
       @JsonKey(name: 'created_at') required this.createdAt});
   factory _TripModel.fromJson(Map<String, dynamic> json) =>
@@ -359,6 +397,9 @@ class _TripModel implements TripModel {
   @override
   @JsonKey(name: 'end_date')
   final DateTime? endDate;
+  @override
+  @JsonKey(name: 'cover_color')
+  final String? coverColor;
   @override
   @JsonKey(name: 'deleted_at')
   final DateTime? deletedAt;
@@ -394,6 +435,8 @@ class _TripModel implements TripModel {
             (identical(other.startDate, startDate) ||
                 other.startDate == startDate) &&
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
+            (identical(other.coverColor, coverColor) ||
+                other.coverColor == coverColor) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -403,11 +446,11 @@ class _TripModel implements TripModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, ownerId, title, description,
-      startDate, endDate, deletedAt, createdAt);
+      startDate, endDate, coverColor, deletedAt, createdAt);
 
   @override
   String toString() {
-    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripModel(id: $id, ownerId: $ownerId, title: $title, description: $description, startDate: $startDate, endDate: $endDate, coverColor: $coverColor, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -426,6 +469,7 @@ abstract mixin class _$TripModelCopyWith<$Res>
       String? description,
       @JsonKey(name: 'start_date') DateTime? startDate,
       @JsonKey(name: 'end_date') DateTime? endDate,
+      @JsonKey(name: 'cover_color') String? coverColor,
       @JsonKey(name: 'deleted_at') DateTime? deletedAt,
       @JsonKey(name: 'created_at') DateTime createdAt});
 }
@@ -448,6 +492,7 @@ class __$TripModelCopyWithImpl<$Res> implements _$TripModelCopyWith<$Res> {
     Object? description = freezed,
     Object? startDate = freezed,
     Object? endDate = freezed,
+    Object? coverColor = freezed,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -476,6 +521,10 @@ class __$TripModelCopyWithImpl<$Res> implements _$TripModelCopyWith<$Res> {
           ? _self.endDate
           : endDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      coverColor: freezed == coverColor
+          ? _self.coverColor
+          : coverColor // ignore: cast_nullable_to_non_nullable
+              as String?,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable

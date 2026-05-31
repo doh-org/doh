@@ -14,6 +14,7 @@ abstract class TripModel with _$TripModel {
     String? description,
     @JsonKey(name: 'start_date') DateTime? startDate,
     @JsonKey(name: 'end_date') DateTime? endDate,
+    @JsonKey(name: 'cover_color') String? coverColor,
     @JsonKey(name: 'deleted_at') DateTime? deletedAt,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _TripModel;
@@ -30,6 +31,7 @@ extension TripModelX on TripModel {
         description: description,
         startDate: startDate,
         endDate: endDate,
+        coverColor: coverColor,
         deletedAt: deletedAt,
         createdAt: createdAt,
       );

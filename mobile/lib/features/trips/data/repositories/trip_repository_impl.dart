@@ -41,7 +41,7 @@ class TripRepositoryImpl implements TripRepository {
       if (description != null) 'description': description,
       if (startDate != null) 'start_date': _formatDate(startDate),
       if (endDate != null) 'end_date': _formatDate(endDate),
-      // cover_color: 백엔드 컬럼 추가 후 연결
+      if (coverColor != null) 'cover_color': coverColor,
     });
     return model.toEntity();
   }
@@ -60,7 +60,7 @@ class TripRepositoryImpl implements TripRepository {
       if (description != null) 'description': description,
       if (startDate != null) 'start_date': _formatDate(startDate),
       if (endDate != null) 'end_date': _formatDate(endDate),
-      // cover_color: 백엔드 컬럼 추가 후 연결
+      if (coverColor != null) 'cover_color': coverColor,
     });
     return model.toEntity();
   }
