@@ -264,10 +264,11 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 rangeStartDay: _startDate,
                 rangeEndDay: _endDate,
                 rangeSelectionMode: RangeSelectionMode.enforced,
-                headerStyle: const HeaderStyle(
+                headerStyle: HeaderStyle(
                   formatButtonVisible: false,
                   titleCentered: true,
-                  titleTextStyle: TextStyle(
+                  titleTextFormatter: (date, _) => '${date.year}년 ${date.month}월',
+                  titleTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
