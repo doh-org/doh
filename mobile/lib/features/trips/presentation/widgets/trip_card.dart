@@ -28,7 +28,7 @@ class TripCard extends StatelessWidget {
     final hex = trip.coverColor;
     if (hex == null) return AppColors.coverColors[0];
     try {
-      return Color(int.parse(hex.replaceFirst('#', 'FF'), radix: 16));
+      return Color(int.parse(hex.replaceFirst('#', '80'), radix: 16));
     } catch (_) {
       return AppColors.coverColors[0];
     }
@@ -39,6 +39,7 @@ class TripCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: 200,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(17),
@@ -48,58 +49,88 @@ class TripCard extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Container(height: 90, color: _coverColor()),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    trip.title,
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _dateRange(),
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.gray,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+            Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 15),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Total 12',
-                        style: TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.gray,
+                      Container(
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: _coverColor(),
+                          borderRadius: BorderRadius.circular(17),
                         ),
                       ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: onEditTap,
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          size: 18,
+                      const SizedBox(height: 10),
+                      Text(
+                        trip.title,
+                        style: const TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.black,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _dateRange(),
+                        style: const TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
                           color: AppColors.gray,
                         ),
                       ),
                     ],
                   ),
-                ],
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(15, 0, 15, 10),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(fontFamily: 'Pretendard'),
+                      children: [
+                        TextSpan(
+                          text: 'Total ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.gray,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '12',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.folderOrange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              right: 0,
+              top: 153,
+              child: GestureDetector(
+                onTap: onEditTap,
+                child: const Padding(
+                  padding: EdgeInsets.fromLTRB(15, 13, 15, 13),
+                  child: Icon(Icons.edit_outlined, size: 20, color: AppColors.gray),
+                ),
               ),
             ),
           ],
