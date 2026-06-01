@@ -30,15 +30,17 @@ type CreateMarkerInput struct {
 	CategoryID *string        `json:"category_id"`
 	Address    *string        `json:"address"`
 	Detail     map[string]any `json:"detail"`
+	VisitTime  *string        `json:"visit_time"`
 }
 
-// UpdateMarkerInput — nil 필드는 변경 없음. CategoryID는 RawMessage로 null(해제)과 omit(무변경) 구분.
+// UpdateMarkerInput — nil 필드는 변경 없음. CategoryID/VisitTime은 RawMessage로 null(해제)과 omit(무변경) 구분.
 type UpdateMarkerInput struct {
 	Name       *string         `json:"name"`
 	Latitude   *float64        `json:"latitude"`
 	Longitude  *float64        `json:"longitude"`
 	CategoryID json.RawMessage `json:"category_id"`
 	Address    *string         `json:"address"`
+	VisitTime  json.RawMessage `json:"visit_time"`
 }
 
 var ValidSources = map[string]bool{

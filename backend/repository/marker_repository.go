@@ -191,6 +191,9 @@ func (r *markerRepository) CreateMarker(ctx context.Context, token, tripID, user
 	if input.Address != nil {
 		body["address"] = *input.Address
 	}
+	if input.VisitTime != nil {
+		body["visit_time"] = *input.VisitTime
+	}
 
 	markerID, err := newUUID()
 	if err != nil {
@@ -297,6 +300,16 @@ func (r *markerRepository) UpdateMarker(ctx context.Context, token, tripID, mark
 	}
 	if input.Address != nil {
 		body["address"] = *input.Address
+	}
+	if len(input.VisitTime) > 0 {
+		if string(input.VisitTime) == "null" {
+			body["visit_time"] = nil
+		} else {
+			var vt string
+			if err := json.Unmarshal(input.VisitTime, &vt); err == nil {
+				body["visit_time"] = vt
+			}
+		}
 	}
 	if len(body) == 0 {
 		return r.GetMarker(ctx, token, tripID, markerID)
