@@ -46,13 +46,9 @@ class _MapPageState extends ConsumerState<MapPage> {
     super.dispose();
   }
 
-  List<TripMarker> _filterByDay(
-      List<TripMarker> markers, DateTime? startDate, int day) {
-    if (day == 0 || startDate == null) return markers;
-    return markers.where((m) {
-      if (m.visitTime == null) return true;
-      return m.visitTime!.difference(startDate).inDays + 1 == day;
-    }).toList();
+  List<TripMarker> _filterByDay(List<TripMarker> markers, int day) {
+    if (day == 0) return markers;
+    return markers.where((m) => m.visitDays.contains(day)).toList();
   }
 
   int _dayCount(Trip? trip) {
@@ -117,7 +113,6 @@ class _MapPageState extends ConsumerState<MapPage> {
         latitude: coord.latitude,
         longitude: coord.longitude,
         dayCount: _dayCount(trip),
-        startDate: trip?.startDate,
         source: MarkerSource.longpress,
       ),
     );
@@ -135,20 +130,14 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   Future<void> _confirmDelete(TripMarker m) async {
-    final ok = await showDialog<bool>(
+    final ok = await showGeneralDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('장소 삭제'),
-        content: Text('${m.name}을(를) 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('삭제',
-                  style: TextStyle(color: Color(0xFFEC2113)))),
-        ],
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: Colors.black26,
+      pageBuilder: (ctx, _, __) => Align(
+        alignment: const Alignment(0, 0.5),
+        child: _DeleteDialog(name: m.name),
       ),
     );
     if (ok == true) {
@@ -169,8 +158,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     final categories = categoriesAsync.valueOrNull ?? [];
     final categoryMap = {for (final c in categories) c.id: c};
     final allMarkers = markersAsync.valueOrNull ?? [];
-    final filteredMarkers =
-        _filterByDay(allMarkers, trip?.startDate, _selectedDay);
+    final filteredMarkers = _filterByDay(allMarkers, _selectedDay);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
@@ -328,6 +316,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                 markers: filteredMarkers,
                 categoryMap: categoryMap,
                 likedIds: _likedMarkerIds,
+                hasError: markersAsync.hasError,
                 onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
                 onLikeTap: (id) =>
                     setState(() => _likedMarkerIds.contains(id)
@@ -355,6 +344,7 @@ class _PlaceListSheet extends StatelessWidget {
     required this.markers,
     required this.categoryMap,
     required this.likedIds,
+    required this.hasError,
     required this.onMarkerTap,
     required this.onLikeTap,
     required this.onDelete,
@@ -369,6 +359,7 @@ class _PlaceListSheet extends StatelessWidget {
   final List<TripMarker> markers;
   final Map<String, Category> categoryMap;
   final Set<String> likedIds;
+  final bool hasError;
   final void Function(TripMarker) onMarkerTap;
   final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
@@ -468,8 +459,13 @@ class _PlaceListSheet extends StatelessWidget {
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              tripTitle,
+                              dayCount == 0
+                                  ? tripTitle
+                                  : dayCount == 1
+                                      ? '$tripTitle  |  당일'
+                                      : '$tripTitle  |  ${dayCount - 1}박 ${dayCount}일',
                               style: const TextStyle(
                                 fontFamily: 'Pretendard',
                                 fontSize: 12,
@@ -507,11 +503,11 @@ class _PlaceListSheet extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
 
                 // Day 필터
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.only(top: 8, bottom: 14),
                   child: DayFilterBar(
                     selectedDay: selectedDay,
                     dayCount: dayCount,
@@ -522,8 +518,70 @@ class _PlaceListSheet extends StatelessWidget {
             ),
           ),
 
+          // ── 에러 배너 ──
+          if (hasError)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0x80FEC181),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 20, color: Color(0xFFFE8505)),
+                      const SizedBox(width: 10),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '장소 목록을 불러오지 못했습니다',
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1F2125),
+                              height: 1.2,
+                            ),
+                          ),
+                          RichText(
+                            text: const TextSpan(
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                height: 1.2,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: '잠시 후 ',
+                                  style: TextStyle(color: Color(0xFF1F2125)),
+                                ),
+                                TextSpan(
+                                  text: '다시 시도',
+                                  style: TextStyle(color: Color(0xFFFE8505)),
+                                ),
+                                TextSpan(
+                                  text: '해보세요.',
+                                  style: TextStyle(color: Color(0xFF1F2125)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // ── 장소 목록 ──
-          if (markers.isEmpty)
+          if (markers.isEmpty && !hasError)
             const SliverFillRemaining(
               child: Center(
                 child: Column(
@@ -544,14 +602,14 @@ class _PlaceListSheet extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Pretendard',
                         fontSize: 12,
-                        color: Color(0xFFB2B2B2),
+                        color: Color(0xFFFE8505),
                       ),
                     ),
                   ],
                 ),
               ),
             )
-          else
+          else if (!hasError)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               sliver: SliverList.separated(
@@ -759,6 +817,110 @@ class _TripSelectorSheet extends StatelessWidget {
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+}
+
+// ── 삭제 확인 다이얼로그 ────────────────────────────────────────────────────────
+class _DeleteDialog extends StatelessWidget {
+  const _DeleteDialog({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 300,
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.delete_outline, size: 30, color: Color(0xFFEC2113)),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '삭제하시겠습니까?',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF070707),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xCCEC2113),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, false),
+                    child: Container(
+                      width: 120,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD5D5D5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF070707),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, true),
+                    child: Container(
+                      width: 120,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xCCEC2113),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '삭제',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
