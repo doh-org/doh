@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../features/trips/presentation/providers/trip_provider.dart';
 
-class BottomNavBar extends StatelessWidget {
+class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({required this.currentIndex, super.key});
   final int currentIndex;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    void onMapTap() {
+      final trips = ref.read(tripsProvider).valueOrNull ?? [];
+      if (trips.isEmpty) return;
+      context.push('/trips/${trips.first.id}/map');
+    }
+
     return ColoredBox(
       color: Colors.white,
       child: Container(
@@ -30,7 +40,7 @@ class BottomNavBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: null),
+                  _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: onMapTap),
                   const SizedBox(width: 60),
                   _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
                   const SizedBox(width: 60),
@@ -74,7 +84,7 @@ class _NavItem extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: color, size: 25),
-          const SizedBox(height: 1), // #22 mt-26 - icon-25 = 1px
+          const SizedBox(height: 1),
           Text(
             label,
             style: TextStyle(
