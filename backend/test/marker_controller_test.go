@@ -387,16 +387,15 @@ func TestUpdateMarker_Name(t *testing.T) {
 	created := createMarker(t, router, tok, defaultTripID)
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"name": "수정된 장소"})
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	m := findMarker(fs, created.ID)
-	if m == nil || m.Name != "수정된 장소" {
-		t.Errorf("name=%q want 수정된 장소", func() string {
-			if m == nil { return "<nil>" }
-			return m.Name
-		}())
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if m.Name != "수정된 장소" {
+		t.Errorf("name=%q want 수정된 장소", m.Name)
 	}
+	_ = fs
 }
 
 func TestUpdateMarker_LatLng(t *testing.T) {
@@ -408,16 +407,15 @@ func TestUpdateMarker_LatLng(t *testing.T) {
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{
 		"latitude": 37.9999, "longitude": 126.9999,
 	})
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	m := findMarker(fs, created.ID)
-	if m == nil || m.Latitude != 37.9999 {
-		t.Errorf("latitude=%v want 37.9999", func() float64 {
-			if m == nil { return 0 }
-			return m.Latitude
-		}())
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if m.Latitude != 37.9999 {
+		t.Errorf("latitude=%v want 37.9999", m.Latitude)
 	}
+	_ = fs
 }
 
 func TestUpdateMarker_LatWithoutLng(t *testing.T) {
@@ -499,15 +497,13 @@ func TestUpdateMarker_NullCategory(t *testing.T) {
 	}
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"category_id": nil})
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	m := findMarker(fs, created.ID)
-	if m == nil || m.CategoryID != nil {
-		t.Errorf("category_id=%v want nil", func() any {
-			if m == nil { return "<nil marker>" }
-			return m.CategoryID
-		}())
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if m.CategoryID != nil {
+		t.Errorf("category_id=%v want nil", m.CategoryID)
 	}
 }
 
@@ -529,48 +525,38 @@ func TestUpdateMarker_NoToken(t *testing.T) {
 	}
 }
 
-func TestUpdateMarker_VisitTime(t *testing.T) {
+func TestUpdateMarker_VisitDays(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
 	created := createMarker(t, router, tok, defaultTripID)
-	vt := "2026-07-01T00:00:00Z"
 
-	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": vt})
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_days": []int{1, 3}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	m := findMarker(fs, created.ID)
-	if m == nil || m.VisitTime != vt {
-		t.Errorf("visit_time=%q want %q", func() string {
-			if m == nil { return "<nil>" }
-			return m.VisitTime
-		}(), vt)
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if len(m.VisitDays) != 2 || m.VisitDays[0] != 1 || m.VisitDays[1] != 3 {
+		t.Errorf("visit_days=%v want [1 3]", m.VisitDays)
 	}
 }
 
-func TestUpdateMarker_ClearVisitTime(t *testing.T) {
+func TestUpdateMarker_ClearVisitDays(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
 	created := createMarker(t, router, tok, defaultTripID)
-	vt := "2026-07-01T00:00:00Z"
-	for i := range fs.Markers {
-		if fs.Markers[i].ID == created.ID {
-			fs.Markers[i].VisitTime = vt
-		}
-	}
+	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{MarkerID: created.ID, DayIndex: 2})
 
-	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": nil})
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_days": []int{}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	m := findMarker(fs, created.ID)
-	if m == nil || m.VisitTime != "" {
-		t.Errorf("visit_time=%q want empty", func() string {
-			if m == nil { return "<nil>" }
-			return m.VisitTime
-		}())
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if len(m.VisitDays) != 0 {
+		t.Errorf("visit_days=%v want empty", m.VisitDays)
 	}
 }
 
