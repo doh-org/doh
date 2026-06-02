@@ -92,7 +92,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         dayCount: (trip?.startDate != null && trip?.endDate != null)
             ? trip!.endDate!.difference(trip.startDate!).inDays + 1
             : 0,
-        startDate: trip?.startDate,
         initialName: localMarker?.name,
         initialAddress: localMarker?.address,
         naverPlace: naverPlace,
@@ -121,25 +120,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             // ── 헤더 ─────────────────────────────────────────
             SizedBox(
               height: 52,
-              child: Stack(
-                alignment: Alignment.center,
+              child: Row(
                 children: [
-                  Positioned(
-                    left: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                      onPressed: () => Navigator.pop(context),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      '장소 검색',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F1D1A),
+                      ),
                     ),
                   ),
-                  const Text(
-                    '장소 검색',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F1D1A),
-                    ),
-                  ),
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
@@ -161,7 +160,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             // ── 본문 ──────────────────────────────────────────
             Expanded(
               child: _query.trim().isEmpty
-                  ? _EmptyState()
+                  ? Align(
+                      alignment: Alignment.topLeft,
+                      child: _EmptyState(),
+                    )
                   : _ResultList(
                       localShown: localShown,
                       localTotal: localFiltered.length,
@@ -214,6 +216,7 @@ class _SearchBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               autofocus: true,
+              cursorColor: const Color(0xFFFE8505),
               onChanged: onChanged,
               style: const TextStyle(
                 fontFamily: 'Pretendard',
@@ -258,37 +261,53 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
       child: Container(
         height: 50,
-        width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0x80FEC181),
           borderRadius: BorderRadius.circular(17),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
         child: Row(
           children: [
-            const Icon(Icons.info_outline,
-                size: 20, color: Color(0xFFFE8505)),
+            const Icon(Icons.info_outline, size: 20, color: Color(0xFFFE8505)),
             const SizedBox(width: 10),
-            RichText(
-              text: const TextSpan(
-                style: TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1F2125),
-                ),
-                children: [
-                  TextSpan(text: '지도와 '),
-                  TextSpan(
-                    text: '내가 저장한 장소',
-                    style: TextStyle(color: Color(0xFFFE8505)),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '지도와',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1F2125),
+                    height: 1.2,
                   ),
-                  TextSpan(text: '를 한 번에 검색해요.'),
-                ],
-              ),
+                ),
+                RichText(
+                  text: const TextSpan(
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '내가 저장한 장소',
+                        style: TextStyle(color: Color(0xFFFE8505)),
+                      ),
+                      TextSpan(
+                        text: '를 한 번에 검색해요.',
+                        style: TextStyle(color: Color(0xFF1F2125)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
