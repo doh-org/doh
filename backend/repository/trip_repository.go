@@ -3,7 +3,6 @@ package repository
 import (
 	"bytes"
 	"context"
-	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -99,18 +98,18 @@ func (r *tripRepository) GetTrips(ctx context.Context, token string) ([]domain.T
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		slog.Error("[trip] repo.GetTrips: unexpected status", "status", resp.StatusCode, "body", string(body))
+		slog.Error("[trip] repo.GetTrips: unexpected status", "status", resp.StatusCode, "body", string(respBody))
 		return nil, fmt.Errorf("getTrips: status %d", resp.StatusCode)
 	}
 	slog.Info("[trip] repo.GetTrips: response ok", "status", resp.StatusCode)
 
 	var trips []domain.Trip
-	if err := json.Unmarshal(body, &trips); err != nil {
+	if err := json.Unmarshal(respBody, &trips); err != nil {
 		return nil, err
 	}
 	return trips, nil
@@ -133,17 +132,17 @@ func (r *tripRepository) GetTrip(ctx context.Context, token, tripID string) (*do
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		slog.Error("[trip] repo.GetTrip: unexpected status", "status", resp.StatusCode, "body", string(body))
+		slog.Error("[trip] repo.GetTrip: unexpected status", "status", resp.StatusCode, "body", string(respBody))
 		return nil, fmt.Errorf("getTrip: status %d", resp.StatusCode)
 	}
 
 	var trips []domain.Trip
-	if err := json.Unmarshal(body, &trips); err != nil {
+	if err := json.Unmarshal(respBody, &trips); err != nil {
 		return nil, err
 	}
 	if len(trips) == 0 {
@@ -176,17 +175,17 @@ func (r *tripRepository) UpdateTrip(ctx context.Context, token, tripID string, i
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("[trip] repo.UpdateTrip: response", "status", resp.StatusCode, "body", string(body))
+	slog.Info("[trip] repo.UpdateTrip: response", "status", resp.StatusCode, "body", string(respBody))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("updateTrip: status %d", resp.StatusCode)
 	}
 
 	var trips []domain.Trip
-	if err := json.Unmarshal(body, &trips); err != nil {
+	if err := json.Unmarshal(respBody, &trips); err != nil {
 		return nil, err
 	}
 	if len(trips) == 0 {
@@ -240,16 +239,6 @@ func (r *tripRepository) setWriteHeaders(req *http.Request, token string) {
 	req.Header.Set("Content-Type", "application/json")
 }
 
-func newUUID() (string, error) {
-	var b [16]byte
-	if _, err := crand.Read(b[:]); err != nil {
-		return "", err
-	}
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
-}
-
 func buildUpdateBody(input domain.UpdateTripInput) map[string]any {
 	m := make(map[string]any)
 	if input.Title != nil {
@@ -269,3 +258,4 @@ func buildUpdateBody(input domain.UpdateTripInput) map[string]any {
 	}
 	return m
 }
+
