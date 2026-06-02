@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Category struct {
 	ID        string    `json:"id"`
@@ -10,6 +13,10 @@ type Category struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type CategoryRepository interface{}
+type CategoryRepository interface {
+	GetCategories(ctx context.Context, token, tripID string) ([]Category, error)
+}
 
-type CategoryUsecase interface{}
+type CategoryUsecase interface {
+	GetCategories(ctx context.Context, token, tripID string) ([]Category, error)
+}
