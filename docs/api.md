@@ -343,7 +343,7 @@ soft delete. owner만 가능.
     "memo": null,
     "detail": { "phone": "02-1234-5678", "opening_hours": "09:00-22:00" },
     "source": "search",
-    "visit_time": null,
+    "visit_days": [1, 3],
     "created_at": "2026-05-25T00:00:00Z"
   }
 ]
@@ -379,7 +379,7 @@ soft delete. owner만 가능.
   "memo": null,
   "detail": { "phone": "02-1234-5678", "opening_hours": "09:00-22:00" },
   "source": "search",
-  "visit_time": null,
+  "visit_days": [1, 3],
   "created_at": "2026-05-25T00:00:00Z"
 }
 ```
@@ -410,12 +410,13 @@ soft delete. owner만 가능.
   "source": "search",
   "category_id": "uuid",
   "address": "서울 강남구 테헤란로 ...",
-  "detail": { "phone": "02-1234-5678", "opening_hours": "09:00-22:00" }
+  "detail": { "phone": "02-1234-5678", "opening_hours": "09:00-22:00" },
+  "visit_days": [1, 3]
 }
 ```
 
 필수: `name`, `latitude`, `longitude`, `source`  
-선택: `category_id`, `address`, `detail`, `visit_time`  
+선택: `category_id`, `address`, `detail`, `visit_days`  
 v1 예정: `memo`
 
 **검증**
@@ -452,12 +453,12 @@ v1 예정: `memo`
   "longitude": 126.8977,
   "address": "서울 강남구 테헤란로 ...",
   "category_id": "uuid",
-  "visit_time": "2026-07-01T00:00:00Z"
+  "visit_days": [2]
 }
 ```
 
-모든 필드 선택. `category_id: null`로 보내면 카테고리 해제. `visit_time: null`로 보내면 해제.  
-v1 예정: `memo`
+모든 필드 선택. `category_id: null`로 보내면 카테고리 해제. `visit_days: []`로 보내면 전체 해제.  
+`visit_days` 미전달 시 기존 값 유지. v1 예정: `memo`
 
 **검증**
 - `name`: 전달 시 trim 후 1자 이상, 100자 이하
