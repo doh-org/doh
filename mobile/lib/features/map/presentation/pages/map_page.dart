@@ -50,7 +50,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       List<TripMarker> markers, DateTime? startDate, int day) {
     if (day == 0 || startDate == null) return markers;
     return markers.where((m) {
-      if (m.visitTime == null) return false;
+      if (m.visitTime == null) return true;
       return m.visitTime!.difference(startDate).inDays + 1 == day;
     }).toList();
   }
@@ -63,6 +63,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   void _showTripSelector(List<Trip> trips) {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -525,13 +526,28 @@ class _PlaceListSheet extends StatelessWidget {
           if (markers.isEmpty)
             const SliverFillRemaining(
               child: Center(
-                child: Text(
-                  '저장된 장소가 없습니다',
-                  style: TextStyle(
-                    fontFamily: 'Pretendard',
-                    fontSize: 14,
-                    color: Color(0xFFB2B2B2),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '저장된 장소가 없습니다',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFB2B2B2),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '검색 또는 지도를 꾹 눌러 장소를 추가해보세요.',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 12,
+                        color: Color(0xFFB2B2B2),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -594,13 +610,36 @@ class _TripSelectorSheet extends StatelessWidget {
   final String currentTripId;
   final void Function(String) onSelected;
 
+  String _formatDate(DateTime? d) {
+    if (d == null) return '';
+    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+
+  String _dateRange(Trip t) {
+    final s = _formatDate(t.startDate);
+    final e = _formatDate(t.endDate);
+    if (s.isEmpty && e.isEmpty) return '';
+    if (s.isEmpty) return e;
+    if (e.isEmpty) return s;
+    return '$s ~ $e';
+  }
+
+  Color _coverColor(Trip t) {
+    if (t.coverColor == null) return const Color(0xFFD5D5D5);
+    try {
+      return Color(int.parse(t.coverColor!.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return const Color(0xFFD5D5D5);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          margin: const EdgeInsets.only(top: 12),
+          margin: const EdgeInsets.only(top: 9),
           width: 82,
           height: 5,
           decoration: BoxDecoration(
@@ -608,40 +647,115 @@ class _TripSelectorSheet extends StatelessWidget {
             borderRadius: BorderRadius.circular(2.5),
           ),
         ),
-        const SizedBox(height: 12),
-        const Text(
-          '여행 선택',
-          style: TextStyle(
-            fontFamily: 'Pretendard',
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1F2125),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(38, 10, 23, 10),
+          child: Row(
+            children: [
+              const Text(
+                '폴더 선택',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF070707),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${trips.length}개',
+                style: const TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFB2B2B2),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        ...trips.map(
-          (t) => ListTile(
-            title: Text(
-              t.title,
-              style: TextStyle(
-                fontFamily: 'Pretendard',
-                fontSize: 15,
-                fontWeight: t.id == currentTripId
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                color: t.id == currentTripId
-                    ? const Color(0xFFFE8505)
-                    : const Color(0xFF1F2125),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < trips.length; i++) ...[
+              if (i > 0) const SizedBox(height: 5),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    onSelected(trips[i].id);
+                  },
+                  child: Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: trips[i].id == currentTripId
+                          ? const Color(0xFFFEC181)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(17),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0D000000),
+                          blurRadius: 5,
+                          offset: Offset(0, 4),
+                        ),
+                        BoxShadow(
+                          color: Color(0x0D000000),
+                          blurRadius: 5,
+                          offset: Offset(4, 0),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(15),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _coverColor(trips[i]),
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                trips[i].title,
+                                style: const TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF070707),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _dateRange(trips[i]),
+                                style: TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: trips[i].id == currentTripId
+                                      ? Colors.white
+                                      : const Color(0xFFB2B2B2),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            trailing: t.id == currentTripId
-                ? const Icon(Icons.check, color: Color(0xFFFE8505))
-                : null,
-            onTap: () {
-              Navigator.pop(context);
-              onSelected(t.id);
-            },
-          ),
+            ],
+          ],
         ),
         const SizedBox(height: 16),
       ],

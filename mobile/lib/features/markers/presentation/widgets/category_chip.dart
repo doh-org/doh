@@ -16,16 +16,45 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(
-      int.parse(category.color.replaceFirst('#', '0xFF')),
-    );
+    final Color base;
+    try {
+      base = Color(int.parse(category.color.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
 
-    return FilterChip(
-      label: Text(category.name),
-      selected: selected,
-      selectedColor: color.withOpacity(0.2),
-      checkmarkColor: color,
-      onSelected: onSelected,
+    final bgColor = selected ? base : base.withAlpha(0x80);
+    final textColor = selected ? Colors.white : const Color(0xFF1F2125);
+
+    return GestureDetector(
+      onTap: () => onSelected(!selected),
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x4D000000),
+                    blurRadius: 4,
+                    offset: Offset(1, 1),
+                  ),
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          category.name,
+          style: TextStyle(
+            fontFamily: 'Pretendard',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: textColor,
+          ),
+        ),
+      ),
     );
   }
 }

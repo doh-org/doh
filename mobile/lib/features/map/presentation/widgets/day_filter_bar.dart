@@ -37,8 +37,8 @@ class DayFilterBar extends StatelessWidget {
                 boxShadow: selected
                     ? const [
                         BoxShadow(
-                          color: Color(0x52000000),
-                          blurRadius: 8,
+                          color: Color(0x4D000000),
+                          blurRadius: 4,
                           offset: Offset(1, 1),
                         ),
                       ]

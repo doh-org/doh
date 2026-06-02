@@ -83,9 +83,14 @@ class MarkerRepositoryImpl implements MarkerRepository {
   Future<void> deleteMarker(String tripId, String markerId) =>
       _datasource.deleteMarker(tripId, markerId);
 
+  static final Map<String, List<Category>> _categoryCache = {};
+
   @override
   Future<List<Category>> getCategories(String tripId) async {
+    if (_categoryCache.containsKey(tripId)) return _categoryCache[tripId]!;
     final models = await _datasource.getCategories(tripId);
-    return models.map((m) => m.toEntity()).toList();
+    final result = models.map((m) => m.toEntity()).toList();
+    _categoryCache[tripId] = result;
+    return result;
   }
 }

@@ -5,6 +5,11 @@ import '../../domain/entities/marker.dart';
 part 'marker_model.freezed.dart';
 part 'marker_model.g.dart';
 
+DateTime? _visitTimeFromJson(dynamic v) {
+  if (v == null || v == '') return null;
+  return DateTime.parse(v as String);
+}
+
 @freezed
 abstract class MarkerModel with _$MarkerModel {
   const factory MarkerModel({
@@ -19,7 +24,7 @@ abstract class MarkerModel with _$MarkerModel {
     String? memo,
     required String source,
     required Map<String, dynamic> detail,
-    @JsonKey(name: 'visit_time') DateTime? visitTime,
+    @JsonKey(name: 'visit_time', fromJson: _visitTimeFromJson) DateTime? visitTime,
     @JsonKey(name: 'deleted_at') DateTime? deletedAt,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _MarkerModel;
