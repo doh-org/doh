@@ -14,7 +14,7 @@ abstract interface class MarkerRepository {
     String? memo,
     Map<String, dynamic>? detail,
     required MarkerSource source,
-    DateTime? visitTime,
+    List<int> visitDays = const [],
   });
 
   Future<TripMarker> updateMarker(
@@ -23,8 +23,7 @@ abstract interface class MarkerRepository {
     String? name,
     String? categoryId,
     bool clearCategoryId = false,
-    DateTime? visitTime,
-    bool clearVisitTime = false,
+    List<int>? visitDays,
     String? memo,
   });
 

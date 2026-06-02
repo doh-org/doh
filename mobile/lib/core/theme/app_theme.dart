@@ -19,6 +19,11 @@ class AppTheme {
       elevation: 0,
       centerTitle: true,
     ),
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: AppColors.folderOrange,
+      selectionHandleColor: AppColors.folderOrange,
+      selectionColor: Color(0x33FE8505),
+    ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.black),
       displayMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.dark),

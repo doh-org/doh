@@ -43,6 +43,7 @@ class MemberListPage extends ConsumerWidget {
         title: const Text('멤버 초대'),
         content: TextField(
           controller: emailController,
+          cursorColor: const Color(0xFFFE8505),
           decoration: const InputDecoration(labelText: '이메일'),
           keyboardType: TextInputType.emailAddress,
         ),

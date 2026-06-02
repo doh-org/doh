@@ -17,8 +17,11 @@ _MarkerModel _$MarkerModelFromJson(Map<String, dynamic> json) => _MarkerModel(
       address: json['address'] as String?,
       memo: json['memo'] as String?,
       source: json['source'] as String,
-      detail: (json['detail'] as Map<String, dynamic>?) ?? <String, dynamic>{},
-      visitTime: _visitTimeFromJson(json['visit_time']),
+      detail: json['detail'] as Map<String, dynamic>,
+      visitDays: (json['visit_days'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
       deletedAt: json['deleted_at'] == null
           ? null
           : DateTime.parse(json['deleted_at'] as String),
@@ -38,7 +41,7 @@ Map<String, dynamic> _$MarkerModelToJson(_MarkerModel instance) =>
       'memo': instance.memo,
       'source': instance.source,
       'detail': instance.detail,
-      'visit_time': instance.visitTime?.toIso8601String(),
+      'visit_days': instance.visitDays,
       'deleted_at': instance.deletedAt?.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
     };

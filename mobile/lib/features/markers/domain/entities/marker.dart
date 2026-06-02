@@ -18,7 +18,7 @@ abstract class TripMarker with _$TripMarker {
     String? memo,
     required MarkerSource source,
     required Map<String, dynamic> detail,
-    DateTime? visitTime,
+    @Default([]) List<int> visitDays,
     DateTime? deletedAt,
     required DateTime createdAt,
   }) = _TripMarker;

@@ -35,7 +35,7 @@ class MarkerRepositoryImpl implements MarkerRepository {
     String? memo,
     Map<String, dynamic>? detail,
     required MarkerSource source,
-    DateTime? visitTime,
+    List<int> visitDays = const [],
   }) async {
     final model = await _datasource.createMarker(tripId, {
       'name': name,
@@ -46,7 +46,7 @@ class MarkerRepositoryImpl implements MarkerRepository {
       if (address != null) 'address': address,
       if (memo != null) 'memo': memo,
       'detail': detail ?? <String, dynamic>{},
-      if (visitTime != null) 'visit_time': visitTime.toUtc().toIso8601String(),
+      'visit_days': visitDays,
     });
     return model.toEntity();
   }
@@ -58,8 +58,7 @@ class MarkerRepositoryImpl implements MarkerRepository {
     String? name,
     String? categoryId,
     bool clearCategoryId = false,
-    DateTime? visitTime,
-    bool clearVisitTime = false,
+    List<int>? visitDays,
     String? memo,
   }) async {
     final body = <String, dynamic>{};
@@ -69,11 +68,7 @@ class MarkerRepositoryImpl implements MarkerRepository {
     } else if (categoryId != null) {
       body['category_id'] = categoryId;
     }
-    if (clearVisitTime) {
-      body['visit_time'] = null;
-    } else if (visitTime != null) {
-      body['visit_time'] = visitTime.toUtc().toIso8601String();
-    }
+    if (visitDays != null) body['visit_days'] = visitDays;
     if (memo != null) body['memo'] = memo;
     final model = await _datasource.updateMarker(tripId, markerId, body);
     return model.toEntity();
