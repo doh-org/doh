@@ -18,7 +18,7 @@ type Marker struct {
 	Memo       *string        `json:"memo,omitempty"`
 	Source     string         `json:"source"`
 	Detail     map[string]any `json:"detail"`
-	VisitTime  string         `json:"visit_time"`
+	VisitDays  []int          `json:"visit_days"`
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
@@ -30,7 +30,7 @@ type CreateMarkerInput struct {
 	CategoryID *string        `json:"category_id"`
 	Address    *string        `json:"address"`
 	Detail     map[string]any `json:"detail"`
-	VisitTime  *string        `json:"visit_time"`
+	VisitDays  []int          `json:"visit_days"`
 }
 
 type UpdateMarkerInput struct {
@@ -39,7 +39,7 @@ type UpdateMarkerInput struct {
 	Longitude  *float64        `json:"longitude"`
 	CategoryID json.RawMessage `json:"category_id"`
 	Address    *string         `json:"address"`
-	VisitTime  json.RawMessage `json:"visit_time"`
+	VisitDays  *[]int          `json:"visit_days"` // nil=변경없음, 비nil=전체교체
 }
 
 var ValidSources = map[string]bool{
