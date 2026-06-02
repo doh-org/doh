@@ -7,7 +7,7 @@ part of 'marker_remote_datasource.dart';
 // **************************************************************************
 
 String _$markerRemoteDatasourceHash() =>
-    r'8d0f09629c117a44feb5dca14401afec7b29c1e9';
+    r'8311b2f0a76164a94c3f967be0e4142484341c80';
 
 /// See also [markerRemoteDatasource].
 @ProviderFor(markerRemoteDatasource)

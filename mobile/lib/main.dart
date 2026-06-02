@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_naver_map/flutter_naver_map.dart' show NaverMapSdk;
+import 'package:flutter_naver_map/flutter_naver_map.dart' show FlutterNaverMap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,8 +13,7 @@ void main() async {
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
   );
-  // ignore: deprecated_member_use
-  await NaverMapSdk.instance.initialize(
+  await FlutterNaverMap().init(
     clientId: const String.fromEnvironment('NAVER_MAP_CLIENT_ID'),
   );
 

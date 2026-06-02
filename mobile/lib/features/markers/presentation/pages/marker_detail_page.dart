@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
-import '../../domain/repositories/marker_repository.dart';
 
 class MarkerDetailPage extends ConsumerWidget {
   const MarkerDetailPage({required this.marker, super.key});
@@ -20,7 +19,7 @@ class MarkerDetailPage extends ConsumerWidget {
             onPressed: () async {
               await ref
                   .read(markerRepositoryProvider)
-                  .deleteMarker(marker.id);
+                  .deleteMarker(marker.tripId, marker.id);
               if (context.mounted) Navigator.pop(context, true);
             },
           ),

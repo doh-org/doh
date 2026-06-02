@@ -3,6 +3,7 @@ import '../entities/marker.dart';
 
 abstract interface class MarkerRepository {
   Future<List<TripMarker>> getMarkers(String tripId);
+
   Future<TripMarker> createMarker({
     required String tripId,
     required String name,
@@ -11,14 +12,23 @@ abstract interface class MarkerRepository {
     String? categoryId,
     String? address,
     String? memo,
+    Map<String, dynamic>? detail,
     required MarkerSource source,
-  });
-  Future<TripMarker> updateMarker(String markerId, {
-    String? name,
-    String? categoryId,
-    String? memo,
     DateTime? visitTime,
   });
-  Future<void> deleteMarker(String markerId);
+
+  Future<TripMarker> updateMarker(
+    String tripId,
+    String markerId, {
+    String? name,
+    String? categoryId,
+    bool clearCategoryId = false,
+    DateTime? visitTime,
+    bool clearVisitTime = false,
+    String? memo,
+  });
+
+  Future<void> deleteMarker(String tripId, String markerId);
+
   Future<List<Category>> getCategories(String tripId);
 }

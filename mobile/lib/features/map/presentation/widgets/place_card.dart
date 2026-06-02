@@ -8,7 +8,9 @@ class PlaceCard extends StatelessWidget {
     required this.categoryIcon,
     this.address,
     this.likeCount = 0,
+    this.isLiked = false,
     this.onTap,
+    this.onLikeTap,
     super.key,
   });
 
@@ -18,119 +20,145 @@ class PlaceCard extends StatelessWidget {
   final IconData categoryIcon;
   final String? address;
   final int likeCount;
+  final bool isLiked;
   final VoidCallback? onTap;
+  final VoidCallback? onLikeTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: SizedBox(
         height: 80,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A000000),
-              blurRadius: 5,
-              offset: Offset(0, 4),
-            ),
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 5,
-              offset: Offset(4, 0),
-            ),
-          ],
-        ),
-        child: Row(
+        child: Stack(
           children: [
-            const SizedBox(width: 12),
-            // 카테고리 원형 아이콘
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: categoryColor,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Icon(categoryIcon, size: 22, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            // 장소 정보
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 카테고리 badge pill
-                  Container(
-                    height: 15,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    constraints: const BoxConstraints(minWidth: 40),
-                    decoration: BoxDecoration(
-                      color: categoryColor,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      category,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF070707),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (address != null)
-                    Text(
-                      address!,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF7E7E7E),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-            // 좋아요 수
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.favorite_border,
-                  size: 22,
-                  color: Color(0xFF8A847B),
+            // 카드 배경
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(17),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x1A000000),
+                        blurRadius: 5,
+                        offset: Offset(0, 4)),
+                    BoxShadow(
+                        color: Color(0x0D000000),
+                        blurRadius: 5,
+                        offset: Offset(4, 0)),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '$likeCount',
+              ),
+            ),
+
+            // 카테고리 원 (left-13.5 top-15 size-50)
+            Positioned(
+              left: 13.5,
+              top: 15,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: categoryColor,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Icon(categoryIcon, size: 20, color: Colors.white),
+              ),
+            ),
+
+            // 카테고리 배지 (left-74 top-13 h-15 w-40)
+            Positioned(
+              left: 74,
+              top: 13,
+              child: Container(
+                height: 15,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: categoryColor,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  category,
                   style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF757575),
+                    color: Colors.white,
                   ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(width: 16),
+
+            // 장소명 (left-74 top-31)
+            Positioned(
+              left: 74,
+              top: 31,
+              right: 50,
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF070707),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+            // 부연 (left-74 top-53)
+            Positioned(
+              left: 74,
+              top: 53,
+              right: 50,
+              child: Text(
+                address ?? category,
+                style: const TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF7E7E7E),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+            // 좋아요 (right-15 vertically centered)
+            Positioned(
+              right: 15,
+              top: 0,
+              bottom: 0,
+              child: GestureDetector(
+                onTap: onLikeTap,
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      size: 25,
+                      color: isLiked
+                          ? const Color(0xFFFE8505)
+                          : const Color(0xFF8A847B),
+                    ),
+                    if (likeCount > 0)
+                      Text(
+                        '$likeCount',
+                        style: const TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
