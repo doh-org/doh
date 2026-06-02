@@ -514,6 +514,47 @@ func TestUpdateMarker_NoToken(t *testing.T) {
 	}
 }
 
+func TestUpdateMarker_VisitTime(t *testing.T) {
+	router, fs, keys := setupMarker(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	created := createMarker(t, router, tok, defaultTripID)
+	vt := "2026-07-01T00:00:00Z"
+
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": vt})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if m.VisitTime == nil || *m.VisitTime != vt {
+		t.Errorf("visit_time=%v want %q", m.VisitTime, vt)
+	}
+}
+
+func TestUpdateMarker_ClearVisitTime(t *testing.T) {
+	router, fs, keys := setupMarker(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	created := createMarker(t, router, tok, defaultTripID)
+	vt := "2026-07-01T00:00:00Z"
+	for i := range fs.Markers {
+		if fs.Markers[i].ID == created.ID {
+			fs.Markers[i].VisitTime = &vt
+		}
+	}
+
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": nil})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var m domain.Marker
+	json.NewDecoder(w.Body).Decode(&m)
+	if m.VisitTime != nil {
+		t.Errorf("visit_time=%v want nil", m.VisitTime)
+	}
+}
+
 func TestUpdateMarker_BodyTooLarge(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
