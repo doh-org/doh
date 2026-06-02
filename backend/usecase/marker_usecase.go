@@ -39,6 +39,11 @@ func (u *markerUsecase) CreateMarker(ctx context.Context, token, tripID, userID 
 	if input.Longitude < -180 || input.Longitude > 180 {
 		return nil, &domain.ValidationError{Message: "경도는 -180~180 범위여야 합니다."}
 	}
+	for _, d := range input.VisitDays {
+		if d < 1 {
+			return nil, &domain.ValidationError{Message: "day_index는 1 이상이어야 합니다."}
+		}
+	}
 
 	return u.markerRepo.CreateMarker(ctx, token, tripID, userID, input)
 }
@@ -81,6 +86,13 @@ func (u *markerUsecase) UpdateMarker(ctx context.Context, token, tripID, markerI
 		}
 		if *input.Longitude < -180 || *input.Longitude > 180 {
 			return nil, &domain.ValidationError{Message: "경도는 -180~180 범위여야 합니다."}
+		}
+	}
+	if input.VisitDays != nil {
+		for _, d := range *input.VisitDays {
+			if d < 1 {
+				return nil, &domain.ValidationError{Message: "day_index는 1 이상이어야 합니다."}
+			}
 		}
 	}
 

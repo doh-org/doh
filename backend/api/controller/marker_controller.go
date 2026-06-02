@@ -103,6 +103,10 @@ func (mc *MarkerController) UpdateMarker(c *gin.Context) {
 		mc.handleError(c, err)
 		return
 	}
+	if marker == nil {
+		c.Status(http.StatusNoContent)
+		return
+	}
 	c.JSON(http.StatusOK, marker)
 }
 

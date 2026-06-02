@@ -16,6 +16,15 @@ import (
 const defaultTripID = "trip-aaa"
 const defaultRouteID = "route-aaa"
 
+func findMarker(fs *testutil.FakeSupabase, id string) *domain.Marker {
+	for i := range fs.Markers {
+		if fs.Markers[i].ID == id {
+			return &fs.Markers[i]
+		}
+	}
+	return nil
+}
+
 func setupMarker(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.TestKeys) {
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
@@ -386,6 +395,7 @@ func TestUpdateMarker_Name(t *testing.T) {
 	if m.Name != "수정된 장소" {
 		t.Errorf("name=%q want 수정된 장소", m.Name)
 	}
+	_ = fs
 }
 
 func TestUpdateMarker_LatLng(t *testing.T) {
@@ -405,6 +415,7 @@ func TestUpdateMarker_LatLng(t *testing.T) {
 	if m.Latitude != 37.9999 {
 		t.Errorf("latitude=%v want 37.9999", m.Latitude)
 	}
+	_ = fs
 }
 
 func TestUpdateMarker_LatWithoutLng(t *testing.T) {
@@ -514,44 +525,38 @@ func TestUpdateMarker_NoToken(t *testing.T) {
 	}
 }
 
-func TestUpdateMarker_VisitTime(t *testing.T) {
+func TestUpdateMarker_VisitDays(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
 	created := createMarker(t, router, tok, defaultTripID)
-	vt := "2026-07-01T00:00:00Z"
 
-	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": vt})
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_days": []int{1, 3}})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
 	var m domain.Marker
 	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime == nil || *m.VisitTime != vt {
-		t.Errorf("visit_time=%v want %q", m.VisitTime, vt)
+	if len(m.VisitDays) != 2 || m.VisitDays[0] != 1 || m.VisitDays[1] != 3 {
+		t.Errorf("visit_days=%v want [1 3]", m.VisitDays)
 	}
 }
 
-func TestUpdateMarker_ClearVisitTime(t *testing.T) {
+func TestUpdateMarker_ClearVisitDays(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
 	created := createMarker(t, router, tok, defaultTripID)
-	vt := "2026-07-01T00:00:00Z"
-	for i := range fs.Markers {
-		if fs.Markers[i].ID == created.ID {
-			fs.Markers[i].VisitTime = &vt
-		}
-	}
+	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{MarkerID: created.ID, DayIndex: 2})
 
-	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": nil})
+	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_days": []int{}})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
 	var m domain.Marker
 	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime != nil {
-		t.Errorf("visit_time=%v want nil", m.VisitTime)
+	if len(m.VisitDays) != 0 {
+		t.Errorf("visit_days=%v want empty", m.VisitDays)
 	}
 }
 

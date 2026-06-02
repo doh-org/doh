@@ -18,7 +18,7 @@ type Marker struct {
 	Memo       *string        `json:"memo,omitempty"`
 	Source     string         `json:"source"`
 	Detail     map[string]any `json:"detail"`
-	VisitTime  *string        `json:"visit_time,omitempty"`
+	VisitDays  []int          `json:"visit_days"`
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
@@ -30,17 +30,16 @@ type CreateMarkerInput struct {
 	CategoryID *string        `json:"category_id"`
 	Address    *string        `json:"address"`
 	Detail     map[string]any `json:"detail"`
-	VisitTime  *string        `json:"visit_time"`
+	VisitDays  []int          `json:"visit_days"`
 }
 
-// UpdateMarkerInput — nil 필드는 변경 없음. CategoryID/VisitTime은 RawMessage로 null(해제)과 omit(무변경) 구분.
 type UpdateMarkerInput struct {
 	Name       *string         `json:"name"`
 	Latitude   *float64        `json:"latitude"`
 	Longitude  *float64        `json:"longitude"`
 	CategoryID json.RawMessage `json:"category_id"`
 	Address    *string         `json:"address"`
-	VisitTime  json.RawMessage `json:"visit_time"`
+	VisitDays  *[]int          `json:"visit_days"` // nil=변경없음, 비nil=전체교체
 }
 
 var ValidSources = map[string]bool{
