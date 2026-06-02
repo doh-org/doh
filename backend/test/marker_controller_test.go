@@ -16,6 +16,15 @@ import (
 const defaultTripID = "trip-aaa"
 const defaultRouteID = "route-aaa"
 
+func findMarker(fs *testutil.FakeSupabase, id string) *domain.Marker {
+	for i := range fs.Markers {
+		if fs.Markers[i].ID == id {
+			return &fs.Markers[i]
+		}
+	}
+	return nil
+}
+
 func setupMarker(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.TestKeys) {
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
@@ -378,13 +387,15 @@ func TestUpdateMarker_Name(t *testing.T) {
 	created := createMarker(t, router, tok, defaultTripID)
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"name": "수정된 장소"})
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
 	}
-	var m domain.Marker
-	json.NewDecoder(w.Body).Decode(&m)
-	if m.Name != "수정된 장소" {
-		t.Errorf("name=%q want 수정된 장소", m.Name)
+	m := findMarker(fs, created.ID)
+	if m == nil || m.Name != "수정된 장소" {
+		t.Errorf("name=%q want 수정된 장소", func() string {
+			if m == nil { return "<nil>" }
+			return m.Name
+		}())
 	}
 }
 
@@ -397,13 +408,15 @@ func TestUpdateMarker_LatLng(t *testing.T) {
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{
 		"latitude": 37.9999, "longitude": 126.9999,
 	})
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
 	}
-	var m domain.Marker
-	json.NewDecoder(w.Body).Decode(&m)
-	if m.Latitude != 37.9999 {
-		t.Errorf("latitude=%v want 37.9999", m.Latitude)
+	m := findMarker(fs, created.ID)
+	if m == nil || m.Latitude != 37.9999 {
+		t.Errorf("latitude=%v want 37.9999", func() float64 {
+			if m == nil { return 0 }
+			return m.Latitude
+		}())
 	}
 }
 
@@ -486,13 +499,15 @@ func TestUpdateMarker_NullCategory(t *testing.T) {
 	}
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"category_id": nil})
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
 	}
-	var m domain.Marker
-	json.NewDecoder(w.Body).Decode(&m)
-	if m.CategoryID != nil {
-		t.Errorf("category_id=%v want nil", m.CategoryID)
+	m := findMarker(fs, created.ID)
+	if m == nil || m.CategoryID != nil {
+		t.Errorf("category_id=%v want nil", func() any {
+			if m == nil { return "<nil marker>" }
+			return m.CategoryID
+		}())
 	}
 }
 
@@ -522,13 +537,15 @@ func TestUpdateMarker_VisitTime(t *testing.T) {
 	vt := "2026-07-01T00:00:00Z"
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": vt})
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
 	}
-	var m domain.Marker
-	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime != vt {
-		t.Errorf("visit_time=%q want %q", m.VisitTime, vt)
+	m := findMarker(fs, created.ID)
+	if m == nil || m.VisitTime != vt {
+		t.Errorf("visit_time=%q want %q", func() string {
+			if m == nil { return "<nil>" }
+			return m.VisitTime
+		}(), vt)
 	}
 }
 
@@ -545,13 +562,15 @@ func TestUpdateMarker_ClearVisitTime(t *testing.T) {
 	}
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_time": nil})
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
 	}
-	var m domain.Marker
-	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime != "" {
-		t.Errorf("visit_time=%q want empty", m.VisitTime)
+	m := findMarker(fs, created.ID)
+	if m == nil || m.VisitTime != "" {
+		t.Errorf("visit_time=%q want empty", func() string {
+			if m == nil { return "<nil>" }
+			return m.VisitTime
+		}())
 	}
 }
 

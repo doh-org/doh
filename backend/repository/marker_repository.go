@@ -335,7 +335,7 @@ func (r *markerRepository) UpdateMarker(ctx context.Context, token, tripID, mark
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("updateMarker: status %d body %s", resp.StatusCode, b)
 	}
-	return r.GetMarker(ctx, token, tripID, markerID)
+	return nil, nil
 }
 
 func (r *markerRepository) DeleteMarker(ctx context.Context, token, tripID, markerID string) error {
