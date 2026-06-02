@@ -527,8 +527,8 @@ func TestUpdateMarker_VisitTime(t *testing.T) {
 	}
 	var m domain.Marker
 	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime == nil || *m.VisitTime != vt {
-		t.Errorf("visit_time=%v want %q", m.VisitTime, vt)
+	if m.VisitTime != vt {
+		t.Errorf("visit_time=%q want %q", m.VisitTime, vt)
 	}
 }
 
@@ -540,7 +540,7 @@ func TestUpdateMarker_ClearVisitTime(t *testing.T) {
 	vt := "2026-07-01T00:00:00Z"
 	for i := range fs.Markers {
 		if fs.Markers[i].ID == created.ID {
-			fs.Markers[i].VisitTime = &vt
+			fs.Markers[i].VisitTime = vt
 		}
 	}
 
@@ -550,8 +550,8 @@ func TestUpdateMarker_ClearVisitTime(t *testing.T) {
 	}
 	var m domain.Marker
 	json.NewDecoder(w.Body).Decode(&m)
-	if m.VisitTime != nil {
-		t.Errorf("visit_time=%v want nil", m.VisitTime)
+	if m.VisitTime != "" {
+		t.Errorf("visit_time=%q want empty", m.VisitTime)
 	}
 }
 

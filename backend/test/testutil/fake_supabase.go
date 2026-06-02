@@ -373,8 +373,7 @@ func markerFromBody(body map[string]any) domain.Marker {
 		m.Detail = v
 	}
 	if v, ok := body["visit_time"].(string); ok {
-		s := v
-		m.VisitTime = &s
+		m.VisitTime = v
 	}
 	return m
 }
@@ -402,9 +401,9 @@ func applyMarkerUpdate(m *domain.Marker, body map[string]any) {
 	}
 	if _, exists := body["visit_time"]; exists {
 		if body["visit_time"] == nil {
-			m.VisitTime = nil
+			m.VisitTime = ""
 		} else if v, ok := body["visit_time"].(string); ok {
-			m.VisitTime = &v
+			m.VisitTime = v
 		}
 	}
 }

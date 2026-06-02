@@ -51,11 +51,15 @@ type markerRow struct {
 }
 
 func (row markerRow) toDomain() domain.Marker {
+	vt := ""
+	if row.VisitTime != nil {
+		vt = *row.VisitTime
+	}
 	return domain.Marker{
 		ID: row.ID, TripID: row.TripID, CategoryID: row.CategoryID, CreatedBy: row.CreatedBy,
 		Name: row.Name, Latitude: row.Latitude, Longitude: row.Longitude,
 		Address: row.Address, Memo: row.Memo, Source: row.Source,
-		Detail: row.Detail, VisitTime: row.VisitTime, CreatedAt: row.CreatedAt,
+		Detail: row.Detail, VisitTime: vt, CreatedAt: row.CreatedAt,
 	}
 }
 
