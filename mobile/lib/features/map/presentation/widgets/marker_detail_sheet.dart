@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
@@ -12,22 +13,28 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
     required this.marker,
     required this.tripId,
     required this.allMarkers,
+    this.isLiked = false,
     super.key,
   });
 
   final TripMarker marker;
   final String tripId;
   final List<TripMarker> allMarkers;
+  final bool isLiked;
 
   @override
   ConsumerState<MarkerDetailSheet> createState() => _MarkerDetailSheetState();
 }
 
 class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
-  int _transportIndex = 0; // 0=차량, 1=대중교통, 2=자전거, 3=도보
-  String? _departureId; // null = 현위치
+  int _transportIndex = 0;
+  String? _departureId;
   late String _destinationId;
   late TripMarker _marker;
+  late final TextEditingController _nameCtrl;
+  bool _editingName = false;
+  bool _saved = true;
+  late bool _isLiked;
 
   static const _transportLabels = ['차량', '대중교통', '자전거', '도보'];
   static const _transportIcons = [
@@ -42,6 +49,46 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     super.initState();
     _marker = widget.marker;
     _destinationId = widget.marker.id;
+    _nameCtrl = TextEditingController(text: widget.marker.name);
+    _isLiked = widget.isLiked;
+    _saved = widget.allMarkers.any((m) => m.id == widget.marker.id);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveName() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty || name == _marker.name) return;
+    try {
+      final updated = await ref.read(markerRepositoryProvider).updateMarker(
+            widget.tripId, _marker.id, name: name,
+          );
+      setState(() => _marker = updated);
+      ref.invalidate(markerEntitiesProvider(widget.tripId));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleBookmark() async {
+    if (!_saved) return;
+    final ok = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: Colors.black26,
+      pageBuilder: (ctx, _, __) => Align(
+        alignment: const Alignment(0, 0.5),
+        child: _DeleteConfirmDialog(name: _marker.name),
+      ),
+    );
+    if (ok == true && mounted) {
+      await ref.read(markerRepositoryProvider).deleteMarker(widget.tripId, _marker.id);
+      ref.invalidate(markerEntitiesProvider(widget.tripId));
+      Navigator.pop(context);
+    }
   }
 
   String? _detail(String key) {
@@ -165,22 +212,62 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      _marker.name,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF070707),
-                      ),
-                    ),
+                    child: _editingName
+                        ? TextField(
+                            controller: _nameCtrl,
+                            autofocus: true,
+                            cursorColor: const Color(0xFFFE8505),
+                            onSubmitted: (_) {
+                              setState(() => _editingName = false);
+                              _saveName();
+                            },
+                            style: const TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF070707),
+                            ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: () => setState(() => _editingName = true),
+                            child: Text(
+                              _nameCtrl.text,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF070707),
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.bookmark_border,
-                      size: 25, color: Color(0xFF8A847B)),
+                  GestureDetector(
+                    onTap: _toggleBookmark,
+                    child: Icon(
+                      _saved ? Icons.bookmark : Icons.bookmark_border,
+                      size: 25,
+                      color: _saved
+                          ? const Color(0xFFFE8505)
+                          : const Color(0xFFD5D5D5),
+                    ),
+                  ),
                   const SizedBox(width: 10),
-                  const Icon(Icons.favorite_border,
-                      size: 25, color: Color(0xFF8A847B)),
+                  GestureDetector(
+                    onTap: () => setState(() => _isLiked = !_isLiked),
+                    child: Icon(
+                      _isLiked ? Icons.favorite : Icons.favorite_border,
+                      size: 25,
+                      color: _isLiked
+                          ? const Color(0xFFFE8505)
+                          : const Color(0xFFD5D5D5),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -571,6 +658,109 @@ class _RouteTile extends StatelessWidget {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteConfirmDialog extends StatelessWidget {
+  const _DeleteConfirmDialog({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 300,
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.delete_outline, size: 30, color: Color(0xFFEC2113)),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '삭제하시겠습니까?',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF070707),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xCCEC2113),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, false),
+                    child: Container(
+                      width: 120,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD5D5D5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF070707),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, true),
+                    child: Container(
+                      width: 120,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xCCEC2113),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '삭제',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
