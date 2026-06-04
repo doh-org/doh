@@ -90,6 +90,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           marker: marker,
           tripId: _tripId,
           allMarkers: allMarkers,
+          isLiked: _likedMarkerIds.contains(marker.id),
         ),
       ),
     );
@@ -483,21 +484,14 @@ class _PlaceListSheet extends StatelessWidget {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '경로 편집',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFFEC2113),
-                              ),
-                            ),
-                            Icon(Icons.chevron_right,
-                                size: 15, color: Color(0xFFEC2113)),
-                          ],
+                        child: const Text(
+                          '경로 편집',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF2A6FDB),
+                          ),
                         ),
                       ),
                     ],

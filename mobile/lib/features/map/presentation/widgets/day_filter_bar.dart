@@ -14,7 +14,7 @@ class DayFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = ['전체', ...List.generate(dayCount, (i) => 'Day${i + 1}')];
+    final labels = ['미정', ...List.generate(dayCount, (i) => 'Day${i + 1}')];
 
     return SizedBox(
         height: 30,

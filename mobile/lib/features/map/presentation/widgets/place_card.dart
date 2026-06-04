@@ -143,7 +143,7 @@ class PlaceCard extends StatelessWidget {
                       size: 25,
                       color: isLiked
                           ? const Color(0xFFFE8505)
-                          : const Color(0xFF8A847B),
+                          : const Color(0xFFD5D5D5),
                     ),
                     if (likeCount > 0)
                       Text(
