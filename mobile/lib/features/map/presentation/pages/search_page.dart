@@ -7,6 +7,7 @@ import '../../../trips/domain/entities/trip.dart';
 import '../../domain/entities/naver_place.dart';
 import '../providers/map_provider.dart';
 import '../providers/search_provider.dart';
+import '../widgets/marker_detail_sheet.dart';
 import '../widgets/place_add_sheet.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
@@ -67,6 +68,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (c.contains('관광')) return Icons.photo_camera_outlined;
     if (c.contains('숙소')) return Icons.hotel_outlined;
     return Icons.place_outlined;
+  }
+
+  Future<void> _openDetailSheet(TripMarker marker, List<TripMarker> allMarkers) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scroll) => MarkerDetailSheet(
+          marker: marker,
+          tripId: widget.tripId,
+          allMarkers: allMarkers,
+        ),
+      ),
+    );
   }
 
   Future<void> _openAddSheet({
@@ -173,7 +192,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       totalCount: totalCount,
                       categoryColor: _categoryColor,
                       categoryIcon: _categoryIcon,
-                      onLocalAdd: (m) => _openAddSheet(localMarker: m),
+                      onLocalTap: (m) => _openDetailSheet(m, localAll),
                       onNaverTap: (p) => _openAddSheet(naverPlace: p),
                       onExpand: () =>
                           setState(() => _localExpanded = true),
@@ -327,7 +346,7 @@ class _ResultList extends StatelessWidget {
     required this.totalCount,
     required this.categoryColor,
     required this.categoryIcon,
-    required this.onLocalAdd,
+    required this.onLocalTap,
     required this.onNaverTap,
     required this.onExpand,
   });
@@ -340,7 +359,7 @@ class _ResultList extends StatelessWidget {
   final int totalCount;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
-  final void Function(TripMarker) onLocalAdd;
+  final void Function(TripMarker) onLocalTap;
   final void Function(NaverPlace) onNaverTap;
   final VoidCallback onExpand;
 
@@ -397,7 +416,7 @@ class _ResultList extends StatelessWidget {
               marker: localShown[i],
               categoryColor: categoryColor,
               categoryIcon: categoryIcon,
-              onAdd: () => onLocalAdd(localShown[i]),
+              onTap: () => onLocalTap(localShown[i]),
             ),
             childCount: localShown.length,
           ),
@@ -464,12 +483,12 @@ class _LocalItem extends StatelessWidget {
     required this.marker,
     required this.categoryColor,
     required this.categoryIcon,
-    required this.onAdd,
+    required this.onTap,
   });
   final TripMarker marker;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
-  final VoidCallback onAdd;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +498,10 @@ class _LocalItem extends StatelessWidget {
 
     return Column(
       children: [
-        Padding(
+        GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Row(
             children: [
@@ -544,18 +566,9 @@ class _LocalItem extends StatelessWidget {
                   ],
                 ),
               ),
-              // + 버튼
-              GestureDetector(
-                onTap: onAdd,
-                behavior: HitTestBehavior.opaque,
-                child: const Padding(
-                  padding: EdgeInsets.all(10),
-                  child:
-                      Icon(Icons.add, size: 15, color: Color(0xFFFE8505)),
-                ),
-              ),
             ],
           ),
+        ),
         ),
         const Divider(height: 1, indent: 20, endIndent: 20,
             color: Color(0xFFF1F2F4)),
