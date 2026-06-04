@@ -11,12 +11,13 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"doh/backend/domain"
 )
 
-const markerViewCols = "id,trip_id,category_id,created_by,name,latitude,longitude,address,memo,source,detail,visit_time,created_at"
+const markerViewCols = "id,trip_id,category_id,created_by,name,latitude,longitude,address,memo,source,detail,created_at"
 
 type markerRepository struct {
 	supabaseURL     string
@@ -43,7 +44,6 @@ type markerRow struct {
 	Memo       *string        `json:"memo"`
 	Source     string         `json:"source"`
 	Detail     map[string]any `json:"detail"`
-	VisitTime  *string        `json:"visit_time"`
 	CreatedAt  time.Time      `json:"created_at"`
 	Waypoints  []struct {
 		Order int `json:"order"`
@@ -55,7 +55,7 @@ func (row markerRow) toDomain() domain.Marker {
 		ID: row.ID, TripID: row.TripID, CategoryID: row.CategoryID, CreatedBy: row.CreatedBy,
 		Name: row.Name, Latitude: row.Latitude, Longitude: row.Longitude,
 		Address: row.Address, Memo: row.Memo, Source: row.Source,
-		Detail: row.Detail, VisitTime: row.VisitTime, CreatedAt: row.CreatedAt,
+		Detail: row.Detail, VisitDays: []int{}, CreatedAt: row.CreatedAt,
 	}
 }
 
@@ -82,6 +82,76 @@ func (r *markerRepository) restReq(ctx context.Context, method, rawURL string, b
 		req.Header.Set("Prefer", prefer)
 	}
 	return r.httpClient.Do(req)
+}
+
+// fetchVisitDays는 markerIDs에 해당하는 marker_days를 일괄 조회한다.
+func (r *markerRepository) fetchVisitDays(ctx context.Context, token string, markerIDs []string) (map[string][]int, error) {
+	result := make(map[string][]int, len(markerIDs))
+	for _, id := range markerIDs {
+		result[id] = []int{}
+	}
+	if len(markerIDs) == 0 {
+		return result, nil
+	}
+
+	params := url.Values{}
+	params.Set("marker_id", "in.("+strings.Join(markerIDs, ",")+")")
+	params.Set("select", "marker_id,day_index")
+	params.Set("order", "day_index.asc")
+
+	resp, err := r.restReq(ctx, http.MethodGet, r.supabaseURL+"/rest/v1/marker_days?"+params.Encode(), nil, token, "")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetchVisitDays: status %d", resp.StatusCode)
+	}
+
+	var rows []struct {
+		MarkerID string `json:"marker_id"`
+		DayIndex int    `json:"day_index"`
+	}
+	if err := json.Unmarshal(b, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.MarkerID] = append(result[row.MarkerID], row.DayIndex)
+	}
+	return result, nil
+}
+
+// setMarkerDays는 마커의 marker_days를 전부 삭제 후 days로 재삽입한다.
+func (r *markerRepository) setMarkerDays(ctx context.Context, token, markerID string, days []int) error {
+	delURL := fmt.Sprintf("%s/rest/v1/marker_days?marker_id=eq.%s", r.supabaseURL, markerID)
+	resp, err := r.restReq(ctx, http.MethodDelete, delURL, nil, token, "return=minimal")
+	if err != nil {
+		return err
+	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("deleteMarkerDays: status %d body %s", resp.StatusCode, b)
+	}
+
+	for _, day := range days {
+		body := map[string]any{"marker_id": markerID, "day_index": day}
+		resp, err := r.restReq(ctx, http.MethodPost, r.supabaseURL+"/rest/v1/marker_days", body, token, "return=minimal")
+		if err != nil {
+			return err
+		}
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+			return fmt.Errorf("insertMarkerDay: status %d body %s", resp.StatusCode, b)
+		}
+	}
+	return nil
 }
 
 func (r *markerRepository) GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]domain.Marker, error) {
@@ -137,6 +207,20 @@ func (r *markerRepository) GetMarkers(ctx context.Context, token, tripID string,
 	for i, row := range rows {
 		markers[i] = row.toDomain()
 	}
+
+	if len(markers) > 0 {
+		ids := make([]string, len(markers))
+		for i, m := range markers {
+			ids[i] = m.ID
+		}
+		daysMap, err := r.fetchVisitDays(ctx, token, ids)
+		if err != nil {
+			return nil, err
+		}
+		for i := range markers {
+			markers[i].VisitDays = daysMap[markers[i].ID]
+		}
+	}
 	return markers, nil
 }
 
@@ -169,6 +253,12 @@ func (r *markerRepository) GetMarker(ctx context.Context, token, tripID, markerI
 		return nil, domain.ErrNotFound
 	}
 	m := rows[0].toDomain()
+
+	daysMap, err := r.fetchVisitDays(ctx, token, []string{markerID})
+	if err != nil {
+		return nil, err
+	}
+	m.VisitDays = daysMap[markerID]
 	return &m, nil
 }
 
@@ -208,15 +298,17 @@ func (r *markerRepository) CreateMarker(ctx context.Context, token, tripID, user
 		return nil, fmt.Errorf("createMarker: status %d body %s", resp.StatusCode, b)
 	}
 
-	marker, err := r.GetMarker(ctx, token, tripID, markerID)
-	if err != nil {
+	if err := r.addWaypoint(ctx, token, tripID, markerID); err != nil {
 		return nil, err
 	}
 
-	if err := r.addWaypoint(ctx, token, tripID, marker.ID); err != nil {
-		return nil, err
+	if len(input.VisitDays) > 0 {
+		if err := r.setMarkerDays(ctx, token, markerID, input.VisitDays); err != nil {
+			return nil, err
+		}
 	}
-	return marker, nil
+
+	return r.GetMarker(ctx, token, tripID, markerID)
 }
 
 func (r *markerRepository) addWaypoint(ctx context.Context, token, tripID, markerID string) error {
@@ -298,26 +390,36 @@ func (r *markerRepository) UpdateMarker(ctx context.Context, token, tripID, mark
 	if input.Address != nil {
 		body["address"] = *input.Address
 	}
-	if len(body) == 0 {
+
+	if len(body) == 0 && input.VisitDays == nil {
 		return r.GetMarker(ctx, token, tripID, markerID)
 	}
 
-	params := url.Values{}
-	params.Set("id", "eq."+markerID)
-	params.Set("trip_id", "eq."+tripID)
+	if len(body) > 0 {
+		params := url.Values{}
+		params.Set("id", "eq."+markerID)
+		params.Set("trip_id", "eq."+tripID)
 
-	resp, err := r.restReq(ctx, http.MethodPatch, r.supabaseURL+"/rest/v1/markers?"+params.Encode(), body, token, "return=minimal")
-	if err != nil {
-		return nil, err
+		resp, err := r.restReq(ctx, http.MethodPatch, r.supabaseURL+"/rest/v1/markers?"+params.Encode(), body, token, "return=minimal")
+		if err != nil {
+			return nil, err
+		}
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+			return nil, domain.ErrNotFound
+		}
+		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("updateMarker: status %d body %s", resp.StatusCode, b)
+		}
 	}
-	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
-		return nil, domain.ErrNotFound
+
+	if input.VisitDays != nil {
+		if err := r.setMarkerDays(ctx, token, markerID, *input.VisitDays); err != nil {
+			return nil, err
+		}
 	}
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("updateMarker: status %d body %s", resp.StatusCode, b)
-	}
+
 	return r.GetMarker(ctx, token, tripID, markerID)
 }
 

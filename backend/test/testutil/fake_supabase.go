@@ -28,9 +28,10 @@ type FakeSupabase struct {
 	DeleteError int
 
 	// Markers
-	Markers   []domain.Marker
-	Routes    []fakeRoute
-	Waypoints []fakeWaypoint
+	Markers    []domain.Marker
+	Routes     []fakeRoute
+	Waypoints  []fakeWaypoint
+	MarkerDays []FakeMarkerDay
 }
 
 type fakeRoute struct {
@@ -42,6 +43,11 @@ type fakeWaypoint struct {
 	RouteID  string
 	MarkerID string
 	Order    int
+}
+
+type FakeMarkerDay struct {
+	MarkerID string
+	DayIndex int
 }
 
 func NewFakeSupabase(t *testing.T) *FakeSupabase {
@@ -223,6 +229,63 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		json.NewEncoder(w).Encode(result)
 	})
 
+	mux.HandleFunc("/rest/v1/marker_days", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		q := r.URL.Query()
+
+		switch r.Method {
+		case http.MethodGet:
+			markerFilter := q.Get("marker_id")
+			idSet := map[string]bool{}
+			if strings.HasPrefix(markerFilter, "eq.") {
+				idSet[strings.TrimPrefix(markerFilter, "eq.")] = true
+			} else if strings.HasPrefix(markerFilter, "in.(") {
+				inner := strings.TrimSuffix(strings.TrimPrefix(markerFilter, "in.("), ")")
+				for _, id := range strings.Split(inner, ",") {
+					idSet[id] = true
+				}
+			}
+			type row struct {
+				MarkerID string `json:"marker_id"`
+				DayIndex int    `json:"day_index"`
+			}
+			var result []row
+			for _, d := range fs.MarkerDays {
+				if len(idSet) == 0 || idSet[d.MarkerID] {
+					result = append(result, row{MarkerID: d.MarkerID, DayIndex: d.DayIndex})
+				}
+			}
+			if result == nil {
+				result = []row{}
+			}
+			json.NewEncoder(w).Encode(result)
+
+		case http.MethodPost:
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			d := FakeMarkerDay{}
+			if v, ok := body["marker_id"].(string); ok {
+				d.MarkerID = v
+			}
+			if v, ok := body["day_index"].(float64); ok {
+				d.DayIndex = int(v)
+			}
+			fs.MarkerDays = append(fs.MarkerDays, d)
+			w.WriteHeader(http.StatusCreated)
+
+		case http.MethodDelete:
+			markerID := strings.TrimPrefix(q.Get("marker_id"), "eq.")
+			var remaining []FakeMarkerDay
+			for _, d := range fs.MarkerDays {
+				if d.MarkerID != markerID {
+					remaining = append(remaining, d)
+				}
+			}
+			fs.MarkerDays = remaining
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
+
 	mux.HandleFunc("/rest/v1/routes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		tripFilter := strings.TrimPrefix(r.URL.Query().Get("trip_id"), "eq.")
@@ -338,7 +401,7 @@ func tripFromBody(body map[string]any) domain.Trip {
 }
 
 func markerFromBody(body map[string]any) domain.Marker {
-	m := domain.Marker{Detail: map[string]any{}}
+	m := domain.Marker{Detail: map[string]any{}, VisitDays: []int{}}
 	if v, ok := body["id"].(string); ok {
 		m.ID = v
 	}
@@ -363,7 +426,6 @@ func markerFromBody(body map[string]any) domain.Marker {
 		m.CategoryID = &s
 	}
 	if loc, ok := body["location"].(string); ok {
-		// "POINT(lng lat)" 파싱
 		var lng, lat float64
 		fmt.Sscanf(loc, "POINT(%f %f)", &lng, &lat)
 		m.Longitude = lng
