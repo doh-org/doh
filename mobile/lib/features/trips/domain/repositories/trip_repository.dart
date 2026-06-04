@@ -8,12 +8,15 @@ abstract interface class TripRepository {
     String? description,
     DateTime? startDate,
     DateTime? endDate,
+    String? coverColor,
   });
-  Future<Trip> updateTrip(String tripId, {
+  Future<Trip> updateTrip(
+    String tripId, {
     String? title,
     String? description,
     DateTime? startDate,
     DateTime? endDate,
+    String? coverColor,
   });
   Future<void> deleteTrip(String tripId);
 }

@@ -6,11 +6,11 @@ part of 'map_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$currentLocationHash() => r'f2141b7aabafe6c62484194f19c37fdcfe63bd16';
+String _$currentLocationHash() => r'd3f889d4f13889c5f0e93b44a5c107be53cf5b53';
 
 /// See also [currentLocation].
 @ProviderFor(currentLocation)
-final currentLocationProvider = AutoDisposeFutureProvider<LatLng>.internal(
+final currentLocationProvider = AutoDisposeFutureProvider<NLatLng>.internal(
   currentLocation,
   name: r'currentLocationProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,13 +22,13 @@ final currentLocationProvider = AutoDisposeFutureProvider<LatLng>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef CurrentLocationRef = AutoDisposeFutureProviderRef<LatLng>;
-String _$mapControllerHash() => r'90a9a08051508d91484d022948a61f1fdf1c104f';
+typedef CurrentLocationRef = AutoDisposeFutureProviderRef<NLatLng>;
+String _$mapControllerHash() => r'173239458611ee8b78fe9dfadee921ba8bcd027e';
 
 /// See also [MapController].
 @ProviderFor(MapController)
 final mapControllerProvider =
-    AutoDisposeNotifierProvider<MapController, GoogleMapController?>.internal(
+    AutoDisposeNotifierProvider<MapController, NaverMapController?>.internal(
   MapController.new,
   name: r'mapControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -38,6 +38,6 @@ final mapControllerProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$MapController = AutoDisposeNotifier<GoogleMapController?>;
+typedef _$MapController = AutoDisposeNotifier<NaverMapController?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

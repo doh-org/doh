@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
@@ -12,12 +12,15 @@ import '../models/marker_model.dart';
 part 'marker_repository_impl.g.dart';
 
 @riverpod
-MarkerRepository markerRepository(Ref ref) =>
-    MarkerRepositoryImpl(ref.watch(markerRemoteDatasourceProvider));
+MarkerRepository markerRepository(Ref ref) => MarkerRepositoryImpl(
+      ref.watch(markerRemoteDatasourceProvider),
+      ref.watch(authNotifierProvider).valueOrNull?.id ?? '',
+    );
 
 class MarkerRepositoryImpl implements MarkerRepository {
-  const MarkerRepositoryImpl(this._datasource);
+  const MarkerRepositoryImpl(this._datasource, this._userId);
   final MarkerRemoteDatasource _datasource;
+  final String _userId;
 
   @override
   Future<List<TripMarker>> getMarkers(String tripId) async {
@@ -36,10 +39,9 @@ class MarkerRepositoryImpl implements MarkerRepository {
     String? memo,
     required MarkerSource source,
   }) async {
-    final createdBy = Supabase.instance.client.auth.currentUser!.id;
     final model = await _datasource.createMarker({
       'trip_id': tripId,
-      'created_by': createdBy,
+      'created_by': _userId,
       'name': name,
       'latitude': latitude,
       'longitude': longitude,

@@ -21,8 +21,7 @@ class MemberRemoteDatasource {
   }
 
   Future<Map<String, dynamic>> inviteMember(
-      String tripId, String email) async {
-    final invitedBy = _supabase.auth.currentUser!.id;
+      String tripId, String email, String invitedBy) async {
     final data = await _supabase
         .from('trip_invitations')
         .insert({

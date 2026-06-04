@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
@@ -11,21 +10,31 @@ import 'category_chip.dart';
 class MarkerBottomSheet extends ConsumerStatefulWidget {
   const MarkerBottomSheet({
     required this.tripId,
-    required this.latLng,
+    required this.latitude,
+    required this.longitude,
+    this.initialName,
     super.key,
   });
 
   final String tripId;
-  final LatLng latLng;
+  final double latitude;
+  final double longitude;
+  final String? initialName;
 
   @override
   ConsumerState<MarkerBottomSheet> createState() => _MarkerBottomSheetState();
 }
 
 class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
-  final _nameController = TextEditingController();
+  late final TextEditingController _nameController;
   String? _selectedCategoryId;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+  }
 
   @override
   void dispose() {
@@ -41,12 +50,12 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
       await ref.read(markerRepositoryProvider).createMarker(
             tripId: widget.tripId,
             name: _nameController.text.trim(),
-            latitude: widget.latLng.latitude,
-            longitude: widget.latLng.longitude,
+            latitude: widget.latitude,
+            longitude: widget.longitude,
             categoryId: _selectedCategoryId,
             source: MarkerSource.longpress,
           );
-      ref.invalidate(markersProvider(widget.tripId));
+      ref.invalidate(markerEntitiesProvider(widget.tripId));
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _loading = false);
