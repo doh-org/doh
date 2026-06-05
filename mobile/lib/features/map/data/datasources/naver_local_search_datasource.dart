@@ -16,8 +16,8 @@ class NaverLocalSearchDatasource {
     _dio = Dio(BaseOptions(
       baseUrl: 'https://openapi.naver.com',
       headers: {
-        'X-Naver-Client-Id': AppConfig.naverMapClientId,
-        'X-Naver-Client-Secret': AppConfig.naverMapClientSecret,
+        'X-Naver-Client-Id': AppConfig.naverSearchClientId,
+        'X-Naver-Client-Secret': AppConfig.naverSearchClientSecret,
       },
     ));
   }

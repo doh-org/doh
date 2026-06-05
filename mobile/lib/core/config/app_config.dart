@@ -7,4 +7,8 @@ class AppConfig {
   static const naverMapClientId = String.fromEnvironment('NAVER_MAP_CLIENT_ID');
   static const naverMapClientSecret =
       String.fromEnvironment('NAVER_MAP_CLIENT_SECRET');
+  static const naverSearchClientId =
+      String.fromEnvironment('NAVER_SEARCH_CLIENT_ID');
+  static const naverSearchClientSecret =
+      String.fromEnvironment('NAVER_SEARCH_CLIENT_SECRET');
 }
