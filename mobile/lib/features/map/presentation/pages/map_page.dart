@@ -7,8 +7,8 @@ import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../trips/domain/entities/trip.dart';
+import '../../domain/entities/naver_place.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
-import '../providers/map_provider.dart';
 import '../widgets/day_filter_bar.dart';
 import '../widgets/map_view.dart';
 import '../widgets/marker_detail_sheet.dart';
@@ -27,6 +27,9 @@ class MapPage extends ConsumerStatefulWidget {
 class _MapPageState extends ConsumerState<MapPage> {
   late String _tripId;
   int _selectedDay = 0;
+  String? _selectedMarkerId;
+  NLatLng? _focusTarget;
+  NLatLng? _pendingLocation;
   final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
 
@@ -47,7 +50,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   List<TripMarker> _filterByDay(List<TripMarker> markers, int day) {
-    if (day == 0) return markers;
+    if (day == 0) return markers.where((m) => m.visitDays.isEmpty).toList();
     return markers.where((m) => m.visitDays.contains(day)).toList();
   }
 
@@ -78,6 +81,17 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   Future<void> _showDetailSheet(
       TripMarker marker, List<TripMarker> allMarkers) async {
+    setState(() {
+      _selectedMarkerId = marker.id;
+      _focusTarget = NLatLng(marker.latitude, marker.longitude);
+    });
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        _sheetMin,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -94,6 +108,52 @@ class _MapPageState extends ConsumerState<MapPage> {
         ),
       ),
     );
+    if (mounted && _sheetController.isAttached) {
+      _sheetController.animateTo(
+        _sheetInitial,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _showAddSheetFromSearch(NaverPlace place, Trip? trip) async {
+    final NLatLng coord = NLatLng(place.latitude, place.longitude);
+    setState(() {
+      _focusTarget = coord;
+      _pendingLocation = coord;
+    });
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        _sheetMin,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PlaceAddSheet(
+        tripId: _tripId,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        dayCount: _dayCount(trip),
+        naverPlace: place,
+        source: MarkerSource.search,
+      ),
+    );
+    if (mounted) {
+      ref.invalidate(markerEntitiesProvider(_tripId));
+      setState(() => _pendingLocation = null);
+      if (_sheetController.isAttached) {
+        _sheetController.animateTo(
+          _sheetInitial,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
   }
 
   Future<void> _showAddSheet(NLatLng coord, Trip? trip) async {
@@ -149,7 +209,6 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final locationAsync = ref.watch(currentLocationProvider);
     final markersAsync = ref.watch(markerEntitiesProvider(_tripId));
     final categoriesAsync = ref.watch(categoriesProvider(_tripId));
     final tripAsync = ref.watch(tripDetailNotifierProvider(_tripId));
@@ -163,21 +222,20 @@ class _MapPageState extends ConsumerState<MapPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
-      body: locationAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (location) => Stack(
-          children: [
-            // 지도
-            Positioned.fill(
-              child: MapView(
-                initialLocation: location,
-                tripId: _tripId,
-                onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-                onLongTap: (coord) => _showAddSheet(coord, trip),
-                bottomPeekFraction: _sheetInitial,
-              ),
+      body: Stack(
+        children: [
+          // 지도
+          Positioned.fill(
+            child: MapView(
+              initialLocation: const NLatLng(37.5665, 126.9780),
+              tripId: _tripId,
+              onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+              onLongTap: (coord) => _showAddSheet(coord, trip),
+              bottomPeekFraction: _sheetInitial,
+              selectedMarkerId: _selectedMarkerId,
+              focusTarget: _focusTarget,
+              pendingLocation: _pendingLocation,
+            ),
             ),
 
             // 뒤로가기 / 더보기
@@ -203,13 +261,25 @@ class _MapPageState extends ConsumerState<MapPage> {
                 padding:
                     const EdgeInsets.only(top: 52, left: 15, right: 15),
                 child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => SearchPage(
-                          tripId: _tripId, trip: trip),
-                    ),
-                  ),
+                  onTap: () async {
+                    final Object? result = await Navigator.push<Object?>(
+                      context,
+                      MaterialPageRoute<Object?>(
+                        builder: (_) =>
+                            SearchPage(tripId: _tripId, trip: trip),
+                      ),
+                    );
+                    if (!mounted) return;
+                    if (result is TripMarker) {
+                      final List<TripMarker> latest = ref
+                              .read(markerEntitiesProvider(_tripId))
+                              .valueOrNull ??
+                          [];
+                      _showDetailSheet(result, latest);
+                    } else if (result is NaverPlace) {
+                      await _showAddSheetFromSearch(result, trip);
+                    }
+                  },
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -328,7 +398,6 @@ class _MapPageState extends ConsumerState<MapPage> {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -377,7 +446,7 @@ class _PlaceListSheet extends StatelessWidget {
 
   IconData _categoryIcon(String? name) => switch (name) {
         '카페' => Icons.coffee,
-        '음식' || '식당' => Icons.restaurant,
+        '식당' => Icons.restaurant,
         '관광' => Icons.photo_camera_outlined,
         '숙소' => Icons.hotel_outlined,
         _ => Icons.place_outlined,
@@ -741,9 +810,10 @@ class _TripSelectorSheet extends StatelessWidget {
                   child: Container(
                     height: 80,
                     decoration: BoxDecoration(
-                      color: trips[i].id == currentTripId
-                          ? const Color(0xFFFEC181)
-                          : Colors.white,
+                      color: Colors.white,
+                      border: trips[i].id == currentTripId
+                          ? Border.all(color: const Color(0xFFFE8505))
+                          : null,
                       borderRadius: BorderRadius.circular(17),
                       boxShadow: const [
                         BoxShadow(
@@ -793,9 +863,7 @@ class _TripSelectorSheet extends StatelessWidget {
                                   fontFamily: 'Pretendard',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: trips[i].id == currentTripId
-                                      ? Colors.white
-                                      : const Color(0xFFB2B2B2),
+                                  color: const Color(0xFFB2B2B2),
                                 ),
                               ),
                             ],
