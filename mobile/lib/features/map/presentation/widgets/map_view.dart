@@ -104,8 +104,8 @@ class _MapViewState extends ConsumerState<MapView> {
       ...markers.map((TripMarker m) async {
       final String assetPath = _markerAsset(m, categories);
       final Size natural = await _assetSize(assetPath);
-      const double _redH = 44, _defaultH = 40;
-      final double targetH = assetPath == 'assets/marker/red-marker.png' ? _redH : _defaultH;
+      const double redH = 44, defaultH = 40;
+      final double targetH = assetPath == 'assets/marker/red-marker.png' ? redH : defaultH;
       final Size size = Size(natural.width * targetH / natural.height, targetH);
       final NOverlayImage icon = NOverlayImage.fromAssetImage(assetPath);
       final NMarker nMarker = NMarker(
@@ -138,7 +138,7 @@ class _MapViewState extends ConsumerState<MapView> {
           id: '__pending__',
           position: widget.pendingLocation!,
         )
-          ..setIcon(NOverlayImage.fromAssetImage(redAsset))
+          ..setIcon(const NOverlayImage.fromAssetImage(redAsset))
           ..setSize(size);
         await ctrl.addOverlay(pending);
       }(),

@@ -87,7 +87,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     if (ok == true && mounted) {
       await ref.read(markerRepositoryProvider).deleteMarker(widget.tripId, _marker.id);
       ref.invalidate(markerEntitiesProvider(widget.tripId));
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -180,7 +180,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                       color: category != null
                           ? Color(int.parse(
                                   category.color.replaceFirst('#', '0xFF')))
-                              .withOpacity(0.5)
+                              .withValues(alpha: 0.5)
                           : const Color(0x808A847B),
                     ),
                     if (dayCount > 0) ...[

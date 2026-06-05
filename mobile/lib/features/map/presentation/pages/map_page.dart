@@ -535,7 +535,7 @@ class _PlaceListSheet extends StatelessWidget {
                                   ? tripTitle
                                   : dayCount == 1
                                       ? '$tripTitle  |  당일'
-                                      : '$tripTitle  |  ${dayCount - 1}박 ${dayCount}일',
+                                      : '$tripTitle  |  ${dayCount - 1}박 $dayCount일',
                               style: const TextStyle(
                                 fontFamily: 'Pretendard',
                                 fontSize: 12,
@@ -859,11 +859,11 @@ class _TripSelectorSheet extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 _dateRange(trips[i]),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Pretendard',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: const Color(0xFFB2B2B2),
+                                  color: Color(0xFFB2B2B2),
                                 ),
                               ),
                             ],
