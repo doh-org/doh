@@ -1,7 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../providers/map_provider.dart';
@@ -13,6 +17,9 @@ class MapView extends ConsumerStatefulWidget {
     this.onMarkerTap,
     this.onLongTap,
     this.bottomPeekFraction = 0.0,
+    this.selectedMarkerId,
+    this.focusTarget,
+    this.pendingLocation,
     super.key,
   });
 
@@ -21,6 +28,9 @@ class MapView extends ConsumerStatefulWidget {
   final void Function(TripMarker)? onMarkerTap;
   final void Function(NLatLng)? onLongTap;
   final double bottomPeekFraction;
+  final String? selectedMarkerId;
+  final NLatLng? focusTarget;
+  final NLatLng? pendingLocation;
 
   @override
   ConsumerState<MapView> createState() => _MapViewState();
@@ -28,54 +38,82 @@ class MapView extends ConsumerStatefulWidget {
 
 class _MapViewState extends ConsumerState<MapView> {
   NaverMapController? _controller;
+  String? _selectedMarkerId;
+  List<TripMarker> _lastMarkers = [];
+  List<Category> _lastCategories = [];
+  final Map<String, Size> _assetSizeCache = {};
 
-  Color _categoryColor(TripMarker m) {
-    final cat = (m.detail['naver_category'] as String? ?? '').toLowerCase();
-    if (cat.contains('카페') || cat.contains('cafe')) {
-      return const Color(0x80FE8505);
+  @override
+  void didUpdateWidget(MapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedMarkerId != widget.selectedMarkerId &&
+        widget.selectedMarkerId != _selectedMarkerId) {
+      _selectedMarkerId = widget.selectedMarkerId;
+      _updateOverlays(_lastMarkers, _lastCategories);
     }
-    if (cat.contains('식당') || cat.contains('음식') || cat.contains('한식') ||
-        cat.contains('일식') || cat.contains('양식')) {
-      return const Color(0x802A6FDB);
+    if (oldWidget.focusTarget != widget.focusTarget &&
+        widget.focusTarget != null) {
+      _controller?.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(target: widget.focusTarget!, zoom: 15),
+      );
     }
-    if (cat.contains('관광') || cat.contains('명소')) {
-      return const Color(0x804CAF50);
+    if (oldWidget.pendingLocation != widget.pendingLocation) {
+      _updateOverlays(_lastMarkers, _lastCategories);
     }
-    if (cat.contains('숙소') || cat.contains('호텔') || cat.contains('펜션')) {
-      return const Color(0x809C27B0);
-    }
-    return const Color(0x808A847B);
   }
 
-  Future<NOverlayImage> _markerIcon(TripMarker m) async {
-    final color = _categoryColor(m);
-    return NOverlayImage.fromWidget(
-      widget: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-        ),
-        child: const Icon(Icons.place, size: 18, color: Colors.white),
-      ),
-      size: const Size(36, 36),
-      context: context,
+  Future<Size> _assetSize(String assetPath) async {
+    if (_assetSizeCache.containsKey(assetPath)) {
+      return _assetSizeCache[assetPath]!;
+    }
+    final ByteData data = await rootBundle.load(assetPath);
+    final ui.Codec codec =
+        await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final ui.FrameInfo frame = await codec.getNextFrame();
+    final Size size = Size(
+      frame.image.width.toDouble(),
+      frame.image.height.toDouble(),
     );
+    frame.image.dispose();
+    _assetSizeCache[assetPath] = size;
+    return size;
   }
 
-  Future<void> _updateOverlays(List<TripMarker> markers) async {
-    final ctrl = _controller;
+  String _markerAsset(TripMarker m, List<Category> categories) {
+    if (m.id == _selectedMarkerId) return 'assets/marker/red-marker.png';
+    final Iterable<Category> matches =
+        categories.where((Category c) => c.id == m.categoryId);
+    final String? catName = matches.isEmpty ? null : matches.first.name;
+    return switch (catName) {
+      '카페' => 'assets/marker/yellow-marker.png',
+      '숙소' => 'assets/marker/blue-marker.png',
+      '관광' => 'assets/marker/green-marker.png',
+      '식당' => 'assets/marker/orange-marker.png',
+      _ => 'assets/marker/gray-marker.png',
+    };
+  }
+
+  Future<void> _updateOverlays(
+      List<TripMarker> markers, List<Category> categories) async {
+    final NaverMapController? ctrl = _controller;
     if (ctrl == null) return;
+    _lastMarkers = markers;
+    _lastCategories = categories;
     ctrl.clearOverlays();
-    await Future.wait(markers.map((m) async {
-      final icon = await _markerIcon(m);
-      final nMarker = NMarker(
+    final List<Future<void>> futures = [
+      ...markers.map((TripMarker m) async {
+      final String assetPath = _markerAsset(m, categories);
+      final Size natural = await _assetSize(assetPath);
+      const double _redH = 44, _defaultH = 40;
+      final double targetH = assetPath == 'assets/marker/red-marker.png' ? _redH : _defaultH;
+      final Size size = Size(natural.width * targetH / natural.height, targetH);
+      final NOverlayImage icon = NOverlayImage.fromAssetImage(assetPath);
+      final NMarker nMarker = NMarker(
         id: m.id,
         position: NLatLng(m.latitude, m.longitude),
       )
         ..setIcon(icon)
+        ..setSize(size)
         ..setCaption(NOverlayCaption(
           text: m.name,
           textSize: 11,
@@ -83,39 +121,65 @@ class _MapViewState extends ConsumerState<MapView> {
           haloColor: Colors.white,
         ));
       nMarker.setOnTapListener((_) {
+        setState(() => _selectedMarkerId = m.id);
+        _updateOverlays(_lastMarkers, _lastCategories);
         widget.onMarkerTap?.call(m);
         return true;
       });
       await ctrl.addOverlay(nMarker);
-    }));
+    }),
+    if (widget.pendingLocation != null)
+      () async {
+        const String redAsset = 'assets/marker/red-marker.png';
+        final Size natural = await _assetSize(redAsset);
+        const double targetH = 44;
+        final Size size = Size(natural.width * targetH / natural.height, targetH);
+        final NMarker pending = NMarker(
+          id: '__pending__',
+          position: widget.pendingLocation!,
+        )
+          ..setIcon(NOverlayImage.fromAssetImage(redAsset))
+          ..setSize(size);
+        await ctrl.addOverlay(pending);
+      }(),
+    ];
+    await Future.wait(futures);
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(markerEntitiesProvider(widget.tripId), (_, next) {
-      _updateOverlays(next.valueOrNull ?? []);
+    ref.listen(markerEntitiesProvider(widget.tripId),
+        (_, AsyncValue<List<TripMarker>> next) {
+      _updateOverlays(next.valueOrNull ?? [], _lastCategories);
+    });
+    ref.listen(categoriesProvider(widget.tripId),
+        (_, AsyncValue<List<Category>> next) {
+      _updateOverlays(_lastMarkers, next.valueOrNull ?? []);
     });
 
-    final screenHeight = MediaQuery.sizeOf(context).height;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
     return NaverMap(
       options: NaverMapViewOptions(
         initialCameraPosition: NCameraPosition(
           target: widget.initialLocation,
-          zoom: 14,
+          zoom: 11,
         ),
         locationButtonEnable: true,
         contentPadding: EdgeInsets.only(
           bottom: screenHeight * widget.bottomPeekFraction,
         ),
       ),
-      onMapReady: (controller) async {
+      onMapReady: (NaverMapController controller) async {
         _controller = controller;
         ref.read(mapControllerProvider.notifier).setController(controller);
-        final markers =
+        final List<TripMarker> markers =
             ref.read(markerEntitiesProvider(widget.tripId)).valueOrNull ?? [];
-        await _updateOverlays(markers);
+        final List<Category> categories =
+            ref.read(categoriesProvider(widget.tripId)).valueOrNull ?? [];
+        await _updateOverlays(markers, categories);
       },
-      onMapLongTapped: (point, coord) => widget.onLongTap?.call(coord),
+      onMapLongTapped: (NPoint point, NLatLng coord) =>
+          widget.onLongTap?.call(coord),
       onMapTapped: (_, __) {},
     );
   }
