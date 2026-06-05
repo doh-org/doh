@@ -273,34 +273,20 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
             ),
             const SizedBox(height: 16),
 
-            // 상세정보 (주소, 영업시간, 연락처)
+            // 상세정보 (주소, 연락처)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Column(
                 children: [
                   _InfoRow(icon: Icons.location_on_outlined, label: '주소', value: address),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _InfoRow(
-                          icon: Icons.access_time,
-                          label: '영업시간',
-                          value: '정보 없음',
-                        ),
-                      ),
-                      if (phone != null) ...[
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: _InfoRow(
-                            icon: Icons.phone_outlined,
-                            label: '연락처',
-                            value: phone,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  if (phone != null) ...[
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      icon: Icons.phone_outlined,
+                      label: '연락처',
+                      value: phone,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -315,9 +301,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               onDestinationChanged: (id) => setState(() => _destinationId = id),
               onSwap: () => setState(() {
                 final tmp = _departureId;
-                _departureId = _destinationId == widget.marker.id
-                    ? null
-                    : _destinationId;
+                _departureId = _destinationId;
                 _destinationId = tmp ?? widget.marker.id;
               }),
             ),
@@ -514,7 +498,7 @@ class _RouteSection extends StatelessWidget {
               _RouteTile(
                 label: '출발지',
                 name: _name(departureId),
-                dotColor: const Color(0xFF4CAF50),
+                dotColor: const Color(0xFF2A6FDB),
                 onTap: () => _showPicker(context, true),
               ),
               const SizedBox(height: 10),
@@ -526,14 +510,36 @@ class _RouteSection extends StatelessWidget {
               ),
             ],
           ),
+          // 스위치 버튼: 두 타일 위에 겹쳐서 배치 (Figma: left=270 within 360px screen → right=0, w=75)
           Positioned(
             right: 0,
             top: 0,
             bottom: 0,
-            child: GestureDetector(
-              onTap: onSwap,
-              child: const Icon(Icons.swap_vert,
-                  size: 20, color: Color(0xFF1F2125)),
+            width: 75,
+            child: Center(
+              child: GestureDetector(
+                onTap: onSwap,
+                child: Container(
+                  width: 35,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x29000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.swap_vert,
+                    size: 20,
+                    color: Color(0xFF1F2125),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -542,32 +548,16 @@ class _RouteSection extends StatelessWidget {
   }
 
   void _showPicker(BuildContext ctx, bool isDeparture) {
-    final options = <Widget>[
-      if (isDeparture)
-        ListTile(
-          title: const Text('현위치'),
-          onTap: () {
-            Navigator.pop(ctx);
-            onDepartureChanged(null);
-          },
-        ),
-      ...allMarkers.map(
-        (m) => ListTile(
-          title: Text(m.name),
-          onTap: () {
-            Navigator.pop(ctx);
-            if (isDeparture) {
-              onDepartureChanged(m.id);
-            } else {
-              onDestinationChanged(m.id);
-            }
-          },
-        ),
-      ),
-    ];
     showModalBottomSheet<void>(
       context: ctx,
-      builder: (_) => ListView(shrinkWrap: true, children: options),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _RoutePickerSheet(
+        allMarkers: allMarkers,
+        isDeparture: isDeparture,
+        onDepartureChanged: onDepartureChanged,
+        onDestinationChanged: onDestinationChanged,
+      ),
     );
   }
 }
@@ -621,17 +611,19 @@ class _RouteTile extends StatelessWidget {
         height: 45,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F8),
-          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFFF1F2F4),
+          borderRadius: BorderRadius.circular(17),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.only(left: 15, right: 65, top: 5, bottom: 5),
         child: Row(
           children: [
             Container(
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                  color: dotColor, borderRadius: BorderRadius.circular(5)),
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -652,7 +644,7 @@ class _RouteTile extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1F2125),
                     ),
@@ -662,7 +654,206 @@ class _RouteTile extends StatelessWidget {
                 ],
               ),
             ),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              size: 20,
+              color: Color(0xFF7E7E7E),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutePickerSheet extends StatelessWidget {
+  const _RoutePickerSheet({
+    required this.allMarkers,
+    required this.isDeparture,
+    required this.onDepartureChanged,
+    required this.onDestinationChanged,
+  });
+
+  final List<TripMarker> allMarkers;
+  final bool isDeparture;
+  final ValueChanged<String?> onDepartureChanged;
+  final ValueChanged<String> onDestinationChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<int?, List<TripMarker>> grouped = {};
+    for (final m in allMarkers) {
+      if (m.visitDays.isEmpty) {
+        grouped.putIfAbsent(null, () => []).add(m);
+      } else {
+        for (final d in m.visitDays) {
+          grouped.putIfAbsent(d, () => []).add(m);
+        }
+      }
+    }
+    final List<int> days = grouped.keys.whereType<int>().toList()..sort();
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF1F2F4),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(17)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 10,
+              spreadRadius: 10,
+              offset: Offset(4, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7E7E7E),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isDeparture)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                        child: _PickerItem(
+                          name: '현위치',
+                          onTap: () {
+                            Navigator.pop(context);
+                            onDepartureChanged(null);
+                          },
+                        ),
+                      ),
+                    for (final day in days) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(left: 15, top: 10, bottom: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Day ',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7E7E7E),
+                              ),
+                            ),
+                            Text(
+                              '$day',
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFFE8505),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      for (final m in grouped[day]!)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                          child: _PickerItem(
+                            name: m.name,
+                            onTap: () {
+                              Navigator.pop(context);
+                              if (isDeparture) {
+                                onDepartureChanged(m.id);
+                              } else {
+                                onDestinationChanged(m.id);
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                    if (grouped.containsKey(null)) ...[
+                      const Padding(
+                        padding: EdgeInsets.only(left: 15, top: 10, bottom: 2),
+                        child: Text(
+                          '미정',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF7E7E7E),
+                          ),
+                        ),
+                      ),
+                      for (final m in grouped[null]!)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                          child: _PickerItem(
+                            name: m.name,
+                            onTap: () {
+                              Navigator.pop(context);
+                              if (isDeparture) {
+                                onDepartureChanged(m.id);
+                              } else {
+                                onDestinationChanged(m.id);
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerItem extends StatelessWidget {
+  const _PickerItem({required this.name, required this.onTap});
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 45,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          name,
+          style: const TextStyle(
+            fontFamily: 'Pretendard',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F2125),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
