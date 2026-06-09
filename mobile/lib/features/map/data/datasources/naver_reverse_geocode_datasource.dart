@@ -23,6 +23,34 @@ class NaverReverseGeocodeDatasource {
 
   late final Dio _dio;
 
+  Future<({String? address, String? area})> reverseGeocodeDetails(
+      double lat, double lng) async {
+    try {
+      final Response<dynamic> r = await _dio.get<dynamic>(
+        '/map-reversegeocode/v2/gc',
+        queryParameters: {
+          'coords': '$lng,$lat',
+          'output': 'json',
+          'orders': 'roadaddr,addr',
+        },
+      );
+      final List<dynamic>? results =
+          (r.data as Map<String, dynamic>?)?['results'] as List<dynamic>?;
+      if (results == null || results.isEmpty) {
+        return (address: null, area: null);
+      }
+      final Map<String, dynamic> first = results.first as Map<String, dynamic>;
+      return (address: _parseAddress(first), area: _parseArea(first));
+    } catch (e) {
+      assert(() {
+        // ignore: avoid_print
+        print('[ReverseGeocode] failed: $e');
+        return true;
+      }());
+      return (address: null, area: null);
+    }
+  }
+
   Future<String?> reverseGeocode(double lat, double lng) async {
     try {
       final Response<dynamic> r = await _dio.get<dynamic>(
@@ -45,6 +73,18 @@ class NaverReverseGeocodeDatasource {
       }());
       return null;
     }
+  }
+
+  String? _parseArea(Map<String, dynamic> result) {
+    final Map<String, dynamic>? region =
+        result['region'] as Map<String, dynamic>?;
+    if (region == null) return null;
+    String a(String key) =>
+        (region[key] as Map<String, dynamic>?)?['name'] as String? ?? '';
+    final String a3 = a('area3');
+    if (a3.isNotEmpty) return a3;
+    final String a2 = a('area2');
+    return a2.isNotEmpty ? a2 : null;
   }
 
   String? _parseAddress(Map<String, dynamic> result) {
