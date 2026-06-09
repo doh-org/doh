@@ -15,11 +15,13 @@ class MapView extends ConsumerStatefulWidget {
   const MapView({
     required this.initialLocation,
     required this.tripId,
+    required this.markers,
     this.onMarkerTap,
     this.onLongTap,
     this.onSymbolTap,
     this.onCameraIdle,
     this.onSearchMarkerTap,
+    this.onMapTap,
     this.bottomPeekFraction = 0.0,
     this.selectedMarkerId,
     this.focusTarget,
@@ -31,11 +33,13 @@ class MapView extends ConsumerStatefulWidget {
 
   final NLatLng initialLocation;
   final String tripId;
+  final List<TripMarker> markers;
   final void Function(TripMarker)? onMarkerTap;
   final void Function(NLatLng)? onLongTap;
   final void Function(String name, NLatLng coord)? onSymbolTap;
   final void Function(NLatLng)? onCameraIdle;
   final void Function(NaverPlace)? onSearchMarkerTap;
+  final VoidCallback? onMapTap;
   final double bottomPeekFraction;
   final String? selectedMarkerId;
   final NLatLng? focusTarget;
@@ -67,6 +71,9 @@ class _MapViewState extends ConsumerState<MapView> {
       _controller?.updateCamera(
         NCameraUpdate.scrollAndZoomTo(target: widget.focusTarget!, zoom: 15),
       );
+    }
+    if (!identical(oldWidget.markers, widget.markers)) {
+      _updateOverlays(widget.markers, _lastCategories);
     }
     if (oldWidget.pendingLocation != widget.pendingLocation) {
       _updateOverlays(_lastMarkers, _lastCategories);
@@ -191,10 +198,6 @@ class _MapViewState extends ConsumerState<MapView> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(markerEntitiesProvider(widget.tripId),
-        (_, AsyncValue<List<TripMarker>> next) {
-      _updateOverlays(next.valueOrNull ?? [], _lastCategories);
-    });
     ref.listen(categoriesProvider(widget.tripId),
         (_, AsyncValue<List<Category>> next) {
       _updateOverlays(_lastMarkers, next.valueOrNull ?? []);
@@ -215,17 +218,21 @@ class _MapViewState extends ConsumerState<MapView> {
       onMapReady: (NaverMapController controller) async {
         _controller = controller;
         ref.read(mapControllerProvider.notifier).setController(controller);
-        final List<TripMarker> markers =
-            ref.read(markerEntitiesProvider(widget.tripId)).valueOrNull ?? [];
         final List<Category> categories =
             ref.read(categoriesProvider(widget.tripId)).valueOrNull ?? [];
-        await _updateOverlays(markers, categories);
+        await _updateOverlays(widget.markers, categories);
       },
       onMapLongTapped: (NPoint point, NLatLng coord) =>
           widget.onLongTap?.call(coord),
       onSymbolTapped: (NSymbolInfo info) =>
           widget.onSymbolTap?.call(info.caption, info.position),
-      onMapTapped: (_, __) {},
+      onMapTapped: (_, __) {
+        if (_selectedMarkerId != null) {
+          setState(() => _selectedMarkerId = null);
+          _updateOverlays(_lastMarkers, _lastCategories);
+        }
+        widget.onMapTap?.call();
+      },
       onCameraIdle: () async {
         if (widget.onCameraIdle == null) return;
         final NCameraPosition? pos = await _controller?.getCameraPosition();
