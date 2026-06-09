@@ -17,11 +17,14 @@ class MapView extends ConsumerStatefulWidget {
     required this.tripId,
     this.onMarkerTap,
     this.onLongTap,
+    this.onSymbolTap,
     this.onCameraIdle,
+    this.onSearchMarkerTap,
     this.bottomPeekFraction = 0.0,
     this.selectedMarkerId,
     this.focusTarget,
     this.pendingLocation,
+    this.pendingPlace,
     this.searchOverlays = const [],
     super.key,
   });
@@ -30,11 +33,14 @@ class MapView extends ConsumerStatefulWidget {
   final String tripId;
   final void Function(TripMarker)? onMarkerTap;
   final void Function(NLatLng)? onLongTap;
+  final void Function(String name, NLatLng coord)? onSymbolTap;
   final void Function(NLatLng)? onCameraIdle;
+  final void Function(NaverPlace)? onSearchMarkerTap;
   final double bottomPeekFraction;
   final String? selectedMarkerId;
   final NLatLng? focusTarget;
   final NLatLng? pendingLocation;
+  final NaverPlace? pendingPlace;
   final List<NaverPlace> searchOverlays;
 
   @override
@@ -148,6 +154,12 @@ class _MapViewState extends ConsumerState<MapView> {
         )
           ..setIcon(const NOverlayImage.fromAssetImage(redAsset))
           ..setSize(size);
+        if (widget.pendingPlace != null) {
+          pending.setOnTapListener((_) {
+            widget.onSearchMarkerTap?.call(widget.pendingPlace!);
+            return true;
+          });
+        }
         await ctrl.addOverlay(pending);
       }(),
     ...widget.searchOverlays.asMap().entries.map((MapEntry<int, NaverPlace> e) async {
@@ -166,7 +178,11 @@ class _MapViewState extends ConsumerState<MapView> {
           textSize: 11,
           color: const Color(0xFF1F2125),
           haloColor: Colors.white,
-        ));
+        ))
+        ..setOnTapListener((_) {
+          widget.onSearchMarkerTap?.call(e.value);
+          return true;
+        });
       await ctrl.addOverlay(marker);
     }),
     ];
@@ -207,6 +223,8 @@ class _MapViewState extends ConsumerState<MapView> {
       },
       onMapLongTapped: (NPoint point, NLatLng coord) =>
           widget.onLongTap?.call(coord),
+      onSymbolTapped: (NSymbolInfo info) =>
+          widget.onSymbolTap?.call(info.caption, info.position),
       onMapTapped: (_, __) {},
       onCameraIdle: () async {
         if (widget.onCameraIdle == null) return;
