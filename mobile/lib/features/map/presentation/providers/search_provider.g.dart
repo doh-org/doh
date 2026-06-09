@@ -7,7 +7,7 @@ part of 'search_provider.dart';
 // **************************************************************************
 
 String _$naverSearchNotifierHash() =>
-    r'4e8cc55220b35678d231350fc430a1bbd583d264';
+    r'3020b75dc7f552fc67ba806494b52f51f44cec7f';
 
 /// See also [NaverSearchNotifier].
 @ProviderFor(NaverSearchNotifier)

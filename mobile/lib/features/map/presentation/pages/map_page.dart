@@ -6,13 +6,15 @@ import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
+import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../trips/domain/entities/trip.dart';
+import '../../data/datasources/naver_local_search_datasource.dart';
+import '../../data/datasources/naver_reverse_geocode_datasource.dart';
 import '../../domain/entities/naver_place.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../widgets/day_filter_bar.dart';
 import '../widgets/map_view.dart';
 import '../widgets/marker_detail_sheet.dart';
-import '../widgets/place_add_sheet.dart';
 import '../widgets/place_card.dart';
 import 'search_page.dart';
 
@@ -30,6 +32,10 @@ class _MapPageState extends ConsumerState<MapPage> {
   String? _selectedMarkerId;
   NLatLng? _focusTarget;
   NLatLng? _pendingLocation;
+  String? _searchedPlaceName;
+  NLatLng _cameraCenter = const NLatLng(37.5665, 126.9780);
+  List<NaverPlace> _searchOverlays = [];
+  bool _searchingOverlay = false;
   final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
 
@@ -117,11 +123,16 @@ class _MapPageState extends ConsumerState<MapPage> {
     }
   }
 
-  Future<void> _showAddSheetFromSearch(NaverPlace place, Trip? trip) async {
+  Future<void> _showAddSheetFromSearch(
+    NaverPlace place,
+    Trip? trip,
+    List<TripMarker> allMarkers,
+  ) async {
     final NLatLng coord = NLatLng(place.latitude, place.longitude);
     setState(() {
       _focusTarget = coord;
       _pendingLocation = coord;
+      _searchedPlaceName = place.title;
     });
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
@@ -130,22 +141,37 @@ class _MapPageState extends ConsumerState<MapPage> {
         curve: Curves.easeOut,
       );
     }
-    await showModalBottomSheet<bool>(
+    final TripMarker tempMarker = TripMarker(
+      id: '__new__',
+      tripId: _tripId,
+      name: place.title,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      address: place.address,
+      source: MarkerSource.search,
+      detail: place.toDetail(),
+      createdAt: DateTime.now(),
+    );
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => PlaceAddSheet(
-        tripId: _tripId,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        dayCount: _dayCount(trip),
-        naverPlace: place,
-        source: MarkerSource.search,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, __) => MarkerDetailSheet(
+          marker: tempMarker,
+          tripId: _tripId,
+          allMarkers: allMarkers,
+          onMarkerSaved: () {
+            if (mounted) setState(() => _pendingLocation = null);
+          },
+        ),
       ),
     );
     if (mounted) {
       ref.invalidate(markerEntitiesProvider(_tripId));
-      setState(() => _pendingLocation = null);
       if (_sheetController.isAttached) {
         _sheetController.animateTo(
           _sheetInitial,
@@ -156,8 +182,11 @@ class _MapPageState extends ConsumerState<MapPage> {
     }
   }
 
-  Future<void> _showAddSheet(NLatLng coord, Trip? trip) async {
-    // 목록 탭을 최소 크기로 내림
+  Future<void> _showAddSheet(
+    NLatLng coord,
+    Trip? trip,
+    List<TripMarker> allMarkers,
+  ) async {
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
         _sheetMin,
@@ -165,19 +194,36 @@ class _MapPageState extends ConsumerState<MapPage> {
         curve: Curves.easeOut,
       );
     }
-    await showModalBottomSheet<bool>(
+    final String? address = await ref
+        .read(naverReverseGeocodeDatasourceProvider)
+        .reverseGeocode(coord.latitude, coord.longitude);
+    if (!mounted) return;
+    final TripMarker tempMarker = TripMarker(
+      id: '__new__',
+      tripId: _tripId,
+      name: '새 장소',
+      latitude: coord.latitude,
+      longitude: coord.longitude,
+      address: address,
+      source: MarkerSource.longpress,
+      detail: const {},
+      createdAt: DateTime.now(),
+    );
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => PlaceAddSheet(
-        tripId: _tripId,
-        latitude: coord.latitude,
-        longitude: coord.longitude,
-        dayCount: _dayCount(trip),
-        source: MarkerSource.longpress,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, __) => MarkerDetailSheet(
+          marker: tempMarker,
+          tripId: _tripId,
+          allMarkers: allMarkers,
+        ),
       ),
     );
-    // 닫히면 목록 탭 원래 크기로 복원
     if (mounted) {
       ref.invalidate(markerEntitiesProvider(_tripId));
       if (_sheetController.isAttached) {
@@ -187,6 +233,19 @@ class _MapPageState extends ConsumerState<MapPage> {
           curve: Curves.easeOut,
         );
       }
+    }
+  }
+
+  Future<void> _handleSearchResult(Object? result, Trip? trip) async {
+    if (!mounted) return;
+    if (result is TripMarker) {
+      final List<TripMarker> latest =
+          ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
+      _showDetailSheet(result, latest);
+    } else if (result is NaverPlace) {
+      final List<TripMarker> latest =
+          ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
+      await _showAddSheetFromSearch(result, trip, latest);
     }
   }
 
@@ -230,36 +289,21 @@ class _MapPageState extends ConsumerState<MapPage> {
               initialLocation: const NLatLng(37.5665, 126.9780),
               tripId: _tripId,
               onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-              onLongTap: (coord) => _showAddSheet(coord, trip),
+              onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
+              onCameraIdle: (center) { _cameraCenter = center; },
               bottomPeekFraction: _sheetInitial,
               selectedMarkerId: _selectedMarkerId,
               focusTarget: _focusTarget,
               pendingLocation: _pendingLocation,
+              searchOverlays: _searchOverlays,
             ),
-            ),
-
-            // 뒤로가기 / 더보기
-            SafeArea(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.more_horiz, size: 24),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
             ),
 
             // 검색바 (탭 → SearchPage)
             SafeArea(
               child: Padding(
                 padding:
-                    const EdgeInsets.only(top: 52, left: 15, right: 15),
+                    const EdgeInsets.only(top: 15, left: 15, right: 15),
                 child: GestureDetector(
                   onTap: () async {
                     final Object? result = await Navigator.push<Object?>(
@@ -269,16 +313,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                             SearchPage(tripId: _tripId, trip: trip),
                       ),
                     );
-                    if (!mounted) return;
-                    if (result is TripMarker) {
-                      final List<TripMarker> latest = ref
-                              .read(markerEntitiesProvider(_tripId))
-                              .valueOrNull ??
-                          [];
-                      _showDetailSheet(result, latest);
-                    } else if (result is NaverPlace) {
-                      await _showAddSheetFromSearch(result, trip);
-                    }
+                    await _handleSearchResult(result, trip);
                   },
                   child: Container(
                     height: 50,
@@ -295,18 +330,24 @@ class _MapPageState extends ConsumerState<MapPage> {
                     ),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.search,
+                        const Icon(Icons.search,
                             color: Color(0xFF8A847B), size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          '지하철역, 카페, 식당 ....',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFFB2B2B2),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _searchedPlaceName ?? '지하철역, 카페, 식당 ....',
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: _searchedPlaceName != null
+                                  ? const Color(0xFF1F2125)
+                                  : const Color(0xFFB2B2B2),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -316,54 +357,130 @@ class _MapPageState extends ConsumerState<MapPage> {
               ),
             ),
 
-            // 폴더 칩 (Trip 선택)
+            // 폴더 칩 (Trip 선택) + 현위치에서 검색
             SafeArea(
               child: Padding(
-                padding:
-                    const EdgeInsets.only(top: 112, left: 20),
-                child: GestureDetector(
-                  onTap: () => _showTripSelector(
-                      tripsAsync.valueOrNull ?? []),
-                  child: Container(
-                    height: 30,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.folder_outlined,
-                            size: 20, color: Color(0xFFFE8505)),
-                        const SizedBox(width: 3),
-                        ConstrainedBox(
-                          constraints:
-                              const BoxConstraints(maxWidth: 100),
-                          child: Text(
-                            trip?.title ?? '여행 선택',
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1F2125),
+                padding: const EdgeInsets.only(top: 73, left: 20, right: 20),
+                child: SizedBox(
+                  height: 30,
+                  child: LayoutBuilder(
+                    builder: (_, BoxConstraints constraints) {
+                      final double half = constraints.maxWidth / 2;
+                      return Stack(
+                        children: [
+                          // Stack 전체 너비 확보
+                          SizedBox(width: constraints.maxWidth, height: 30),
+                          // 현위치에서 검색: 가로 중앙 (아래 레이어)
+                          Align(
+                            alignment: Alignment.center,
+                            child: GestureDetector(
+                              onTap: (_searchedPlaceName == null || _searchingOverlay)
+                                  ? null
+                                  : () async {
+                                      final messenger =
+                                          ScaffoldMessenger.of(context);
+                                      setState(() => _searchingOverlay = true);
+                                      try {
+                                        final List<NaverPlace> results = await ref
+                                            .read(naverLocalSearchDatasourceProvider)
+                                            .search(
+                                              _searchedPlaceName!,
+                                              coordinate:
+                                                  '${_cameraCenter.longitude},${_cameraCenter.latitude}',
+                                            );
+                                        if (mounted) {
+                                          setState(() => _searchOverlays = results);
+                                        }
+                                      } catch (_) {
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                              content: Text('검색에 실패했습니다.')),
+                                        );
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() => _searchingOverlay = false);
+                                        }
+                                      }
+                                    },
+                              child: IntrinsicWidth(
+                                child: Container(
+                                  height: 30,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x1A000000),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Text(
+                                    '현위치에서 검색',
+                                    style: TextStyle(
+                                      fontFamily: 'Pretendard',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF1F2125),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 3),
-                        const Icon(Icons.keyboard_arrow_down,
-                            size: 15, color: Color(0xFF1F2125)),
-                      ],
-                    ),
+                          // 폴더 칩: 왼쪽, maxWidth = 절반 - 10px (위 레이어)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: half - 10),
+                              child: GestureDetector(
+                                onTap: () => _showTripSelector(
+                                    tripsAsync.valueOrNull ?? []),
+                                child: Container(
+                                  height: 30,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x1A000000),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.folder_outlined,
+                                          size: 20, color: Color(0xFFFE8505)),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          trip?.title ?? '여행 선택',
+                                          style: const TextStyle(
+                                            fontFamily: 'Pretendard',
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF1F2125),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -434,15 +551,8 @@ class _PlaceListSheet extends StatelessWidget {
   final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
 
-  Color _categoryColor(Category? cat) {
-    if (cat == null) return const Color(0x808A847B);
-    try {
-      final v = int.parse(cat.color.replaceFirst('#', ''), radix: 16);
-      return Color(v).withAlpha(128);
-    } catch (_) {
-      return const Color(0x808A847B);
-    }
-  }
+  Color _categoryColor(Category? cat) =>
+      categoryColor(cat?.name).withValues(alpha: 0.5);
 
   IconData _categoryIcon(String? name) => switch (name) {
         '카페' => Icons.coffee,

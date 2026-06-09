@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
+import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import 'marker_edit_chips_sheet.dart';
 
@@ -14,6 +16,7 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
     required this.tripId,
     required this.allMarkers,
     this.isLiked = false,
+    this.onMarkerSaved,
     super.key,
   });
 
@@ -21,6 +24,7 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
   final String tripId;
   final List<TripMarker> allMarkers;
   final bool isLiked;
+  final VoidCallback? onMarkerSaved;
 
   @override
   ConsumerState<MarkerDetailSheet> createState() => _MarkerDetailSheetState();
@@ -34,6 +38,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   late final TextEditingController _nameCtrl;
   bool _editingName = false;
   bool _saved = true;
+  bool _bookmarkLoading = false;
   late bool _isLiked;
 
   static const _transportLabels = ['차량', '대중교통', '자전거', '도보'];
@@ -61,10 +66,14 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   }
 
   Future<void> _saveName() async {
-    final name = _nameCtrl.text.trim();
+    final String name = _nameCtrl.text.trim();
     if (name.isEmpty || name == _marker.name) return;
+    if (!_saved) {
+      setState(() => _marker = _marker.copyWith(name: name));
+      return;
+    }
     try {
-      final updated = await ref.read(markerRepositoryProvider).updateMarker(
+      final TripMarker updated = await ref.read(markerRepositoryProvider).updateMarker(
             widget.tripId, _marker.id, name: name,
           );
       setState(() => _marker = updated);
@@ -73,8 +82,50 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   }
 
   Future<void> _toggleBookmark() async {
-    if (!_saved) return;
-    final ok = await showGeneralDialog<bool>(
+    if (!_saved) {
+      setState(() => _bookmarkLoading = true);
+      try {
+        final TripMarker created = await ref.read(markerRepositoryProvider).createMarker(
+              tripId: widget.tripId,
+              name: _marker.name,
+              latitude: _marker.latitude,
+              longitude: _marker.longitude,
+              categoryId: _marker.categoryId,
+              address: _marker.address,
+              detail: _marker.detail,
+              source: _marker.source,
+              visitDays: _marker.visitDays,
+            );
+        if (mounted) {
+          setState(() {
+            _marker = created;
+            _saved = true;
+          });
+          ref.invalidate(markerEntitiesProvider(widget.tripId));
+          widget.onMarkerSaved?.call();
+          await showGeneralDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            barrierLabel: '닫기',
+            barrierColor: Colors.black26,
+            pageBuilder: (ctx, _, __) => const Align(
+              alignment: Alignment.center,
+              child: BookmarkSavedDialog(),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('저장에 실패했습니다.')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _bookmarkLoading = false);
+      }
+      return;
+    }
+    final bool? ok = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '닫기',
@@ -111,12 +162,126 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         tripId: widget.tripId,
         categories: categories,
         dayCount: dayCount,
+        isUnsaved: !_saved,
         onSaved: (updated) {
+          if (!mounted) return;
           setState(() => _marker = updated);
-          ref.invalidate(markerEntitiesProvider(widget.tripId));
+          if (_saved) {
+            ref.invalidate(markerEntitiesProvider(widget.tripId));
+          } else {
+            showGeneralDialog<void>(
+              context: context,
+              barrierDismissible: true,
+              barrierLabel: '닫기',
+              barrierColor: Colors.black26,
+              pageBuilder: (ctx, _, __) => const Align(
+                alignment: Alignment.center,
+                child: BookmarkSavedDialog(),
+              ),
+            );
+          }
         },
       ),
     );
+  }
+
+  Future<void> _openNavigation() async {
+    final TripMarker? dest = widget.allMarkers
+        .where((m) => m.id == _destinationId)
+        .firstOrNull;
+    final TripMarker? dep = _departureId == null
+        ? null
+        : widget.allMarkers.where((m) => m.id == _departureId).firstOrNull;
+
+    final double dLat = dest?.latitude ?? _marker.latitude;
+    final double dLng = dest?.longitude ?? _marker.longitude;
+    final String dName = dest?.name ?? _marker.name;
+
+    if (_transportIndex == 0) {
+      await _launchOrFallback(
+        appUri: _tmapUri(dep, dLat, dLng, dName),
+        webUri: _naverWebUri(dep, dLat, dLng, dName, 'car'),
+        storeUri: 'https://play.google.com/store/apps/details?id=com.skt.tmap.ku',
+        appLabel: '티맵',
+      );
+    } else {
+      const List<String> appTypes = ['', 'public', 'bicycle', 'walk'];
+      const List<String> webTypes = ['', 'transit', 'bicycle', 'walk'];
+      await _launchOrFallback(
+        appUri: _naverAppUri(dep, dLat, dLng, dName, appTypes[_transportIndex]),
+        webUri: _naverWebUri(dep, dLat, dLng, dName, webTypes[_transportIndex]),
+        storeUri: 'https://play.google.com/store/apps/details?id=com.nhn.android.nmap',
+        appLabel: '네이버 지도',
+      );
+    }
+  }
+
+  Future<void> _launchOrFallback({
+    required String appUri,
+    required String webUri,
+    required String storeUri,
+    required String appLabel,
+  }) async {
+    final Uri uri = Uri.parse(appUri);
+    try {
+      final bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (launched) return;
+    } catch (_) {}
+    if (!mounted) return;
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: Colors.black26,
+      pageBuilder: (_, __, ___) => Align(
+        alignment: Alignment.center,
+        child: _AppNotInstalledDialog(
+          appLabel: appLabel,
+          webUri: webUri,
+          storeUri: storeUri,
+        ),
+      ),
+    );
+  }
+
+  String _tmapUri(TripMarker? dep, double dLat, double dLng, String dName) {
+    final String enc = Uri.encodeQueryComponent(dName);
+    final StringBuffer sb = StringBuffer(
+      'tmap://route?rGoY=$dLat&rGoX=$dLng&rGoName=$enc',
+    );
+    if (dep != null) {
+      sb.write(
+        '&rStY=${dep.latitude}&rStX=${dep.longitude}&rStName=${Uri.encodeQueryComponent(dep.name)}',
+      );
+    }
+    return sb.toString();
+  }
+
+  String _naverAppUri(
+      TripMarker? dep, double dLat, double dLng, String dName, String type) {
+    final String enc = Uri.encodeQueryComponent(dName);
+    final StringBuffer sb = StringBuffer(
+      'nmap://route/$type?dlat=$dLat&dlng=$dLng&dname=$enc&appname=com.doh.memotrip',
+    );
+    if (dep != null) {
+      sb.write(
+        '&slat=${dep.latitude}&slng=${dep.longitude}&sname=${Uri.encodeQueryComponent(dep.name)}',
+      );
+    }
+    return sb.toString();
+  }
+
+  String _naverWebUri(
+      TripMarker? dep, double dLat, double dLng, String dName, String type) {
+    final String encDest = Uri.encodeComponent(dName);
+    // Naver Maps v5 directions: lng,lat,name,PLACE_TYPE,-1 (5 fields required)
+    final String destSegment = '$dLng,$dLat,$encDest,PLACE,-1';
+    if (dep == null) {
+      return 'https://map.naver.com/v5/directions/-/$destSegment/-/$type?c=$dLng,$dLat,15,0,0,0,dh';
+    }
+    final String encDep = Uri.encodeComponent(dep.name);
+    final String depSegment = '${dep.longitude},${dep.latitude},$encDep,PLACE,-1';
+    return 'https://map.naver.com/v5/directions/$depSegment/$destSegment/-/$type?c=$dLng,$dLat,15,0,0,0,dh';
   }
 
   @override
@@ -177,11 +342,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                   children: [
                     _InfoChip(
                       label: category?.name ?? '없음',
-                      color: category != null
-                          ? Color(int.parse(
-                                  category.color.replaceFirst('#', '0xFF')))
-                              .withValues(alpha: 0.5)
-                          : const Color(0x808A847B),
+                      color: categoryColor(category?.name).withValues(alpha: 0.5),
                     ),
                     if (dayCount > 0) ...[
                       if (_marker.visitDays.isEmpty) ...[
@@ -248,14 +409,22 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: _toggleBookmark,
-                    child: Icon(
-                      _saved ? Icons.bookmark : Icons.bookmark_border,
-                      size: 25,
-                      color: _saved
-                          ? const Color(0xFFFE8505)
-                          : const Color(0xFFD5D5D5),
-                    ),
+                    onTap: _bookmarkLoading ? null : _toggleBookmark,
+                    child: _bookmarkLoading
+                        ? const SizedBox.square(
+                            dimension: 25,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFFE8505),
+                            ),
+                          )
+                        : Icon(
+                            _saved ? Icons.bookmark : Icons.bookmark_border,
+                            size: 25,
+                            color: _saved
+                                ? const Color(0xFFFE8505)
+                                : const Color(0xFFD5D5D5),
+                          ),
                   ),
                   const SizedBox(width: 10),
                   GestureDetector(
@@ -345,12 +514,12 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                                     ? const Color(0xFFFDFDFD)
                                     : const Color(0xFF1F2125),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text(
                                 _transportLabels[i],
                                 style: TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: active
                                       ? const Color(0xFFFDFDFD)
@@ -368,38 +537,41 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
             ),
             const SizedBox(height: 16),
 
-            // 길찾기 버튼 (scope out — 표시만)
+            // 길찾기 버튼
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Container(
-                height: 48,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xCC2A6FDB),
-                  borderRadius: BorderRadius.circular(17),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x4D000000),
-                      blurRadius: 4,
-                      offset: Offset(1, 1),
-                    )
-                  ],
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.directions, size: 20, color: Color(0xFFFDFDFD)),
-                    SizedBox(width: 8),
-                    Text(
-                      '길찾기',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFFDFDFD),
+              child: GestureDetector(
+                onTap: _openNavigation,
+                child: Container(
+                  height: 48,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xCC2A6FDB),
+                    borderRadius: BorderRadius.circular(17),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x4D000000),
+                        blurRadius: 4,
+                        offset: Offset(1, 1),
+                      )
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.directions, size: 20, color: Color(0xFFFDFDFD)),
+                      SizedBox(width: 8),
+                      Text(
+                        '길찾기',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFFDFDFD),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -425,7 +597,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 20, color: const Color(0xFFB2B2B2)),
         const SizedBox(width: 5),
@@ -437,7 +609,7 @@ class _InfoRow extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFB2B2B2),
                 ),
@@ -447,7 +619,7 @@ class _InfoRow extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF1F2125),
                 ),
@@ -854,6 +1026,176 @@ class _PickerItem extends StatelessWidget {
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
+class BookmarkSavedDialog extends StatefulWidget {
+  const BookmarkSavedDialog({super.key});
+
+  @override
+  State<BookmarkSavedDialog> createState() => BookmarkSavedDialogState();
+}
+
+class BookmarkSavedDialogState extends State<BookmarkSavedDialog> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 300,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _OrangeCheckIcon(),
+            SizedBox(height: 10),
+            Text(
+              '저장했습니다.',
+              style: TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF070707),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrangeCheckIcon extends StatelessWidget {
+  const _OrangeCheckIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFE8505),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Icon(Icons.check, size: 20, color: Colors.white),
+    );
+  }
+}
+
+class _AppNotInstalledDialog extends StatelessWidget {
+  const _AppNotInstalledDialog({
+    required this.appLabel,
+    required this.webUri,
+    required this.storeUri,
+  });
+  final String appLabel;
+  final String webUri;
+  final String storeUri;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 300,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.navigation_outlined, size: 36, color: Color(0xFFFE8505)),
+            const SizedBox(height: 12),
+            Text(
+              '$appLabel 앱이 설치되어 있지 않습니다.',
+              style: const TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF070707),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await launchUrl(
+                        Uri.parse(webUri),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F2F4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '네이버 지도 웹',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF070707),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await launchUrl(
+                        Uri.parse(storeUri),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xCCFE8505),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$appLabel 설치',
+                        style: const TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

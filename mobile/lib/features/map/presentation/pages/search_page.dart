@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../markers/domain/entities/category.dart';
@@ -19,9 +20,17 @@ String _naverToDbCategory(String path) {
 }
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({required this.tripId, required this.trip, super.key});
+  const SearchPage({
+    required this.tripId,
+    required this.trip,
+    this.center,
+    this.initialQuery,
+    super.key,
+  });
   final String tripId;
   final Trip? trip;
+  final NLatLng? center;
+  final String? initialQuery;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -31,6 +40,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   final _ctrl = TextEditingController();
   String _query = '';
   bool _localExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final String? q = widget.initialQuery;
+    if (q != null && q.isNotEmpty) {
+      _ctrl.text = q;
+      _query = q;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onQueryChanged(q);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -44,7 +66,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _localExpanded = false;
     });
     if (v.trim().isNotEmpty) {
-      ref.read(naverSearchNotifierProvider.notifier).search(v.trim());
+      final NLatLng? c = widget.center;
+      final String? coordinate = c != null ? '${c.longitude},${c.latitude}' : null;
+      ref.read(naverSearchNotifierProvider.notifier).search(v.trim(), coordinate: coordinate);
     } else {
       ref.read(naverSearchNotifierProvider.notifier).clear();
     }

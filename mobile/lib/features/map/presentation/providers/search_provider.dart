@@ -12,21 +12,23 @@ class NaverSearchNotifier extends _$NaverSearchNotifier {
   @override
   AsyncValue<List<NaverPlace>> build() => const AsyncData([]);
 
-  Future<void> search(String query) async {
+  Future<void> search(String query, {String? coordinate}) async {
     final q = query.trim();
     if (q.isEmpty) {
       state = const AsyncData([]);
       return;
     }
-    if (_cache.containsKey(q)) {
-      state = AsyncData(_cache[q]!);
+    final String cacheKey = coordinate != null ? '$q|$coordinate' : q;
+    if (_cache.containsKey(cacheKey)) {
+      state = AsyncData(_cache[cacheKey]!);
       return;
     }
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final results =
-          await ref.read(naverLocalSearchDatasourceProvider).search(q);
-      _cache[q] = results;
+      final results = await ref
+          .read(naverLocalSearchDatasourceProvider)
+          .search(q, coordinate: coordinate);
+      _cache[cacheKey] = results;
       return results;
     });
   }

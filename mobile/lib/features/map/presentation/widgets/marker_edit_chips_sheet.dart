@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
+import '../../../markers/domain/repositories/marker_repository.dart';
 import '../../../markers/presentation/widgets/category_chip.dart';
 
 class MarkerEditChipsSheet extends ConsumerStatefulWidget {
@@ -13,6 +14,7 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
     required this.categories,
     required this.dayCount,
     required this.onSaved,
+    this.isUnsaved = false,
     super.key,
   });
 
@@ -21,6 +23,7 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
   final List<Category> categories;
   final int dayCount;
   final ValueChanged<TripMarker> onSaved;
+  final bool isUnsaved;
 
   @override
   ConsumerState<MarkerEditChipsSheet> createState() =>
@@ -30,38 +33,47 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
 class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
   late String? _selectedCategoryId;
   late Set<int> _selectedDays;
-  bool _loading = false;
+  late final MarkerRepository _repo;
 
   @override
   void initState() {
     super.initState();
     _selectedCategoryId = widget.marker.categoryId;
     _selectedDays = widget.marker.visitDays.toSet();
+    _repo = ref.read(markerRepositoryProvider);
   }
 
-  Future<void> _submit() async {
-    setState(() => _loading = true);
-    try {
-      final updated = await ref.read(markerRepositoryProvider).updateMarker(
-            widget.tripId,
-            widget.marker.id,
-            categoryId: _selectedCategoryId,
-            clearCategoryId: _selectedCategoryId == null,
-            visitDays: _selectedDays.toList()..sort(),
-          );
-      if (mounted) {
-        widget.onSaved(updated);
-        Navigator.pop(context);
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('저장에 실패했습니다.')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
+  bool get _hasChanges {
+    final initialDays = widget.marker.visitDays.toSet();
+    return _selectedCategoryId != widget.marker.categoryId ||
+        _selectedDays.length != initialDays.length ||
+        !_selectedDays.containsAll(initialDays);
+  }
+
+  @override
+  void dispose() {
+    if (_hasChanges) _saveOnClose();
+    super.dispose();
+  }
+
+  void _saveOnClose() {
+    if (widget.isUnsaved) {
+      widget.onSaved(widget.marker.copyWith(
+        categoryId: _selectedCategoryId,
+        visitDays: _selectedDays.toList()..sort(),
+      ));
+      return;
     }
+    final ValueChanged<TripMarker> onSaved = widget.onSaved;
+    _repo.updateMarker(
+          widget.tripId,
+          widget.marker.id,
+          categoryId: _selectedCategoryId,
+          clearCategoryId: _selectedCategoryId == null,
+          visitDays: _selectedDays.toList()..sort(),
+        )
+        .then(onSaved)
+        .catchError((_) {});
   }
 
   @override
@@ -150,8 +162,8 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
                   itemCount: widget.dayCount + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (_, i) {
-                    final label = i == 0 ? '선택 안함' : 'Day$i';
-                    final active = i == 0
+                    final String label = i == 0 ? '선택 안함' : 'Day$i';
+                    final bool active = i == 0
                         ? _selectedDays.isEmpty
                         : _selectedDays.contains(i);
                     return GestureDetector(
@@ -201,36 +213,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton(
-              onPressed: _loading ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xCC2A6FDB),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(17),
-                ),
-              ),
-              child: _loading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      '저장',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

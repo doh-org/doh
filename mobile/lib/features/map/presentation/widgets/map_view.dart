@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
+import '../../domain/entities/naver_place.dart';
 import '../providers/map_provider.dart';
 
 class MapView extends ConsumerStatefulWidget {
@@ -16,10 +17,12 @@ class MapView extends ConsumerStatefulWidget {
     required this.tripId,
     this.onMarkerTap,
     this.onLongTap,
+    this.onCameraIdle,
     this.bottomPeekFraction = 0.0,
     this.selectedMarkerId,
     this.focusTarget,
     this.pendingLocation,
+    this.searchOverlays = const [],
     super.key,
   });
 
@@ -27,10 +30,12 @@ class MapView extends ConsumerStatefulWidget {
   final String tripId;
   final void Function(TripMarker)? onMarkerTap;
   final void Function(NLatLng)? onLongTap;
+  final void Function(NLatLng)? onCameraIdle;
   final double bottomPeekFraction;
   final String? selectedMarkerId;
   final NLatLng? focusTarget;
   final NLatLng? pendingLocation;
+  final List<NaverPlace> searchOverlays;
 
   @override
   ConsumerState<MapView> createState() => _MapViewState();
@@ -60,6 +65,9 @@ class _MapViewState extends ConsumerState<MapView> {
     if (oldWidget.pendingLocation != widget.pendingLocation) {
       _updateOverlays(_lastMarkers, _lastCategories);
     }
+    if (!identical(oldWidget.searchOverlays, widget.searchOverlays)) {
+      _updateOverlays(_lastMarkers, _lastCategories);
+    }
   }
 
   Future<Size> _assetSize(String assetPath) async {
@@ -86,9 +94,9 @@ class _MapViewState extends ConsumerState<MapView> {
     final String? catName = matches.isEmpty ? null : matches.first.name;
     return switch (catName) {
       '카페' => 'assets/marker/yellow-marker.png',
-      '숙소' => 'assets/marker/blue-marker.png',
-      '관광' => 'assets/marker/green-marker.png',
       '식당' => 'assets/marker/orange-marker.png',
+      '관광' => 'assets/marker/blue-marker.png',
+      '숙소' => 'assets/marker/green-marker.png',
       _ => 'assets/marker/gray-marker.png',
     };
   }
@@ -142,6 +150,25 @@ class _MapViewState extends ConsumerState<MapView> {
           ..setSize(size);
         await ctrl.addOverlay(pending);
       }(),
+    ...widget.searchOverlays.asMap().entries.map((MapEntry<int, NaverPlace> e) async {
+      const String redAsset = 'assets/marker/red-marker.png';
+      final Size natural = await _assetSize(redAsset);
+      const double targetH = 40;
+      final Size size = Size(natural.width * targetH / natural.height, targetH);
+      final NMarker marker = NMarker(
+        id: '__search__${e.key}',
+        position: NLatLng(e.value.latitude, e.value.longitude),
+      )
+        ..setIcon(const NOverlayImage.fromAssetImage(redAsset))
+        ..setSize(size)
+        ..setCaption(NOverlayCaption(
+          text: e.value.title,
+          textSize: 11,
+          color: const Color(0xFF1F2125),
+          haloColor: Colors.white,
+        ));
+      await ctrl.addOverlay(marker);
+    }),
     ];
     await Future.wait(futures);
   }
@@ -181,6 +208,11 @@ class _MapViewState extends ConsumerState<MapView> {
       onMapLongTapped: (NPoint point, NLatLng coord) =>
           widget.onLongTap?.call(coord),
       onMapTapped: (_, __) {},
+      onCameraIdle: () async {
+        if (widget.onCameraIdle == null) return;
+        final NCameraPosition? pos = await _controller?.getCameraPosition();
+        if (pos != null) widget.onCameraIdle?.call(pos.target);
+      },
     );
   }
 }

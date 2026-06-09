@@ -24,10 +24,12 @@ class NaverLocalSearchDatasource {
 
   late final Dio _dio;
 
-  Future<List<NaverPlace>> search(String query) async {
+  Future<List<NaverPlace>> search(String query, {String? coordinate}) async {
+    final Map<String, dynamic> params = {'query': query, 'display': 15};
+    if (coordinate != null) params['coordinate'] = coordinate;
     final r = await _dio.get(
       '/v1/search/local.json',
-      queryParameters: {'query': query, 'display': 15},
+      queryParameters: params,
     );
     final items = (r.data as Map<String, dynamic>)['items'] as List? ?? [];
     return items
