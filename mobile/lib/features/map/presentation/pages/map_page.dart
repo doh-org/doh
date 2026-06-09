@@ -94,6 +94,9 @@ class _MapPageState extends ConsumerState<MapPage> {
     setState(() {
       _selectedMarkerId = marker.id;
       _focusTarget = NLatLng(marker.latitude, marker.longitude);
+      _pendingLocation = null;
+      _pendingPlace = null;
+      _searchOverlays = [];
     });
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
@@ -138,6 +141,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       _pendingLocation = coord;
       _pendingPlace = place;
       _searchedPlaceName = place.title;
+      _selectedMarkerId = null;
     });
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
@@ -258,6 +262,8 @@ class _MapPageState extends ConsumerState<MapPage> {
     setState(() {
       _focusTarget = coord;
       _pendingLocation = coord;
+      _selectedMarkerId = null;
+      _searchOverlays = [];
     });
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
@@ -393,6 +399,7 @@ class _MapPageState extends ConsumerState<MapPage> {
             child: MapView(
               initialLocation: const NLatLng(37.5665, 126.9780),
               tripId: _tripId,
+              markers: filteredMarkers,
               onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
               onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
               onSymbolTap: (name, coord) =>
@@ -408,6 +415,12 @@ class _MapPageState extends ConsumerState<MapPage> {
               searchOverlays: _searchOverlays,
               onSearchMarkerTap: (place) =>
                   _showAddSheetFromSearch(place, trip, allMarkers),
+              onMapTap: () => setState(() {
+                _selectedMarkerId = null;
+                _pendingLocation = null;
+                _pendingPlace = null;
+                _searchOverlays = [];
+              }),
             ),
             ),
 
