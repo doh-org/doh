@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/category.dart';
+import '../utils/category_colors.dart';
 
 class CategoryChip extends StatelessWidget {
   const CategoryChip({
@@ -16,14 +17,8 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color base;
-    try {
-      base = Color(int.parse(category.color.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return const SizedBox.shrink();
-    }
-
-    final bgColor = selected ? base : base.withAlpha(0x80);
+    final Color base = categoryColor(category.name);
+    final Color bgColor = selected ? base : base.withValues(alpha: 0.5);
     final textColor = selected ? Colors.white : const Color(0xFF1F2125);
 
     return GestureDetector(
