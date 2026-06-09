@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,10 +34,12 @@ class _MapPageState extends ConsumerState<MapPage> {
   String? _selectedMarkerId;
   NLatLng? _focusTarget;
   NLatLng? _pendingLocation;
+  NaverPlace? _pendingPlace;
   String? _searchedPlaceName;
   NLatLng _cameraCenter = const NLatLng(37.5665, 126.9780);
   List<NaverPlace> _searchOverlays = [];
   bool _searchingOverlay = false;
+  bool _searchBtnPressed = false;
   final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
 
@@ -132,6 +136,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     setState(() {
       _focusTarget = coord;
       _pendingLocation = coord;
+      _pendingPlace = place;
       _searchedPlaceName = place.title;
     });
     if (_sheetController.isAttached) {
@@ -165,7 +170,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           tripId: _tripId,
           allMarkers: allMarkers,
           onMarkerSaved: () {
-            if (mounted) setState(() => _pendingLocation = null);
+            if (mounted) setState(() { _pendingLocation = null; _pendingPlace = null; });
           },
         ),
       ),
@@ -187,6 +192,10 @@ class _MapPageState extends ConsumerState<MapPage> {
     Trip? trip,
     List<TripMarker> allMarkers,
   ) async {
+    setState(() {
+      _focusTarget = coord;
+      _pendingLocation = coord;
+    });
     if (_sheetController.isAttached) {
       _sheetController.animateTo(
         _sheetMin,
@@ -194,14 +203,15 @@ class _MapPageState extends ConsumerState<MapPage> {
         curve: Curves.easeOut,
       );
     }
-    final String? address = await ref
+    final (:String? address, :String? area) = await ref
         .read(naverReverseGeocodeDatasourceProvider)
-        .reverseGeocode(coord.latitude, coord.longitude);
+        .reverseGeocodeDetails(coord.latitude, coord.longitude);
+    final String name = await _nearbyPlaceName(coord, area) ?? '새 장소';
     if (!mounted) return;
     final TripMarker tempMarker = TripMarker(
       id: '__new__',
       tripId: _tripId,
-      name: '새 장소',
+      name: name,
       latitude: coord.latitude,
       longitude: coord.longitude,
       address: address,
@@ -221,6 +231,9 @@ class _MapPageState extends ConsumerState<MapPage> {
           marker: tempMarker,
           tripId: _tripId,
           allMarkers: allMarkers,
+          onMarkerSaved: () {
+            if (mounted) setState(() => _pendingLocation = null);
+          },
         ),
       ),
     );
@@ -234,6 +247,98 @@ class _MapPageState extends ConsumerState<MapPage> {
         );
       }
     }
+  }
+
+  Future<void> _showAddSheetFromSymbol(
+    String name,
+    NLatLng coord,
+    Trip? trip,
+    List<TripMarker> allMarkers,
+  ) async {
+    setState(() {
+      _focusTarget = coord;
+      _pendingLocation = coord;
+    });
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        _sheetMin,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    final String? address = await ref
+        .read(naverReverseGeocodeDatasourceProvider)
+        .reverseGeocode(coord.latitude, coord.longitude);
+    if (!mounted) return;
+    final TripMarker tempMarker = TripMarker(
+      id: '__new__',
+      tripId: _tripId,
+      name: name,
+      latitude: coord.latitude,
+      longitude: coord.longitude,
+      address: address,
+      source: MarkerSource.search,
+      detail: const {},
+      createdAt: DateTime.now(),
+    );
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, __) => MarkerDetailSheet(
+          marker: tempMarker,
+          tripId: _tripId,
+          allMarkers: allMarkers,
+          onMarkerSaved: () {
+            if (mounted) setState(() => _pendingLocation = null);
+          },
+        ),
+      ),
+    );
+    if (mounted) {
+      ref.invalidate(markerEntitiesProvider(_tripId));
+      setState(() => _pendingLocation = null);
+      if (_sheetController.isAttached) {
+        _sheetController.animateTo(
+          _sheetInitial,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
+  Future<String?> _nearbyPlaceName(NLatLng coord, String? area) async {
+    if (area == null) return null;
+    try {
+      final List<NaverPlace> results = await ref
+          .read(naverLocalSearchDatasourceProvider)
+          .search(area, coordinate: '${coord.longitude},${coord.latitude}');
+      if (results.isEmpty) return null;
+      final NaverPlace nearest = results.first;
+      final double dist = _haversine(
+        coord.latitude, coord.longitude,
+        nearest.latitude, nearest.longitude,
+      );
+      return dist <= 50 ? nearest.title : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static double _haversine(
+      double lat1, double lon1, double lat2, double lon2) {
+    const double r = 6371000;
+    final double dLat = (lat2 - lat1) * pi / 180;
+    final double dLon = (lon2 - lon1) * pi / 180;
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
+            sin(dLon / 2) * sin(dLon / 2);
+    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
   Future<void> _handleSearchResult(Object? result, Trip? trip) async {
@@ -290,12 +395,19 @@ class _MapPageState extends ConsumerState<MapPage> {
               tripId: _tripId,
               onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
               onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
-              onCameraIdle: (center) { _cameraCenter = center; },
+              onSymbolTap: (name, coord) =>
+                  _showAddSheetFromSymbol(name, coord, trip, allMarkers),
+              onCameraIdle: (center) {
+                _cameraCenter = center;
+              },
               bottomPeekFraction: _sheetInitial,
               selectedMarkerId: _selectedMarkerId,
               focusTarget: _focusTarget,
               pendingLocation: _pendingLocation,
+              pendingPlace: _pendingPlace,
               searchOverlays: _searchOverlays,
+              onSearchMarkerTap: (place) =>
+                  _showAddSheetFromSearch(place, trip, allMarkers),
             ),
             ),
 
@@ -309,8 +421,12 @@ class _MapPageState extends ConsumerState<MapPage> {
                     final Object? result = await Navigator.push<Object?>(
                       context,
                       MaterialPageRoute<Object?>(
-                        builder: (_) =>
-                            SearchPage(tripId: _tripId, trip: trip),
+                        builder: (_) => SearchPage(
+                          tripId: _tripId,
+                          trip: trip,
+                          center: _cameraCenter,
+                          initialQuery: _searchedPlaceName,
+                        ),
                       ),
                     );
                     await _handleSearchResult(result, trip);
@@ -350,6 +466,21 @@ class _MapPageState extends ConsumerState<MapPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (_searchedPlaceName != null)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(() {
+                              _searchedPlaceName = null;
+                              _searchOverlays = [];
+                              _pendingLocation = null;
+                              _pendingPlace = null;
+                            }),
+                            child: const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(Icons.close,
+                                  size: 18, color: Color(0xFF8A847B)),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -374,6 +505,13 @@ class _MapPageState extends ConsumerState<MapPage> {
                           Align(
                             alignment: Alignment.center,
                             child: GestureDetector(
+                              onTapDown: (_) {
+                                if (_searchedPlaceName != null && !_searchingOverlay) {
+                                  setState(() => _searchBtnPressed = true);
+                                }
+                              },
+                              onTapUp: (_) => setState(() => _searchBtnPressed = false),
+                              onTapCancel: () => setState(() => _searchBtnPressed = false),
                               onTap: (_searchedPlaceName == null || _searchingOverlay)
                                   ? null
                                   : () async {
@@ -410,6 +548,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
+                                    border: _searchBtnPressed
+                                        ? Border.all(color: const Color(0xFFFE8505), width: 1)
+                                        : null,
                                     boxShadow: const [
                                       BoxShadow(
                                         color: Color(0x1A000000),
