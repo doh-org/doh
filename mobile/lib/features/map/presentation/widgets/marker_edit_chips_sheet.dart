@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
-import '../../../markers/domain/repositories/marker_repository.dart';
+import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../markers/presentation/widgets/category_chip.dart';
 
 class MarkerEditChipsSheet extends ConsumerStatefulWidget {
@@ -14,7 +14,7 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
     required this.categories,
     required this.dayCount,
     required this.onSaved,
-    this.isUnsaved = false,
+    required this.isUnsaved,
     super.key,
   });
 
@@ -33,47 +33,51 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
 class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
   late String? _selectedCategoryId;
   late Set<int> _selectedDays;
-  late final MarkerRepository _repo;
+  late TripMarker _savedMarker;
 
   @override
   void initState() {
     super.initState();
     _selectedCategoryId = widget.marker.categoryId;
     _selectedDays = widget.marker.visitDays.toSet();
-    _repo = ref.read(markerRepositoryProvider);
+    _savedMarker = widget.marker;
   }
 
-  bool get _hasChanges {
-    final initialDays = widget.marker.visitDays.toSet();
-    return _selectedCategoryId != widget.marker.categoryId ||
-        _selectedDays.length != initialDays.length ||
-        !_selectedDays.containsAll(initialDays);
+  bool get _hasUnsavedChanges {
+    final Set<int> savedDays = _savedMarker.visitDays.toSet();
+    return _selectedCategoryId != _savedMarker.categoryId ||
+        _selectedDays.length != savedDays.length ||
+        !_selectedDays.containsAll(savedDays);
   }
+
+  TripMarker get _optimisticMarker => widget.marker.copyWith(
+        categoryId: _selectedCategoryId,
+        visitDays: _selectedDays.toList()..sort(),
+      );
 
   @override
   void dispose() {
-    if (_hasChanges) _saveOnClose();
+    if (_hasUnsavedChanges) widget.onSaved(_optimisticMarker);
     super.dispose();
   }
 
-  void _saveOnClose() {
-    if (widget.isUnsaved) {
-      widget.onSaved(widget.marker.copyWith(
-        categoryId: _selectedCategoryId,
-        visitDays: _selectedDays.toList()..sort(),
-      ));
-      return;
-    }
-    final ValueChanged<TripMarker> onSaved = widget.onSaved;
-    _repo.updateMarker(
+  Future<void> _saveExplicit() async {
+    if (!_hasUnsavedChanges) return;
+    final TripMarker optimistic = _optimisticMarker;
+    widget.onSaved(optimistic);
+    setState(() => _savedMarker = optimistic);
+    if (!widget.isUnsaved) {
+      try {
+        await ref.read(markerRepositoryProvider).updateMarker(
           widget.tripId,
           widget.marker.id,
-          categoryId: _selectedCategoryId,
-          clearCategoryId: _selectedCategoryId == null,
-          visitDays: _selectedDays.toList()..sort(),
-        )
-        .then(onSaved)
-        .catchError((_) {});
+          categoryId: optimistic.categoryId,
+          clearCategoryId: optimistic.categoryId == null,
+          visitDays: optimistic.visitDays,
+        );
+      } catch (_) {}
+      ref.invalidate(markerEntitiesProvider(widget.tripId));
+    }
   }
 
   @override
@@ -213,6 +217,39 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _saveExplicit,
+            child: Container(
+              height: 32,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: _hasUnsavedChanges
+                    ? const Color(0xCC2A6FDB)
+                    : const Color(0xFFD5D5D5),
+                borderRadius: BorderRadius.circular(17),
+                boxShadow: _hasUnsavedChanges
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x4D000000),
+                          blurRadius: 4,
+                          offset: Offset(1, 1),
+                        )
+                      ]
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                '저장',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
         ],
       ),

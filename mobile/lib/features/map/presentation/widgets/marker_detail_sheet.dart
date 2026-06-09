@@ -166,20 +166,6 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         onSaved: (updated) {
           if (!mounted) return;
           setState(() => _marker = updated);
-          if (_saved) {
-            ref.invalidate(markerEntitiesProvider(widget.tripId));
-          } else {
-            showGeneralDialog<void>(
-              context: context,
-              barrierDismissible: true,
-              barrierLabel: '닫기',
-              barrierColor: Colors.black26,
-              pageBuilder: (ctx, _, __) => const Align(
-                alignment: Alignment.center,
-                child: BookmarkSavedDialog(),
-              ),
-            );
-          }
         },
       ),
     );
