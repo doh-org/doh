@@ -78,6 +78,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
       } catch (_) {}
       ref.invalidate(markerEntitiesProvider(widget.tripId));
     }
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -221,7 +222,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
           GestureDetector(
             onTap: _saveExplicit,
             child: Container(
-              height: 32,
+              height: 30,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: _hasUnsavedChanges
