@@ -25,7 +25,7 @@ mixin _$TripMarker {
   String? get memo;
   MarkerSource get source;
   Map<String, dynamic> get detail;
-  DateTime? get visitTime;
+  List<int> get visitDays;
   DateTime? get deletedAt;
   DateTime get createdAt;
 
@@ -56,8 +56,7 @@ mixin _$TripMarker {
             (identical(other.memo, memo) || other.memo == memo) &&
             (identical(other.source, source) || other.source == source) &&
             const DeepCollectionEquality().equals(other.detail, detail) &&
-            (identical(other.visitTime, visitTime) ||
-                other.visitTime == visitTime) &&
+            const DeepCollectionEquality().equals(other.visitDays, visitDays) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -78,13 +77,13 @@ mixin _$TripMarker {
       memo,
       source,
       const DeepCollectionEquality().hash(detail),
-      visitTime,
+      const DeepCollectionEquality().hash(visitDays),
       deletedAt,
       createdAt);
 
   @override
   String toString() {
-    return 'TripMarker(id: $id, tripId: $tripId, categoryId: $categoryId, createdBy: $createdBy, name: $name, latitude: $latitude, longitude: $longitude, address: $address, memo: $memo, source: $source, detail: $detail, visitTime: $visitTime, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripMarker(id: $id, tripId: $tripId, categoryId: $categoryId, createdBy: $createdBy, name: $name, latitude: $latitude, longitude: $longitude, address: $address, memo: $memo, source: $source, detail: $detail, visitDays: $visitDays, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -106,7 +105,7 @@ abstract mixin class $TripMarkerCopyWith<$Res> {
       String? memo,
       MarkerSource source,
       Map<String, dynamic> detail,
-      DateTime? visitTime,
+      List<int> visitDays,
       DateTime? deletedAt,
       DateTime createdAt});
 }
@@ -134,7 +133,7 @@ class _$TripMarkerCopyWithImpl<$Res> implements $TripMarkerCopyWith<$Res> {
     Object? memo = freezed,
     Object? source = null,
     Object? detail = null,
-    Object? visitTime = freezed,
+    Object? visitDays = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -183,10 +182,10 @@ class _$TripMarkerCopyWithImpl<$Res> implements $TripMarkerCopyWith<$Res> {
           ? _self.detail
           : detail // ignore: cast_nullable_to_non_nullable
               as Map<String, dynamic>,
-      visitTime: freezed == visitTime
-          ? _self.visitTime
-          : visitTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
+      visitDays: null == visitDays
+          ? _self.visitDays
+          : visitDays // ignore: cast_nullable_to_non_nullable
+              as List<int>,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
@@ -304,7 +303,7 @@ extension TripMarkerPatterns on TripMarker {
             String? memo,
             MarkerSource source,
             Map<String, dynamic> detail,
-            DateTime? visitTime,
+            List<int> visitDays,
             DateTime? deletedAt,
             DateTime createdAt)?
         $default, {
@@ -325,7 +324,7 @@ extension TripMarkerPatterns on TripMarker {
             _that.memo,
             _that.source,
             _that.detail,
-            _that.visitTime,
+            _that.visitDays,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -360,7 +359,7 @@ extension TripMarkerPatterns on TripMarker {
             String? memo,
             MarkerSource source,
             Map<String, dynamic> detail,
-            DateTime? visitTime,
+            List<int> visitDays,
             DateTime? deletedAt,
             DateTime createdAt)
         $default,
@@ -380,7 +379,7 @@ extension TripMarkerPatterns on TripMarker {
             _that.memo,
             _that.source,
             _that.detail,
-            _that.visitTime,
+            _that.visitDays,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -414,7 +413,7 @@ extension TripMarkerPatterns on TripMarker {
             String? memo,
             MarkerSource source,
             Map<String, dynamic> detail,
-            DateTime? visitTime,
+            List<int> visitDays,
             DateTime? deletedAt,
             DateTime createdAt)?
         $default,
@@ -434,7 +433,7 @@ extension TripMarkerPatterns on TripMarker {
             _that.memo,
             _that.source,
             _that.detail,
-            _that.visitTime,
+            _that.visitDays,
             _that.deletedAt,
             _that.createdAt);
       case _:
@@ -458,10 +457,11 @@ class _TripMarker implements TripMarker {
       this.memo,
       required this.source,
       required final Map<String, dynamic> detail,
-      this.visitTime,
+      final List<int> visitDays = const [],
       this.deletedAt,
       required this.createdAt})
-      : _detail = detail;
+      : _detail = detail,
+        _visitDays = visitDays;
 
   @override
   final String id;
@@ -491,8 +491,15 @@ class _TripMarker implements TripMarker {
     return EqualUnmodifiableMapView(_detail);
   }
 
+  final List<int> _visitDays;
   @override
-  final DateTime? visitTime;
+  @JsonKey()
+  List<int> get visitDays {
+    if (_visitDays is EqualUnmodifiableListView) return _visitDays;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_visitDays);
+  }
+
   @override
   final DateTime? deletedAt;
   @override
@@ -526,8 +533,8 @@ class _TripMarker implements TripMarker {
             (identical(other.memo, memo) || other.memo == memo) &&
             (identical(other.source, source) || other.source == source) &&
             const DeepCollectionEquality().equals(other._detail, _detail) &&
-            (identical(other.visitTime, visitTime) ||
-                other.visitTime == visitTime) &&
+            const DeepCollectionEquality()
+                .equals(other._visitDays, _visitDays) &&
             (identical(other.deletedAt, deletedAt) ||
                 other.deletedAt == deletedAt) &&
             (identical(other.createdAt, createdAt) ||
@@ -548,13 +555,13 @@ class _TripMarker implements TripMarker {
       memo,
       source,
       const DeepCollectionEquality().hash(_detail),
-      visitTime,
+      const DeepCollectionEquality().hash(_visitDays),
       deletedAt,
       createdAt);
 
   @override
   String toString() {
-    return 'TripMarker(id: $id, tripId: $tripId, categoryId: $categoryId, createdBy: $createdBy, name: $name, latitude: $latitude, longitude: $longitude, address: $address, memo: $memo, source: $source, detail: $detail, visitTime: $visitTime, deletedAt: $deletedAt, createdAt: $createdAt)';
+    return 'TripMarker(id: $id, tripId: $tripId, categoryId: $categoryId, createdBy: $createdBy, name: $name, latitude: $latitude, longitude: $longitude, address: $address, memo: $memo, source: $source, detail: $detail, visitDays: $visitDays, deletedAt: $deletedAt, createdAt: $createdAt)';
   }
 }
 
@@ -578,7 +585,7 @@ abstract mixin class _$TripMarkerCopyWith<$Res>
       String? memo,
       MarkerSource source,
       Map<String, dynamic> detail,
-      DateTime? visitTime,
+      List<int> visitDays,
       DateTime? deletedAt,
       DateTime createdAt});
 }
@@ -606,7 +613,7 @@ class __$TripMarkerCopyWithImpl<$Res> implements _$TripMarkerCopyWith<$Res> {
     Object? memo = freezed,
     Object? source = null,
     Object? detail = null,
-    Object? visitTime = freezed,
+    Object? visitDays = null,
     Object? deletedAt = freezed,
     Object? createdAt = null,
   }) {
@@ -655,10 +662,10 @@ class __$TripMarkerCopyWithImpl<$Res> implements _$TripMarkerCopyWith<$Res> {
           ? _self._detail
           : detail // ignore: cast_nullable_to_non_nullable
               as Map<String, dynamic>,
-      visitTime: freezed == visitTime
-          ? _self.visitTime
-          : visitTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
+      visitDays: null == visitDays
+          ? _self._visitDays
+          : visitDays // ignore: cast_nullable_to_non_nullable
+              as List<int>,
       deletedAt: freezed == deletedAt
           ? _self.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable

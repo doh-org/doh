@@ -95,8 +95,8 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                         child: TextField(
                           controller: _searchCtrl,
                           autofocus: true,
+                          cursorColor: AppColors.folderOrange,
                           onChanged: (v) => setState(() => _query = v),
-                          cursorColor: AppColors.dark,
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
                             fontSize: 14,

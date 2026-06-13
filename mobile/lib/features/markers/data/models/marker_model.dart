@@ -19,7 +19,7 @@ abstract class MarkerModel with _$MarkerModel {
     String? memo,
     required String source,
     required Map<String, dynamic> detail,
-    @JsonKey(name: 'visit_time') DateTime? visitTime,
+    @JsonKey(name: 'visit_days') @Default([]) List<int> visitDays,
     @JsonKey(name: 'deleted_at') DateTime? deletedAt,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _MarkerModel;
@@ -41,7 +41,7 @@ extension MarkerModelX on MarkerModel {
         memo: memo,
         source: MarkerSource.values.byName(source),
         detail: detail,
-        visitTime: visitTime,
+        visitDays: visitDays,
         deletedAt: deletedAt,
         createdAt: createdAt,
       );

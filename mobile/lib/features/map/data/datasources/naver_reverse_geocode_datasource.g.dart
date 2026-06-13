@@ -1,30 +1,30 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'marker_remote_datasource.dart';
+part of 'naver_reverse_geocode_datasource.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$markerRemoteDatasourceHash() =>
-    r'8311b2f0a76164a94c3f967be0e4142484341c80';
+String _$naverReverseGeocodeDatasourceHash() =>
+    r'1cd50ec144d384dea1ff1a6089f5a25aabf30266';
 
-/// See also [markerRemoteDatasource].
-@ProviderFor(markerRemoteDatasource)
-final markerRemoteDatasourceProvider =
-    AutoDisposeProvider<MarkerRemoteDatasource>.internal(
-  markerRemoteDatasource,
-  name: r'markerRemoteDatasourceProvider',
+/// See also [naverReverseGeocodeDatasource].
+@ProviderFor(naverReverseGeocodeDatasource)
+final naverReverseGeocodeDatasourceProvider =
+    AutoDisposeProvider<NaverReverseGeocodeDatasource>.internal(
+  naverReverseGeocodeDatasource,
+  name: r'naverReverseGeocodeDatasourceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$markerRemoteDatasourceHash,
+      : _$naverReverseGeocodeDatasourceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef MarkerRemoteDatasourceRef
-    = AutoDisposeProviderRef<MarkerRemoteDatasource>;
+typedef NaverReverseGeocodeDatasourceRef
+    = AutoDisposeProviderRef<NaverReverseGeocodeDatasource>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

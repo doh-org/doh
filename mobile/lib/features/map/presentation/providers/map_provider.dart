@@ -23,3 +23,4 @@ class MapController extends _$MapController {
     state?.updateCamera(NCameraUpdate.scrollAndZoomTo(target: target, zoom: zoom));
   }
 }
+

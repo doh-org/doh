@@ -57,6 +57,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/marker/
 
   fonts:
     - family: Pretendard

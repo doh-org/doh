@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
@@ -12,15 +11,12 @@ import '../models/marker_model.dart';
 part 'marker_repository_impl.g.dart';
 
 @riverpod
-MarkerRepository markerRepository(Ref ref) => MarkerRepositoryImpl(
-      ref.watch(markerRemoteDatasourceProvider),
-      ref.watch(authNotifierProvider).valueOrNull?.id ?? '',
-    );
+MarkerRepository markerRepository(Ref ref) =>
+    MarkerRepositoryImpl(ref.watch(markerRemoteDatasourceProvider));
 
 class MarkerRepositoryImpl implements MarkerRepository {
-  const MarkerRepositoryImpl(this._datasource, this._userId);
+  const MarkerRepositoryImpl(this._datasource);
   final MarkerRemoteDatasource _datasource;
-  final String _userId;
 
   @override
   Future<List<TripMarker>> getMarkers(String tripId) async {
@@ -37,45 +33,59 @@ class MarkerRepositoryImpl implements MarkerRepository {
     String? categoryId,
     String? address,
     String? memo,
+    Map<String, dynamic>? detail,
     required MarkerSource source,
+    List<int> visitDays = const [],
   }) async {
-    final model = await _datasource.createMarker({
-      'trip_id': tripId,
-      'created_by': _userId,
+    final model = await _datasource.createMarker(tripId, {
       'name': name,
       'latitude': latitude,
       'longitude': longitude,
+      'source': source.name,
       if (categoryId != null) 'category_id': categoryId,
       if (address != null) 'address': address,
       if (memo != null) 'memo': memo,
-      'source': source.name,
+      'detail': detail ?? <String, dynamic>{},
+      'visit_days': visitDays,
     });
     return model.toEntity();
   }
 
   @override
-  Future<TripMarker> updateMarker(String markerId, {
+  Future<TripMarker> updateMarker(
+    String tripId,
+    String markerId, {
     String? name,
     String? categoryId,
+    bool clearCategoryId = false,
+    List<int>? visitDays,
     String? memo,
-    DateTime? visitTime,
   }) async {
-    final model = await _datasource.updateMarker(markerId, {
-      if (name != null) 'name': name,
-      if (categoryId != null) 'category_id': categoryId,
-      if (memo != null) 'memo': memo,
-      if (visitTime != null) 'visit_time': visitTime.toIso8601String(),
-    });
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (clearCategoryId) {
+      body['category_id'] = null;
+    } else if (categoryId != null) {
+      body['category_id'] = categoryId;
+    }
+    if (visitDays != null) body['visit_days'] = visitDays;
+    if (memo != null) body['memo'] = memo;
+    final model = await _datasource.updateMarker(tripId, markerId, body);
     return model.toEntity();
   }
 
   @override
-  Future<void> deleteMarker(String markerId) =>
-      _datasource.deleteMarker(markerId);
+  Future<void> deleteMarker(String tripId, String markerId) =>
+      _datasource.deleteMarker(tripId, markerId);
+
+  static final Map<String, List<Category>> _categoryCache = {};
 
   @override
   Future<List<Category>> getCategories(String tripId) async {
+    if (_categoryCache.containsKey(tripId)) return _categoryCache[tripId]!;
     final models = await _datasource.getCategories(tripId);
-    return models.map((m) => m.toEntity()).toList();
+    final result = models.map((m) => m.toEntity()).toList();
+    _categoryCache[tripId] = result;
+    return result;
   }
 }

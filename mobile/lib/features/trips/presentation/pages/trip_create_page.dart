@@ -186,8 +186,8 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   child: TextField(
                     controller: _titleCtrl,
                     maxLength: 14,
+                    cursorColor: AppColors.folderOrange,
                     onChanged: (_) => setState(() {}),
-                    cursorColor: AppColors.dark,
                     style: const TextStyle(fontFamily: 'Pretendard', fontSize: 14),
                     decoration: const InputDecoration(
                       counterText: '',

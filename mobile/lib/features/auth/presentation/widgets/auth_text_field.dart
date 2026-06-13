@@ -24,6 +24,7 @@ class AuthTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      cursorColor: AppColors.folderOrange,
       style: const TextStyle(
         fontFamily: 'Pretendard',
         fontSize: 18,

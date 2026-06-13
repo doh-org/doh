@@ -79,6 +79,7 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
         children: [
           TextField(
             controller: _nameController,
+            cursorColor: const Color(0xFFFE8505),
             decoration: const InputDecoration(labelText: '장소 이름'),
             autofocus: true,
           ),
