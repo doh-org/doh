@@ -59,7 +59,7 @@ func (u *markerUsecase) GetMarker(ctx context.Context, token, tripID, markerID s
 	return u.markerRepo.GetMarker(ctx, token, tripID, markerID)
 }
 
-func (u *markerUsecase) UpdateMarker(ctx context.Context, token, tripID, markerID string, input domain.UpdateMarkerInput) (*domain.Marker, error) {
+func (u *markerUsecase) UpdateMarker(ctx context.Context, token, tripID, markerID, userID string, input domain.UpdateMarkerInput) (*domain.Marker, error) {
 	if _, err := u.markerRepo.GetMarker(ctx, token, tripID, markerID); err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (u *markerUsecase) UpdateMarker(ctx context.Context, token, tripID, markerI
 		}
 	}
 
-	return u.markerRepo.UpdateMarker(ctx, token, tripID, markerID, input)
+	return u.markerRepo.UpdateMarker(ctx, token, tripID, markerID, userID, input)
 }
 
 func (u *markerUsecase) DeleteMarker(ctx context.Context, token, tripID, markerID string) error {

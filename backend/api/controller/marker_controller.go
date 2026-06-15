@@ -86,6 +86,7 @@ func (mc *MarkerController) UpdateMarker(c *gin.Context) {
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	tripID := c.Param("tripId")
 	markerID := c.Param("markerId")
+	userID := c.GetString(middleware.UserIDKey)
 
 	var input domain.UpdateMarkerInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -98,7 +99,7 @@ func (mc *MarkerController) UpdateMarker(c *gin.Context) {
 		return
 	}
 
-	marker, err := mc.markerUsecase.UpdateMarker(c.Request.Context(), token, tripID, markerID, input)
+	marker, err := mc.markerUsecase.UpdateMarker(c.Request.Context(), token, tripID, markerID, userID, input)
 	if err != nil {
 		mc.handleError(c, err)
 		return

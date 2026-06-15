@@ -50,7 +50,7 @@ type MarkerRepository interface {
 	CreateMarker(ctx context.Context, token, tripID, userID string, input CreateMarkerInput) (*Marker, error)
 	GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]Marker, error)
 	GetMarker(ctx context.Context, token, tripID, markerID string) (*Marker, error)
-	UpdateMarker(ctx context.Context, token, tripID, markerID string, input UpdateMarkerInput) (*Marker, error)
+	UpdateMarker(ctx context.Context, token, tripID, markerID, userID string, input UpdateMarkerInput) (*Marker, error)
 	DeleteMarker(ctx context.Context, token, tripID, markerID string) error
 }
 
@@ -58,6 +58,6 @@ type MarkerUsecase interface {
 	CreateMarker(ctx context.Context, token, tripID, userID string, input CreateMarkerInput) (*Marker, error)
 	GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]Marker, error)
 	GetMarker(ctx context.Context, token, tripID, markerID string) (*Marker, error)
-	UpdateMarker(ctx context.Context, token, tripID, markerID string, input UpdateMarkerInput) (*Marker, error)
+	UpdateMarker(ctx context.Context, token, tripID, markerID, userID string, input UpdateMarkerInput) (*Marker, error)
 	DeleteMarker(ctx context.Context, token, tripID, markerID string) error
 }

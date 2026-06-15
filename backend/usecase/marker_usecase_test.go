@@ -38,7 +38,7 @@ func (s *stubMarkerRepo) GetMarker(_ context.Context, _, _, markerID string) (*d
 	return m, nil
 }
 
-func (s *stubMarkerRepo) UpdateMarker(_ context.Context, _, _, markerID string, input domain.UpdateMarkerInput) (*domain.Marker, error) {
+func (s *stubMarkerRepo) UpdateMarker(_ context.Context, _, _, markerID, _ string, input domain.UpdateMarkerInput) (*domain.Marker, error) {
 	m, ok := s.markers[markerID]
 	if !ok {
 		return nil, domain.ErrNotFound
@@ -246,7 +246,7 @@ func TestUpdateMarker_NameValidation(t *testing.T) {
 			uc, mr, _ := newMarkerUsecase()
 			mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1", Name: "원본"}
 			n := tc.input
-			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", domain.UpdateMarkerInput{Name: &n})
+			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{Name: &n})
 			var ve *domain.ValidationError
 			if tc.wantErr && !errors.As(err, &ve) {
 				t.Errorf("want ValidationError, got %v", err)
@@ -262,7 +262,7 @@ func TestUpdateMarker_LatWithoutLng(t *testing.T) {
 	uc, mr, _ := newMarkerUsecase()
 	mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1"}
 	lat := 37.5
-	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", domain.UpdateMarkerInput{Latitude: &lat})
+	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{Latitude: &lat})
 	var ve *domain.ValidationError
 	if !errors.As(err, &ve) {
 		t.Errorf("want ValidationError, got %v", err)
@@ -273,7 +273,7 @@ func TestUpdateMarker_LngWithoutLat(t *testing.T) {
 	uc, mr, _ := newMarkerUsecase()
 	mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1"}
 	lng := 127.0
-	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", domain.UpdateMarkerInput{Longitude: &lng})
+	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{Longitude: &lng})
 	var ve *domain.ValidationError
 	if !errors.As(err, &ve) {
 		t.Errorf("want ValidationError, got %v", err)
@@ -296,7 +296,7 @@ func TestUpdateMarker_LatitudeOutOfRange(t *testing.T) {
 			uc, mr, _ := newMarkerUsecase()
 			mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1"}
 			lat, lng := tc.lat, 127.0
-			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", domain.UpdateMarkerInput{Latitude: &lat, Longitude: &lng})
+			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{Latitude: &lat, Longitude: &lng})
 			var ve *domain.ValidationError
 			if tc.wantErr && !errors.As(err, &ve) {
 				t.Errorf("lat=%v: want ValidationError, got %v", tc.lat, err)
@@ -324,7 +324,7 @@ func TestUpdateMarker_LongitudeOutOfRange(t *testing.T) {
 			uc, mr, _ := newMarkerUsecase()
 			mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1"}
 			lat, lng := 37.5, tc.lng
-			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", domain.UpdateMarkerInput{Latitude: &lat, Longitude: &lng})
+			_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{Latitude: &lat, Longitude: &lng})
 			var ve *domain.ValidationError
 			if tc.wantErr && !errors.As(err, &ve) {
 				t.Errorf("lng=%v: want ValidationError, got %v", tc.lng, err)
@@ -339,7 +339,7 @@ func TestUpdateMarker_LongitudeOutOfRange(t *testing.T) {
 func TestUpdateMarker_NotFound(t *testing.T) {
 	uc, _, _ := newMarkerUsecase()
 	n := "수정"
-	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "no-such", domain.UpdateMarkerInput{Name: &n})
+	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "no-such", "user-1", domain.UpdateMarkerInput{Name: &n})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("want ErrNotFound, got %v", err)
 	}
