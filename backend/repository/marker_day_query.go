@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"doh/backend/domain"
@@ -53,15 +54,7 @@ func (r *markerRepository) unassignedMarkers(ctx context.Context, token, tripID 
 // dayMarkers는 day stop을 sort 기준으로 반환함(마커 전체필드 하이드레이트).
 func (r *markerRepository) dayMarkers(ctx context.Context, token, tripID string, day int, sort domain.StopSort) ([]domain.DayMarker, error) {
 	out := []domain.DayMarker{}
-	routeID, err := r.findRouteID(ctx, token, tripID, day)
-	if err != nil {
-		return nil, err
-	}
-	if routeID == "" {
-		return out, nil // 그 day route 없음
-	}
-
-	stops, err := r.routeStops(ctx, token, routeID, sort)
+	stops, err := r.dayStops(ctx, token, tripID, day, sort)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +149,11 @@ func (r *markerRepository) queryMarkers(ctx context.Context, token string, q url
 	return markers, nil
 }
 
-// routeStops는 route의 marker_days stop을 sort 기준으로 조회함.
-func (r *markerRepository) routeStops(ctx context.Context, token, routeID string, sort domain.StopSort) ([]stopRow, error) {
+// dayStops는 (trip, day)의 marker_days stop을 sort 기준으로 조회함.
+func (r *markerRepository) dayStops(ctx context.Context, token, tripID string, day int, sort domain.StopSort) ([]stopRow, error) {
 	q := url.Values{}
-	q.Set("route_id", "eq."+routeID)
+	q.Set("trip_id", "eq."+tripID)
+	q.Set("day_index", "eq."+strconv.Itoa(day))
 	q.Set("select", "marker_id,order,visit_time,transport_to_next,distance_to_next,duration_to_next")
 	if sort == domain.SortByOrder {
 		q.Set("order", "order.asc")

@@ -53,38 +53,6 @@ func (r *routeRepository) restReq(ctx context.Context, method, rawURL string, bo
 	return r.httpClient.Do(req)
 }
 
-// findRouteID는 (tripID, day)의 route id를 반환한다. 없으면 빈 문자열.
-func (r *routeRepository) findRouteID(ctx context.Context, token, tripID string, day int) (string, error) {
-	q := url.Values{}
-	q.Set("trip_id", "eq."+tripID)
-	q.Set("day_index", "eq."+strconv.Itoa(day))
-	q.Set("select", "id")
-	q.Set("limit", "1")
-
-	resp, err := r.restReq(ctx, http.MethodGet, r.supabaseURL+"/rest/v1/routes?"+q.Encode(), nil, token, "")
-	if err != nil {
-		return "", err
-	}
-	b, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("findRouteID: status %d", resp.StatusCode)
-	}
-	var rows []struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(b, &rows); err != nil {
-		return "", err
-	}
-	if len(rows) == 0 {
-		return "", nil
-	}
-	return rows[0].ID, nil
-}
-
 type stopRow struct {
 	MarkerID        string   `json:"marker_id"`
 	Order           int      `json:"order"`
@@ -94,20 +62,13 @@ type stopRow struct {
 	DurationToNext  *int     `json:"duration_to_next"`
 }
 
-// GetDayStops는 Day(route) stop을 sort 기준으로 반환한다.
+// GetDayStops는 (trip, day) stop을 sort 기준으로 반환함.
 // sort=order면 order asc, 그 외(기본)는 visit_time asc(미정 하단)·order 순.
-// route 없으면 빈 목록. 마커 표시정보는 markers_view에서 하이드레이트.
+// stop 없으면 빈 목록. 마커 표시정보는 markers_view에서 하이드레이트.
 func (r *routeRepository) GetDayStops(ctx context.Context, token, tripID string, day int, sort domain.StopSort) ([]domain.RouteStop, error) {
-	routeID, err := r.findRouteID(ctx, token, tripID, day)
-	if err != nil {
-		return nil, err
-	}
-	if routeID == "" {
-		return []domain.RouteStop{}, nil
-	}
-
 	q := url.Values{}
-	q.Set("route_id", "eq."+routeID)
+	q.Set("trip_id", "eq."+tripID)
+	q.Set("day_index", "eq."+strconv.Itoa(day))
 	q.Set("select", "marker_id,order,visit_time,transport_to_next,distance_to_next,duration_to_next")
 	if sort == domain.SortByOrder {
 		q.Set("order", "order.asc")
@@ -224,16 +185,9 @@ func (r *routeRepository) UpdateStop(ctx context.Context, token, tripID string, 
 		return nil
 	}
 
-	routeID, err := r.findRouteID(ctx, token, tripID, day)
-	if err != nil {
-		return err
-	}
-	if routeID == "" {
-		return domain.ErrNotFound
-	}
-
 	q := url.Values{}
-	q.Set("route_id", "eq."+routeID)
+	q.Set("trip_id", "eq."+tripID)
+	q.Set("day_index", "eq."+strconv.Itoa(day))
 	q.Set("marker_id", "eq."+markerID)
 
 	resp, err := r.restReq(ctx, http.MethodPatch, r.supabaseURL+"/rest/v1/marker_days?"+q.Encode(), body, token, "return=minimal")
@@ -251,18 +205,10 @@ func (r *routeRepository) UpdateStop(ctx context.Context, token, tripID string, 
 	return nil
 }
 
-// ReorderDay는 markerIDs 순서대로 order를 1..N 재작성한다(bulk upsert, 단일 트랜잭션).
-// uq_md_route_order DEFERRABLE 덕에 중간 중복 위반 없음. 집합 일치 검증은 usecase.
+// ReorderDay는 markerIDs 순서대로 order를 1..N 재작성함(bulk upsert, 단일 트랜잭션).
+// uq_md_trip_day_order DEFERRABLE 덕에 중간 중복 위반 없음. 집합 일치 검증은 usecase.
 func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, day int, markerIDs []string) error {
-	routeID, err := r.findRouteID(ctx, token, tripID, day)
-	if err != nil {
-		return err
-	}
-	if routeID == "" {
-		return domain.ErrNotFound
-	}
-
-	idMap, err := r.markerDayIDs(ctx, token, routeID)
+	idMap, err := r.markerDayIDs(ctx, token, tripID, day)
 	if err != nil {
 		return err
 	}
@@ -274,7 +220,7 @@ func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, 
 			return domain.ErrNotFound
 		}
 		rows = append(rows, map[string]any{
-			"id": id, "marker_id": mid, "route_id": routeID, "order": i + 1,
+			"id": id, "marker_id": mid, "trip_id": tripID, "day_index": day, "order": i + 1,
 		})
 	}
 
@@ -290,9 +236,10 @@ func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, 
 	return nil
 }
 
-func (r *routeRepository) markerDayIDs(ctx context.Context, token, routeID string) (map[string]string, error) {
+func (r *routeRepository) markerDayIDs(ctx context.Context, token, tripID string, day int) (map[string]string, error) {
 	q := url.Values{}
-	q.Set("route_id", "eq."+routeID)
+	q.Set("trip_id", "eq."+tripID)
+	q.Set("day_index", "eq."+strconv.Itoa(day))
 	q.Set("select", "id,marker_id")
 
 	resp, err := r.restReq(ctx, http.MethodGet, r.supabaseURL+"/rest/v1/marker_days?"+q.Encode(), nil, token, "")

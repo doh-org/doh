@@ -3,21 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
-	"time"
 )
-
-// Route는 trip의 day별 경로(v0.8: day당 1행). day_index가 일차.
-// transport_mode·route_waypoints는 폐기 — 순서·구간은 marker_days로 이동.
-type Route struct {
-	ID          string    `json:"id"`
-	TripID      string    `json:"trip_id"`
-	CreatedBy   *string   `json:"created_by,omitempty"`
-	Title       string    `json:"title"`
-	Description *string   `json:"description,omitempty"`
-	DayIndex    int       `json:"day_index"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
 
 // RouteStop = 그날의 stop(marker_days 한 행) + 마커 표시 정보.
 // 구간(이동수단·거리·시간)은 다음 stop까지를 의미(_to_next). 마지막 stop은 NULL.

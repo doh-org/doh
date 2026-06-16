@@ -14,7 +14,6 @@ import (
 )
 
 const defaultTripID = "trip-aaa"
-const defaultRouteID = "route-aaa"
 
 func findMarker(fs *testutil.FakeSupabase, id string) *domain.Marker {
 	for i := range fs.Markers {
@@ -29,7 +28,6 @@ func setupMarker(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
 	fs.Trips = append(fs.Trips, domain.Trip{ID: defaultTripID})
-	fs.AddRoute(defaultRouteID, defaultTripID)
 	keys := testutil.NewTestKeys(t)
 	router := testutil.NewTestMarkerRouter(t, fs.Server.URL, keys, fs.Server.Client())
 	return router, fs, keys
@@ -249,13 +247,13 @@ func TestCreateMarker_BodyTooLarge(t *testing.T) {
 
 // ── GET /markers/:dayIndex (day 목록) ───────────────────────────────────────────
 
-// seedDayMarker는 마커 + day1(defaultRouteID) stop을 시드함.
+// seedDayMarker는 마커 + day1 stop을 시드함.
 func seedDayMarker(fs *testutil.FakeSupabase, mdID, markerID string, order int, visit *string) {
 	fs.Markers = append(fs.Markers, domain.Marker{
 		ID: markerID, TripID: defaultTripID, Name: markerID, Latitude: 37.5, Longitude: 127.0,
 	})
 	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{
-		ID: mdID, MarkerID: markerID, RouteID: defaultRouteID, Order: order, VisitTime: visit,
+		ID: mdID, MarkerID: markerID, TripID: defaultTripID, DayIndex: 1, Order: order, VisitTime: visit,
 	})
 }
 
@@ -412,7 +410,6 @@ func TestGetMarker_TripMismatch(t *testing.T) {
 
 	otherTripID := "trip-other"
 	fs.Trips = append(fs.Trips, domain.Trip{ID: otherTripID})
-	fs.AddRoute("route-other", otherTripID)
 
 	w := doMarker(router, http.MethodGet, markerPath(otherTripID, created.ID), tok, nil)
 	if w.Code != http.StatusNotFound {
@@ -597,9 +594,9 @@ func TestUpdateMarker_ClearVisitDays(t *testing.T) {
 	tok := markerToken(t, keys, fs, "user-1")
 
 	created := createMarker(t, router, tok, defaultTripID)
-	// Day1(route-aaa)에 배정된 stop을 시드 → 이후 빈 배열로 해제 검증
+	// Day1에 배정된 stop을 시드 → 이후 빈 배열로 해제 검증
 	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{
-		ID: "md-seed", MarkerID: created.ID, RouteID: defaultRouteID, Order: 1,
+		ID: "md-seed", MarkerID: created.ID, TripID: defaultTripID, DayIndex: 1, Order: 1,
 	})
 
 	w := doMarker(router, http.MethodPatch, markerPath(defaultTripID, created.ID), tok, map[string]any{"visit_days": []int{}})

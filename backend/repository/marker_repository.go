@@ -154,7 +154,7 @@ func (r *markerRepository) CreateMarker(ctx context.Context, token, tripID, user
 
 	// 마커는 day 미배정 상태로 생성된다(미정 탭). 날짜 지정 시에만 stop 생성.
 	if len(input.VisitDays) > 0 {
-		if err := r.setMarkerDays(ctx, token, tripID, markerID, userID, input.VisitDays); err != nil {
+		if err := r.setMarkerDays(ctx, token, tripID, markerID, input.VisitDays); err != nil {
 			return nil, err
 		}
 	}
@@ -208,7 +208,7 @@ func (r *markerRepository) UpdateMarker(ctx context.Context, token, tripID, mark
 	}
 
 	if input.VisitDays != nil {
-		if err := r.setMarkerDays(ctx, token, tripID, markerID, userID, *input.VisitDays); err != nil {
+		if err := r.setMarkerDays(ctx, token, tripID, markerID, *input.VisitDays); err != nil {
 			return nil, err
 		}
 	}

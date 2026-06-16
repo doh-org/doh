@@ -11,13 +11,11 @@ import (
 )
 
 const routeTripID = "trip-route"
-const routeDay1ID = "route-d1"
 
 func setupRoute(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.TestKeys) {
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
 	fs.Trips = append(fs.Trips, domain.Trip{ID: routeTripID})
-	fs.AddRoute(routeDay1ID, routeTripID) // day_index 1
 	keys := testutil.NewTestKeys(t)
 	router := testutil.NewTestRouteRouter(t, fs.Server.URL, keys, fs.Server.Client())
 	return router, fs, keys
@@ -25,13 +23,13 @@ func setupRoute(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.T
 
 func strPtr(s string) *string { return &s }
 
-// seedStop은 day1 route에 마커 + stop을 시드.
+// seedStop은 day1에 마커 + stop을 시드.
 func seedStop(fs *testutil.FakeSupabase, mdID, markerID string, order int, visit *string) {
 	fs.Markers = append(fs.Markers, domain.Marker{
 		ID: markerID, TripID: routeTripID, Name: markerID, Latitude: 37.5, Longitude: 127.0,
 	})
 	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{
-		ID: mdID, MarkerID: markerID, RouteID: routeDay1ID, Order: order, VisitTime: visit,
+		ID: mdID, MarkerID: markerID, TripID: routeTripID, DayIndex: 1, Order: order, VisitTime: visit,
 	})
 }
 
