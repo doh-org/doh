@@ -73,7 +73,6 @@ type RouteRepository interface {
 }
 
 type RouteUsecase interface {
-	GetDayStops(ctx context.Context, token, tripID string, day int, sort string) ([]RouteStop, error)
 	UpdateStop(ctx context.Context, token, tripID string, day int, markerID string, input UpdateStopInput) (*RouteStop, error)
 	ReorderDay(ctx context.Context, token, tripID string, day int, markerIDs []string) (int, error)
 }

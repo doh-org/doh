@@ -75,25 +75,6 @@ func twoStops() []domain.RouteStop {
 	}
 }
 
-// ── GetDayStops ────────────────────────────────────────────────────────────────
-
-func TestGetDayStops_DayValidation(t *testing.T) {
-	uc, _, _ := newRouteUsecase()
-	_, err := uc.GetDayStops(context.Background(), "tok", "trip-1", 0, "")
-	var ve *domain.ValidationError
-	if !errors.As(err, &ve) {
-		t.Errorf("day=0: want ValidationError, got %v", err)
-	}
-}
-
-func TestGetDayStops_TripNotFound(t *testing.T) {
-	uc, _, _ := newRouteUsecase()
-	_, err := uc.GetDayStops(context.Background(), "tok", "no-such", 1, "")
-	if !errors.Is(err, domain.ErrNotFound) {
-		t.Errorf("want ErrNotFound, got %v", err)
-	}
-}
-
 // ── UpdateStop ───────────────────────────────────────────────────────────────
 
 func TestUpdateStop_VisitTimeFormat(t *testing.T) {

@@ -78,63 +78,6 @@ func (r *markerRepository) restReq(ctx context.Context, method, rawURL string, b
 	return r.httpClient.Do(req)
 }
 
-func (r *markerRepository) GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]domain.Marker, error) {
-	params := url.Values{}
-	params.Set("select", markerViewCols)
-	params.Set("trip_id", "eq."+tripID)
-	params.Set("deleted_at", "is.null")
-	params.Set("order", "created_at.asc")
-	if q != nil {
-		params.Set("name", "ilike.*"+*q+"*")
-	}
-	if categoryID != nil {
-		if *categoryID == "null" {
-			params.Set("category_id", "is.null")
-		} else {
-			params.Set("category_id", "eq."+*categoryID)
-		}
-	}
-
-	resp, err := r.restReq(ctx, http.MethodGet, r.supabaseURL+"/rest/v1/markers_view?"+params.Encode(), nil, token, "")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("getMarkers: status %d", resp.StatusCode)
-	}
-
-	var rows []markerRow
-	if err := json.Unmarshal(b, &rows); err != nil {
-		return nil, err
-	}
-
-	markers := make([]domain.Marker, len(rows))
-	for i, row := range rows {
-		markers[i] = row.toDomain()
-	}
-
-	if len(markers) > 0 {
-		ids := make([]string, len(markers))
-		for i, m := range markers {
-			ids[i] = m.ID
-		}
-		daysMap, err := r.fetchVisitDays(ctx, token, ids)
-		if err != nil {
-			return nil, err
-		}
-		for i := range markers {
-			markers[i].VisitDays = daysMap[markers[i].ID]
-		}
-	}
-	return markers, nil
-}
-
 func (r *markerRepository) GetMarker(ctx context.Context, token, tripID, markerID string) (*domain.Marker, error) {
 	params := url.Values{}
 	params.Set("select", markerViewCols)

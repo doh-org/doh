@@ -60,8 +60,7 @@ func NewTestMarkerRouter(
 	trips := r.Group("/api/v1/trips")
 	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	markers := trips.Group("/:tripId/markers")
-	markers.GET("", mc.GetMarkers)
-	markers.GET("/:markerId", mc.GetMarker)
+	markers.GET("/:markerId", mc.GetMarkers) // 정수=day 목록(day=0 미정), UUID=단건
 	markers.POST("/add", mc.CreateMarker)
 	markers.PATCH("/:markerId", mc.UpdateMarker)
 	markers.DELETE("/:markerId", mc.DeleteMarker)
@@ -85,7 +84,6 @@ func NewTestRouteRouter(
 	trips := r.Group("/api/v1/trips")
 	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	days := trips.Group("/:tripId/days")
-	days.GET("/:dayIndex/markers", rc.GetDayStops)
 	days.PATCH("/:dayIndex/markers/:markerId", rc.UpdateStop)
 	days.PATCH("/:dayIndex/reorder", rc.ReorderDay)
 

@@ -20,20 +20,6 @@ func NewRouteUsecase(routeRepo domain.RouteRepository, tripRepo domain.TripRepos
 // visit_time 허용 포맷(시각만). Postgres time은 둘 다 수용.
 var visitTimeLayouts = []string{"15:04:05", "15:04"}
 
-func (u *routeUsecase) GetDayStops(ctx context.Context, token, tripID string, day int, sort string) ([]domain.RouteStop, error) {
-	if day < 1 {
-		return nil, &domain.ValidationError{Message: "day는 1 이상이어야 합니다."}
-	}
-	s, err := parseStopSort(sort)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := u.tripRepo.GetTrip(ctx, token, tripID); err != nil {
-		return nil, err
-	}
-	return u.routeRepo.GetDayStops(ctx, token, tripID, day, s)
-}
-
 // parseStopSort는 sort 쿼리를 정규화한다. 빈 값=기본(visit_time), 허용값 외 400.
 func parseStopSort(sort string) (domain.StopSort, error) {
 	switch sort {

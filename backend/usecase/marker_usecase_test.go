@@ -26,7 +26,7 @@ func (s *stubMarkerRepo) CreateMarker(_ context.Context, _, tripID, userID strin
 	return m, nil
 }
 
-func (s *stubMarkerRepo) GetMarkers(_ context.Context, _, _ string, _, _ *string) ([]domain.Marker, error) {
+func (s *stubMarkerRepo) GetMarkersByDay(_ context.Context, _, _ string, _ int, _ domain.StopSort) ([]domain.DayMarker, error) {
 	return nil, nil
 }
 

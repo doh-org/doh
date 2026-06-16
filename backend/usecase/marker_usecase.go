@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"doh/backend/domain"
@@ -48,11 +49,23 @@ func (u *markerUsecase) CreateMarker(ctx context.Context, token, tripID, userID 
 	return u.markerRepo.CreateMarker(ctx, token, tripID, userID, input)
 }
 
-func (u *markerUsecase) GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]domain.Marker, error) {
-	if _, err := u.tripRepo.GetTrip(ctx, token, tripID); err != nil {
+// GetMarkersByDay는 day 마커 목록을 반환함. day=0=미정, day>=1=그 day. day<0은 400.
+func (u *markerUsecase) GetMarkersByDay(ctx context.Context, token, tripID string, day int, sort string) ([]domain.DayMarker, error) {
+	slog.Info("[marker] usecase.GetMarkersByDay: start", "tripID", tripID, "day", day, "sort", sort)
+	if day < 0 {
+		slog.Warn("[marker] GetMarkersByDay: day 음수", "day", day)
+		return nil, &domain.ValidationError{Message: "day는 0 이상이어야 합니다."}
+	}
+	s, err := parseStopSort(sort)
+	if err != nil {
+		slog.Warn("[marker] GetMarkersByDay: sort 검증 실패", "sort", sort)
 		return nil, err
 	}
-	return u.markerRepo.GetMarkers(ctx, token, tripID, q, categoryID)
+	if _, err := u.tripRepo.GetTrip(ctx, token, tripID); err != nil {
+		slog.Warn("[marker] GetMarkersByDay: GetTrip 실패", "tripID", tripID, "err", err)
+		return nil, err
+	}
+	return u.markerRepo.GetMarkersByDay(ctx, token, tripID, day, s)
 }
 
 func (u *markerUsecase) GetMarker(ctx context.Context, token, tripID, markerID string) (*domain.Marker, error) {

@@ -20,7 +20,6 @@ func NewRouteRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, tripsG
 
 	days := tripsGroup.Group("/:tripId/days")
 	days.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
-	days.GET("/:dayIndex/markers", rc.GetDayStops)
 	days.PATCH("/:dayIndex/markers/:markerId", rc.UpdateStop)
 	days.PATCH("/:dayIndex/reorder", rc.ReorderDay)
 }

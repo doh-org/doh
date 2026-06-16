@@ -247,85 +247,135 @@ func TestCreateMarker_BodyTooLarge(t *testing.T) {
 	}
 }
 
-// ── GET /markers ──────────────────────────────────────────────────────────────
+// ── GET /markers/:dayIndex (day 목록) ───────────────────────────────────────────
 
-func TestGetMarkers_Empty(t *testing.T) {
+// seedDayMarker는 마커 + day1(defaultRouteID) stop을 시드함.
+func seedDayMarker(fs *testutil.FakeSupabase, mdID, markerID string, order int, visit *string) {
+	fs.Markers = append(fs.Markers, domain.Marker{
+		ID: markerID, TripID: defaultTripID, Name: markerID, Latitude: 37.5, Longitude: 127.0,
+	})
+	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{
+		ID: mdID, MarkerID: markerID, RouteID: defaultRouteID, Order: order, VisitTime: visit,
+	})
+}
+
+func TestGetMarkersByDay_Unassigned(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
-	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, ""), tok, nil)
+	createMarker(t, router, tok, defaultTripID) // day 미배정
+	createMarker(t, router, tok, defaultTripID)
+
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "0"), tok, nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	var markers []domain.Marker
+	var markers []domain.DayMarker
+	json.NewDecoder(w.Body).Decode(&markers)
+	if len(markers) != 2 {
+		t.Fatalf("len=%d want 2", len(markers))
+	}
+	if markers[0].Order != nil || markers[0].VisitTime != nil {
+		t.Errorf("미정 stop 필드는 null이어야 함: order=%v visit=%v", markers[0].Order, markers[0].VisitTime)
+	}
+}
+
+func TestGetMarkersByDay_SortedByOrder(t *testing.T) {
+	router, fs, keys := setupMarker(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	seedDayMarker(fs, "md-a", "ma", 1, strPtr("11:00"))
+	seedDayMarker(fs, "md-b", "mb", 2, strPtr("09:00"))
+
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "1")+"?sort=order", tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var markers []domain.DayMarker
+	json.NewDecoder(w.Body).Decode(&markers)
+	want := []string{"ma", "mb"} // order asc
+	if len(markers) != len(want) {
+		t.Fatalf("len=%d want %d", len(markers), len(want))
+	}
+	for i, id := range want {
+		if markers[i].ID != id {
+			t.Errorf("markers[%d].id=%q want %q", i, markers[i].ID, id)
+		}
+	}
+}
+
+func TestGetMarkersByDay_SortedByVisitTime(t *testing.T) {
+	router, fs, keys := setupMarker(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	seedDayMarker(fs, "md-a", "ma", 1, strPtr("11:00"))
+	seedDayMarker(fs, "md-b", "mb", 2, strPtr("09:00"))
+
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "1"), tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var markers []domain.DayMarker
+	json.NewDecoder(w.Body).Decode(&markers)
+	if len(markers) != 2 || markers[0].ID != "mb" {
+		t.Errorf("visit_time asc 정렬 실패: %+v", markers)
+	}
+}
+
+func TestGetMarkersByDay_EmptyDayNoRoute(t *testing.T) {
+	router, fs, keys := setupMarker(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "2"), tok, nil) // day2 route 없음
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var markers []domain.DayMarker
 	json.NewDecoder(w.Body).Decode(&markers)
 	if len(markers) != 0 {
 		t.Errorf("len=%d want 0", len(markers))
 	}
 }
 
-func TestGetMarkers_ReturnsList(t *testing.T) {
+func TestGetMarkersByDay_NegativeDay(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
-	createMarker(t, router, tok, defaultTripID)
-	createMarker(t, router, tok, defaultTripID)
-
-	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, ""), tok, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200", w.Code)
-	}
-	var markers []domain.Marker
-	json.NewDecoder(w.Body).Decode(&markers)
-	if len(markers) != 2 {
-		t.Errorf("len=%d want 2", len(markers))
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "-1"), tok, nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
 	}
 }
 
-func TestGetMarkers_QueryFilter(t *testing.T) {
+func TestGetMarkersByDay_InvalidSort(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
-	body1 := createMarkerBody()
-	body1["name"] = "스타벅스 강남점"
-	body2 := createMarkerBody()
-	body2["name"] = "투썸플레이스"
-	doMarker(router, http.MethodPost, "/api/v1/trips/"+defaultTripID+"/markers/add", tok, body1)
-	doMarker(router, http.MethodPost, "/api/v1/trips/"+defaultTripID+"/markers/add", tok, body2)
-
-	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "")+"?q=스타벅스", tok, nil)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status=%d want 200", w.Code)
-	}
-	var markers []domain.Marker
-	json.NewDecoder(w.Body).Decode(&markers)
-	if len(markers) != 1 {
-		t.Errorf("len=%d want 1", len(markers))
-	}
-	if len(markers) > 0 && !strings.Contains(markers[0].Name, "스타벅스") {
-		t.Errorf("name=%q does not contain 스타벅스", markers[0].Name)
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "1")+"?sort=bogus", tok, nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
 	}
 }
 
-func TestGetMarkers_TripNotFound(t *testing.T) {
+func TestGetMarkersByDay_TripNotFound(t *testing.T) {
 	router, fs, keys := setupMarker(t)
 	tok := markerToken(t, keys, fs, "user-1")
 
-	w := doMarker(router, http.MethodGet, markerPath("00000000-0000-0000-0000-000000000000", ""), tok, nil)
+	w := doMarker(router, http.MethodGet, markerPath("00000000-0000-0000-0000-000000000000", "0"), tok, nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status=%d want 404", w.Code)
 	}
 }
 
-func TestGetMarkers_NoToken(t *testing.T) {
+func TestGetMarkersByDay_NoToken(t *testing.T) {
 	router, _, _ := setupMarker(t)
-	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, ""), "", nil)
+	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, "0"), "", nil)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status=%d want 401", w.Code)
 	}
 }
 
-// ── GET /:markerId ────────────────────────────────────────────────────────────
+// ── GET /:markerId (단건) ───────────────────────────────────────────────────────
 
 func TestGetMarker_Success(t *testing.T) {
 	router, fs, keys := setupMarker(t)
@@ -601,23 +651,6 @@ func TestDeleteMarker_ThenGet404(t *testing.T) {
 	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, created.ID), tok, nil)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("after delete: status=%d want 404", w.Code)
-	}
-}
-
-func TestDeleteMarker_ThenNotInList(t *testing.T) {
-	router, fs, keys := setupMarker(t)
-	tok := markerToken(t, keys, fs, "user-1")
-
-	created := createMarker(t, router, tok, defaultTripID)
-	doMarker(router, http.MethodDelete, markerPath(defaultTripID, created.ID), tok, nil)
-
-	w := doMarker(router, http.MethodGet, markerPath(defaultTripID, ""), tok, nil)
-	var markers []domain.Marker
-	json.NewDecoder(w.Body).Decode(&markers)
-	for _, m := range markers {
-		if m.ID == created.ID {
-			t.Errorf("deleted marker still in list: %s", created.ID)
-		}
 	}
 }
 

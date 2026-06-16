@@ -20,8 +20,7 @@ func NewMarkerRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, trips
 
 	markers := tripsGroup.Group("/:tripId/markers")
 	markers.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
-	markers.GET("", mc.GetMarkers)
-	markers.GET("/:markerId", mc.GetMarker)
+	markers.GET("/:markerId", mc.GetMarkers) // 정수=day 목록(day=0 미정), UUID=단건
 	markers.POST("/add", mc.CreateMarker)
 	markers.PATCH("/:markerId", mc.UpdateMarker)
 	markers.DELETE("/:markerId", mc.DeleteMarker)

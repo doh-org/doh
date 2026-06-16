@@ -20,23 +20,6 @@ func NewRouteController(ru domain.RouteUsecase) *RouteController {
 	return &RouteController{routeUsecase: ru}
 }
 
-// GET /trips/:tripId/days/:dayIndex/markers — Day 마커 목록(sort=visit_time 기본|order)
-func (rc *RouteController) GetDayStops(c *gin.Context) {
-	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	tripID := c.Param("tripId")
-	day, ok := parseDayIndex(c)
-	if !ok {
-		return
-	}
-
-	stops, err := rc.routeUsecase.GetDayStops(c.Request.Context(), token, tripID, day, c.Query("sort"))
-	if err != nil {
-		rc.handleError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, stops)
-}
-
 // PATCH /trips/:tripId/days/:dayIndex/markers/:markerId — stop 수정(방문시간·이동수단)
 func (rc *RouteController) UpdateStop(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
