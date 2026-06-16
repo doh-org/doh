@@ -15,4 +15,5 @@ func Setup(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, r *gin.Engine) 
 	NewTripRouter(env, keys, tripsGroup)
 	NewCategoryRouter(env, keys, tripsGroup)
 	NewMarkerRouter(env, keys, tripsGroup)
+	NewRouteRouter(env, keys, tripsGroup)
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -41,10 +42,14 @@ type fakeRoute struct {
 }
 
 type FakeMarkerDay struct {
-	ID       string
-	MarkerID string
-	RouteID  string
-	Order    int
+	ID              string
+	MarkerID        string
+	RouteID         string
+	Order           int
+	VisitTime       *string
+	TransportToNext *string
+	DistanceToNext  *float64
+	DurationToNext  *int
 }
 
 func NewFakeSupabase(t *testing.T) *FakeSupabase {
@@ -191,7 +196,7 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 	mux.HandleFunc("/rest/v1/markers_view", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		q := r.URL.Query()
-		idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
+		idSet := parseInFilter(q.Get("id")) // eq.x / in.(a,b) 모두 지원
 		tripFilter := strings.TrimPrefix(q.Get("trip_id"), "eq.")
 		nameFilter := strings.TrimPrefix(q.Get("name"), "ilike.*")
 		nameFilter = strings.TrimSuffix(nameFilter, "*")
@@ -199,7 +204,7 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 
 		var result []domain.Marker
 		for _, m := range fs.Markers {
-			if idFilter != "" && m.ID != idFilter {
+			if len(idSet) > 0 && !idSet[m.ID] {
 				continue
 			}
 			if tripFilter != "" && m.TripID != tripFilter {
@@ -239,11 +244,15 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 				DayIndex int `json:"day_index"`
 			}
 			type row struct {
-				ID       string      `json:"id"`
-				MarkerID string      `json:"marker_id"`
-				RouteID  string      `json:"route_id"`
-				Order    int         `json:"order"`
-				Routes   *routeEmbed `json:"routes,omitempty"`
+				ID              string      `json:"id"`
+				MarkerID        string      `json:"marker_id"`
+				RouteID         string      `json:"route_id"`
+				Order           int         `json:"order"`
+				VisitTime       *string     `json:"visit_time"`
+				TransportToNext *string     `json:"transport_to_next"`
+				DistanceToNext  *float64    `json:"distance_to_next"`
+				DurationToNext  *int        `json:"duration_to_next"`
+				Routes          *routeEmbed `json:"routes,omitempty"`
 			}
 			result := []row{}
 			for _, d := range fs.MarkerDays {
@@ -253,15 +262,44 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 				if routeFilter != "" && d.RouteID != routeFilter {
 					continue
 				}
-				out := row{ID: d.ID, MarkerID: d.MarkerID, RouteID: d.RouteID, Order: d.Order}
+				out := row{
+					ID: d.ID, MarkerID: d.MarkerID, RouteID: d.RouteID, Order: d.Order,
+					VisitTime: d.VisitTime, TransportToNext: d.TransportToNext,
+					DistanceToNext: d.DistanceToNext, DurationToNext: d.DurationToNext,
+				}
 				if day, ok := fs.routeDayIndex(d.RouteID); ok {
 					out.Routes = &routeEmbed{DayIndex: day}
 				}
 				result = append(result, out)
 			}
+			if ord := q.Get("order"); strings.Contains(ord, "visit_time") {
+				sort.SliceStable(result, func(i, j int) bool {
+					return lessVisitThenOrder(result[i].VisitTime, result[i].Order, result[j].VisitTime, result[j].Order)
+				})
+			} else if strings.Contains(ord, "order") {
+				sort.SliceStable(result, func(i, j int) bool { return result[i].Order < result[j].Order })
+			}
 			json.NewEncoder(w).Encode(result)
 
 		case http.MethodPost:
+			// reorder는 Prefer: resolution=merge-duplicates 로 배열 upsert.
+			if strings.Contains(r.Header.Get("Prefer"), "merge-duplicates") {
+				var rows []map[string]any
+				json.NewDecoder(r.Body).Decode(&rows)
+				for _, b := range rows {
+					id, _ := b["id"].(string)
+					for i := range fs.MarkerDays {
+						if fs.MarkerDays[i].ID != id {
+							continue
+						}
+						if v, ok := b["order"].(float64); ok {
+							fs.MarkerDays[i].Order = int(v)
+						}
+					}
+				}
+				w.WriteHeader(http.StatusCreated)
+				return
+			}
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
 			d := FakeMarkerDay{ID: fmt.Sprintf("md-%d", len(fs.MarkerDays)+1)}
@@ -276,6 +314,27 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 			}
 			fs.MarkerDays = append(fs.MarkerDays, d)
 			w.WriteHeader(http.StatusCreated)
+
+		case http.MethodPatch:
+			routeFilter := strings.TrimPrefix(q.Get("route_id"), "eq.")
+			markerFilter := strings.TrimPrefix(q.Get("marker_id"), "eq.")
+			idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			for i := range fs.MarkerDays {
+				d := &fs.MarkerDays[i]
+				if idFilter != "" && d.ID != idFilter {
+					continue
+				}
+				if routeFilter != "" && d.RouteID != routeFilter {
+					continue
+				}
+				if markerFilter != "" && d.MarkerID != markerFilter {
+					continue
+				}
+				applyMarkerDayPatch(d, body)
+			}
+			w.WriteHeader(http.StatusNoContent)
 
 		case http.MethodDelete:
 			idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
@@ -351,6 +410,50 @@ func (fs *FakeSupabase) routeDayIndex(routeID string) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+// applyMarkerDayPatch는 marker_days PATCH body를 반영한다(null=해제).
+func applyMarkerDayPatch(d *FakeMarkerDay, body map[string]any) {
+	if v, exists := body["visit_time"]; exists {
+		if v == nil {
+			d.VisitTime = nil
+		} else if s, ok := v.(string); ok {
+			d.VisitTime = &s
+		}
+	}
+	if v, exists := body["transport_to_next"]; exists {
+		if v == nil {
+			d.TransportToNext = nil
+		} else if s, ok := v.(string); ok {
+			d.TransportToNext = &s
+		}
+	}
+	if v, exists := body["distance_to_next"]; exists {
+		if v == nil {
+			d.DistanceToNext = nil
+		} else if f, ok := v.(float64); ok {
+			d.DistanceToNext = &f
+		}
+	}
+	if v, exists := body["duration_to_next"]; exists {
+		if v == nil {
+			d.DurationToNext = nil
+		} else if f, ok := v.(float64); ok {
+			n := int(f)
+			d.DurationToNext = &n
+		}
+	}
+}
+
+// lessVisitThenOrder: visit_time asc(nil 하단), 동률이면 order asc.
+func lessVisitThenOrder(vi *string, oi int, vj *string, oj int) bool {
+	if (vi == nil) != (vj == nil) {
+		return vi != nil // non-nil 먼저(nil 하단)
+	}
+	if vi != nil && *vi != *vj {
+		return *vi < *vj
+	}
+	return oi < oj
 }
 
 // parseInFilter는 PostgREST "eq.x" / "in.(a,b)" 필터를 집합으로 변환한다.

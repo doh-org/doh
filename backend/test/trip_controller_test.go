@@ -128,6 +128,38 @@ func TestCreateTrip_NoAuth(t *testing.T) {
 	}
 }
 
+func TestCreateTrip_TotalDaysInResponse(t *testing.T) {
+	router, fs, keys := setupTrip(t)
+	tok := tripToken(t, keys, fs, "user-1")
+
+	w := doTrip(router, http.MethodPost, "/api/v1/trips/add", tok, map[string]any{
+		"title":      "일주일",
+		"start_date": "2026-08-01",
+		"end_date":   "2026-08-07",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d want 201, body=%s", w.Code, w.Body)
+	}
+	var trip domain.Trip
+	json.NewDecoder(w.Body).Decode(&trip)
+	if trip.TotalDays == nil || *trip.TotalDays != 7 {
+		t.Errorf("total_days=%v want 7", trip.TotalDays)
+	}
+}
+
+func TestCreateTrip_TotalDaysOmittedWhenNoDates(t *testing.T) {
+	router, fs, keys := setupTrip(t)
+	tok := tripToken(t, keys, fs, "user-1")
+
+	w := doTrip(router, http.MethodPost, "/api/v1/trips/add", tok, map[string]any{"title": "날짜없음"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d want 201, body=%s", w.Code, w.Body)
+	}
+	if strings.Contains(w.Body.String(), "total_days") {
+		t.Errorf("total_days should be omitted, body=%s", w.Body)
+	}
+}
+
 // ── GET /api/v1/trips ─────────────────────────────────────────────────────────
 
 func TestGetTrips_Empty(t *testing.T) {

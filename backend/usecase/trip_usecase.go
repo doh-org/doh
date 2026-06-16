@@ -10,6 +10,8 @@ import (
 	"doh/backend/domain"
 )
 
+const tripDateLayout = "2006-01-02" // YYYY-MM-DD. Go 레퍼런스 포맷.
+
 type tripUsecase struct {
 	tripRepo domain.TripRepository
 }
@@ -40,15 +42,28 @@ func (u *tripUsecase) CreateTrip(ctx context.Context, userID, token string, inpu
 		slog.Error("[trip] usecase.CreateTrip: repo error", "err", err)
 		return nil, err
 	}
+	setTotalDays(trip)
 	return trip, nil
 }
 
 func (u *tripUsecase) GetTrips(ctx context.Context, token string) ([]domain.Trip, error) {
-	return u.tripRepo.GetTrips(ctx, token)
+	trips, err := u.tripRepo.GetTrips(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	for i := range trips {
+		setTotalDays(&trips[i])
+	}
+	return trips, nil
 }
 
 func (u *tripUsecase) GetTrip(ctx context.Context, token, tripID string) (*domain.Trip, error) {
-	return u.tripRepo.GetTrip(ctx, token, tripID)
+	trip, err := u.tripRepo.GetTrip(ctx, token, tripID)
+	if err != nil {
+		return nil, err
+	}
+	setTotalDays(trip)
+	return trip, nil
 }
 
 func (u *tripUsecase) UpdateTrip(ctx context.Context, userID, token, tripID string, input domain.UpdateTripInput) (*domain.Trip, error) {
@@ -83,7 +98,12 @@ func (u *tripUsecase) UpdateTrip(ctx context.Context, userID, token, tripID stri
 	}
 
 	slog.Info("[trip] usecase.UpdateTrip: calling repo", "tripID", tripID)
-	return u.tripRepo.UpdateTrip(ctx, token, tripID, input)
+	updated, err := u.tripRepo.UpdateTrip(ctx, token, tripID, input)
+	if err != nil {
+		return nil, err
+	}
+	setTotalDays(updated)
+	return updated, nil
 }
 
 func (u *tripUsecase) DeleteTrip(ctx context.Context, userID, token, tripID string) error {
@@ -114,26 +134,48 @@ func validateTripDates(input domain.UpdateTripInput, trip *domain.Trip) error {
 }
 
 func validateDateRange(start, end *string) error {
-	const layout = "2006-01-02"
 	if start != nil {
-		if _, err := time.Parse(layout, *start); err != nil {
+		if _, err := time.Parse(tripDateLayout, *start); err != nil {
 			return &domain.ValidationError{Message: "시작일 형식이 올바르지 않습니다. (예: 2026-07-01)"}
 		}
 	}
 	if end != nil {
-		if _, err := time.Parse(layout, *end); err != nil {
+		if _, err := time.Parse(tripDateLayout, *end); err != nil {
 			return &domain.ValidationError{Message: "종료일 형식이 올바르지 않습니다. (예: 2026-07-01)"}
 		}
 	}
 	if start == nil || end == nil {
 		return nil
 	}
-	s, _ := time.Parse(layout, *start)
-	e, _ := time.Parse(layout, *end)
+	s, _ := time.Parse(tripDateLayout, *start)
+	e, _ := time.Parse(tripDateLayout, *end)
 	if e.Before(s) {
 		return &domain.ValidationError{Message: "종료일은 시작일보다 이후여야 합니다."}
 	}
 	return nil
+}
+
+// setTotalDays: 파생 일수 채움. both-nil→그대로(nil), one만→1, both→inclusive(+1).
+func setTotalDays(t *domain.Trip) {
+	if t == nil {
+		return
+	}
+	hasStart, hasEnd := t.StartDate != nil, t.EndDate != nil
+	if !hasStart && !hasEnd {
+		return // null 유지
+	}
+	if hasStart != hasEnd {
+		one := 1
+		t.TotalDays = &one
+		return
+	}
+	s, err1 := time.Parse(tripDateLayout, *t.StartDate)
+	e, err2 := time.Parse(tripDateLayout, *t.EndDate)
+	if err1 != nil || err2 != nil || e.Before(s) {
+		return
+	}
+	days := int(e.Sub(s).Hours()/24) + 1
+	t.TotalDays = &days
 }
 
 func coalesceDate(a, b *string) *string {

@@ -21,6 +21,7 @@ type Trip struct {
 	EndDate     *string    `json:"end_date,omitempty"`
 	CoverColor  *string    `json:"cover_color"`
 	MarkerNum   int        `json:"marker_num"`
+	TotalDays   *int       `json:"total_days,omitempty"` // 파생. usecase가 채움. DB 컬럼 아님.
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 }

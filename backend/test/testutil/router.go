@@ -69,6 +69,29 @@ func NewTestMarkerRouter(
 	return r
 }
 
+func NewTestRouteRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	rr := repository.NewRouteRepository(supabaseURL, "fake-anon-key", client)
+	tr := repository.NewTripRepository(supabaseURL, "fake-anon-key", client)
+	ru := usecase.NewRouteUsecase(rr, tr)
+	rc := controller.NewRouteController(ru)
+
+	r := gin.New()
+	trips := r.Group("/api/v1/trips")
+	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	days := trips.Group("/:tripId/days")
+	days.GET("/:dayIndex/markers", rc.GetDayStops)
+	days.PATCH("/:dayIndex/markers/:markerId", rc.UpdateStop)
+	days.PATCH("/:dayIndex/reorder", rc.ReorderDay)
+
+	return r
+}
+
 func NewTestTripRouter(
 	t *testing.T,
 	supabaseURL string,
