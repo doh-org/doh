@@ -60,11 +60,32 @@ func NewTestMarkerRouter(
 	trips := r.Group("/api/v1/trips")
 	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	markers := trips.Group("/:tripId/markers")
-	markers.GET("", mc.GetMarkers)
-	markers.GET("/:markerId", mc.GetMarker)
+	markers.GET("/:markerId", mc.GetMarkers) // 정수=day 목록(day=0 미정), UUID=단건
 	markers.POST("/add", mc.CreateMarker)
 	markers.PATCH("/:markerId", mc.UpdateMarker)
 	markers.DELETE("/:markerId", mc.DeleteMarker)
+
+	return r
+}
+
+func NewTestRouteRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	rr := repository.NewRouteRepository(supabaseURL, "fake-anon-key", client)
+	tr := repository.NewTripRepository(supabaseURL, "fake-anon-key", client)
+	ru := usecase.NewRouteUsecase(rr, tr)
+	rc := controller.NewRouteController(ru)
+
+	r := gin.New()
+	trips := r.Group("/api/v1/trips")
+	trips.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	days := trips.Group("/:tripId/days")
+	days.PATCH("/:dayIndex/markers/:markerId", rc.UpdateStop)
+	days.PATCH("/:dayIndex/reorder", rc.ReorderDay)
 
 	return r
 }

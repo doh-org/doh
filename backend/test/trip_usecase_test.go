@@ -181,6 +181,52 @@ func TestUsecase_UpdateTrip_DateCrossValidation(t *testing.T) {
 	}
 }
 
+// ── total_days 계산 ───────────────────────────────────────────────────────────
+
+func TestUsecase_TotalDays(t *testing.T) {
+	p := func(s string) *string { return &s }
+	cases := []struct {
+		name  string
+		start *string
+		end   *string
+		want  *int // nil이면 생략 기대
+	}{
+		{"both_nil", nil, nil, nil},
+		{"only_start", p("2026-07-01"), nil, intp(1)},
+		{"only_end", nil, p("2026-07-10"), intp(1)},
+		{"same_day", p("2026-07-01"), p("2026-07-01"), intp(1)},
+		{"week", p("2026-08-01"), p("2026-08-07"), intp(7)},
+		{"end_before_start", p("2026-07-10"), p("2026-07-01"), nil},
+		{"bad_format", p("2026/07/01"), p("2026/07/05"), nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			uc, repo := newUsecase()
+			repo.trips["trip-1"] = &domain.Trip{ID: "trip-1", OwnerID: "uid", Title: "여행", StartDate: tc.start, EndDate: tc.end}
+
+			got, err := uc.GetTrip(context.Background(), "tok", "trip-1")
+			if err != nil {
+				t.Fatalf("GetTrip err=%v", err)
+			}
+			if tc.want == nil {
+				if got.TotalDays != nil {
+					t.Errorf("TotalDays=%d want nil", *got.TotalDays)
+				}
+				return
+			}
+			if got.TotalDays == nil {
+				t.Fatalf("TotalDays=nil want %d", *tc.want)
+			}
+			if *got.TotalDays != *tc.want {
+				t.Errorf("TotalDays=%d want %d", *got.TotalDays, *tc.want)
+			}
+		})
+	}
+}
+
+func intp(i int) *int { return &i }
+
 // ── DeleteTrip 소유자 검증 ────────────────────────────────────────────────────
 
 func TestUsecase_DeleteTrip_Forbidden(t *testing.T) {

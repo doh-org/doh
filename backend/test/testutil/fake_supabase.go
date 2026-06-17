@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -29,25 +31,19 @@ type FakeSupabase struct {
 
 	// Markers
 	Markers    []domain.Marker
-	Routes     []fakeRoute
-	Waypoints  []fakeWaypoint
 	MarkerDays []FakeMarkerDay
 }
 
-type fakeRoute struct {
-	ID     string
-	TripID string
-}
-
-type fakeWaypoint struct {
-	RouteID  string
-	MarkerID string
-	Order    int
-}
-
 type FakeMarkerDay struct {
-	MarkerID string
-	DayIndex int
+	ID              string
+	MarkerID        string
+	TripID          string
+	DayIndex        int
+	Order           int
+	VisitTime       *string
+	TransportToNext *string
+	DistanceToNext  *float64
+	DurationToNext  *int
 }
 
 func NewFakeSupabase(t *testing.T) *FakeSupabase {
@@ -194,7 +190,7 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 	mux.HandleFunc("/rest/v1/markers_view", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		q := r.URL.Query()
-		idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
+		idSet := parseInFilter(q.Get("id")) // eq.x / in.(a,b) 모두 지원
 		tripFilter := strings.TrimPrefix(q.Get("trip_id"), "eq.")
 		nameFilter := strings.TrimPrefix(q.Get("name"), "ilike.*")
 		nameFilter = strings.TrimSuffix(nameFilter, "*")
@@ -202,7 +198,7 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 
 		var result []domain.Marker
 		for _, m := range fs.Markers {
-			if idFilter != "" && m.ID != idFilter {
+			if len(idSet) > 0 && !idSet[m.ID] {
 				continue
 			}
 			if tripFilter != "" && m.TripID != tripFilter {
@@ -235,107 +231,123 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 
 		switch r.Method {
 		case http.MethodGet:
-			markerFilter := q.Get("marker_id")
-			idSet := map[string]bool{}
-			if strings.HasPrefix(markerFilter, "eq.") {
-				idSet[strings.TrimPrefix(markerFilter, "eq.")] = true
-			} else if strings.HasPrefix(markerFilter, "in.(") {
-				inner := strings.TrimSuffix(strings.TrimPrefix(markerFilter, "in.("), ")")
-				for _, id := range strings.Split(inner, ",") {
-					idSet[id] = true
-				}
-			}
+			markerSet := parseInFilter(q.Get("marker_id"))
+			tripFilter := strings.TrimPrefix(q.Get("trip_id"), "eq.")
+			dayFilter, hasDay := parseEqInt(q.Get("day_index"))
 			type row struct {
-				MarkerID string `json:"marker_id"`
-				DayIndex int    `json:"day_index"`
+				ID              string   `json:"id"`
+				MarkerID        string   `json:"marker_id"`
+				TripID          string   `json:"trip_id"`
+				DayIndex        int      `json:"day_index"`
+				Order           int      `json:"order"`
+				VisitTime       *string  `json:"visit_time"`
+				TransportToNext *string  `json:"transport_to_next"`
+				DistanceToNext  *float64 `json:"distance_to_next"`
+				DurationToNext  *int     `json:"duration_to_next"`
 			}
-			var result []row
+			result := []row{}
 			for _, d := range fs.MarkerDays {
-				if len(idSet) == 0 || idSet[d.MarkerID] {
-					result = append(result, row{MarkerID: d.MarkerID, DayIndex: d.DayIndex})
+				if len(markerSet) > 0 && !markerSet[d.MarkerID] {
+					continue
 				}
+				if tripFilter != "" && d.TripID != tripFilter {
+					continue
+				}
+				if hasDay && d.DayIndex != dayFilter {
+					continue
+				}
+				result = append(result, row{
+					ID: d.ID, MarkerID: d.MarkerID, TripID: d.TripID, DayIndex: d.DayIndex, Order: d.Order,
+					VisitTime: d.VisitTime, TransportToNext: d.TransportToNext,
+					DistanceToNext: d.DistanceToNext, DurationToNext: d.DurationToNext,
+				})
 			}
-			if result == nil {
-				result = []row{}
+			if ord := q.Get("order"); strings.Contains(ord, "visit_time") {
+				sort.SliceStable(result, func(i, j int) bool {
+					return lessVisitThenOrder(result[i].VisitTime, result[i].Order, result[j].VisitTime, result[j].Order)
+				})
+			} else if strings.Contains(ord, "order") {
+				sort.SliceStable(result, func(i, j int) bool { return result[i].Order < result[j].Order })
 			}
 			json.NewEncoder(w).Encode(result)
 
 		case http.MethodPost:
+			// reorder는 Prefer: resolution=merge-duplicates 로 배열 upsert.
+			if strings.Contains(r.Header.Get("Prefer"), "merge-duplicates") {
+				var rows []map[string]any
+				json.NewDecoder(r.Body).Decode(&rows)
+				for _, b := range rows {
+					id, _ := b["id"].(string)
+					for i := range fs.MarkerDays {
+						if fs.MarkerDays[i].ID != id {
+							continue
+						}
+						if v, ok := b["order"].(float64); ok {
+							fs.MarkerDays[i].Order = int(v)
+						}
+					}
+				}
+				w.WriteHeader(http.StatusCreated)
+				return
+			}
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
-			d := FakeMarkerDay{}
+			d := FakeMarkerDay{ID: fmt.Sprintf("md-%d", len(fs.MarkerDays)+1)}
 			if v, ok := body["marker_id"].(string); ok {
 				d.MarkerID = v
+			}
+			if v, ok := body["trip_id"].(string); ok {
+				d.TripID = v
 			}
 			if v, ok := body["day_index"].(float64); ok {
 				d.DayIndex = int(v)
 			}
+			if v, ok := body["order"].(float64); ok {
+				d.Order = int(v)
+			}
 			fs.MarkerDays = append(fs.MarkerDays, d)
 			w.WriteHeader(http.StatusCreated)
 
+		case http.MethodPatch:
+			tripFilter := strings.TrimPrefix(q.Get("trip_id"), "eq.")
+			dayFilter, hasDay := parseEqInt(q.Get("day_index"))
+			markerFilter := strings.TrimPrefix(q.Get("marker_id"), "eq.")
+			idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			for i := range fs.MarkerDays {
+				d := &fs.MarkerDays[i]
+				if idFilter != "" && d.ID != idFilter {
+					continue
+				}
+				if tripFilter != "" && d.TripID != tripFilter {
+					continue
+				}
+				if hasDay && d.DayIndex != dayFilter {
+					continue
+				}
+				if markerFilter != "" && d.MarkerID != markerFilter {
+					continue
+				}
+				applyMarkerDayPatch(d, body)
+			}
+			w.WriteHeader(http.StatusNoContent)
+
 		case http.MethodDelete:
-			markerID := strings.TrimPrefix(q.Get("marker_id"), "eq.")
+			idFilter := strings.TrimPrefix(q.Get("id"), "eq.")
+			markerFilter := strings.TrimPrefix(q.Get("marker_id"), "eq.")
 			var remaining []FakeMarkerDay
 			for _, d := range fs.MarkerDays {
-				if d.MarkerID != markerID {
-					remaining = append(remaining, d)
+				if idFilter != "" && d.ID == idFilter {
+					continue
 				}
+				if markerFilter != "" && d.MarkerID == markerFilter {
+					continue
+				}
+				remaining = append(remaining, d)
 			}
 			fs.MarkerDays = remaining
 			w.WriteHeader(http.StatusNoContent)
-		}
-	})
-
-	mux.HandleFunc("/rest/v1/routes", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		tripFilter := strings.TrimPrefix(r.URL.Query().Get("trip_id"), "eq.")
-		var result []map[string]string
-		for _, rt := range fs.Routes {
-			if rt.TripID == tripFilter {
-				result = append(result, map[string]string{"id": rt.ID})
-				break
-			}
-		}
-		if result == nil {
-			result = []map[string]string{}
-		}
-		json.NewEncoder(w).Encode(result)
-	})
-
-	mux.HandleFunc("/rest/v1/route_waypoints", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		q := r.URL.Query()
-
-		switch r.Method {
-		case http.MethodGet:
-			routeFilter := strings.TrimPrefix(q.Get("route_id"), "eq.")
-			maxOrder := -1
-			for _, wp := range fs.Waypoints {
-				if wp.RouteID == routeFilter && wp.Order > maxOrder {
-					maxOrder = wp.Order
-				}
-			}
-			if maxOrder == -1 {
-				json.NewEncoder(w).Encode([]map[string]int{})
-			} else {
-				json.NewEncoder(w).Encode([]map[string]int{{"order": maxOrder}})
-			}
-
-		case http.MethodPost:
-			var body map[string]any
-			json.NewDecoder(r.Body).Decode(&body)
-			wp := fakeWaypoint{}
-			if v, ok := body["route_id"].(string); ok {
-				wp.RouteID = v
-			}
-			if v, ok := body["marker_id"].(string); ok {
-				wp.MarkerID = v
-			}
-			if v, ok := body["order"].(float64); ok {
-				wp.Order = int(v)
-			}
-			fs.Waypoints = append(fs.Waypoints, wp)
-			w.WriteHeader(http.StatusCreated)
 		}
 	})
 
@@ -344,9 +356,75 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 	return fs
 }
 
-// AddRoute는 테스트에서 trip에 기본 route를 미리 등록한다.
-func (fs *FakeSupabase) AddRoute(routeID, tripID string) {
-	fs.Routes = append(fs.Routes, fakeRoute{ID: routeID, TripID: tripID})
+// applyMarkerDayPatch는 marker_days PATCH body를 반영한다(null=해제).
+func applyMarkerDayPatch(d *FakeMarkerDay, body map[string]any) {
+	if v, exists := body["visit_time"]; exists {
+		if v == nil {
+			d.VisitTime = nil
+		} else if s, ok := v.(string); ok {
+			d.VisitTime = &s
+		}
+	}
+	if v, exists := body["transport_to_next"]; exists {
+		if v == nil {
+			d.TransportToNext = nil
+		} else if s, ok := v.(string); ok {
+			d.TransportToNext = &s
+		}
+	}
+	if v, exists := body["distance_to_next"]; exists {
+		if v == nil {
+			d.DistanceToNext = nil
+		} else if f, ok := v.(float64); ok {
+			d.DistanceToNext = &f
+		}
+	}
+	if v, exists := body["duration_to_next"]; exists {
+		if v == nil {
+			d.DurationToNext = nil
+		} else if f, ok := v.(float64); ok {
+			n := int(f)
+			d.DurationToNext = &n
+		}
+	}
+}
+
+// lessVisitThenOrder: visit_time asc(nil 하단), 동률이면 order asc.
+func lessVisitThenOrder(vi *string, oi int, vj *string, oj int) bool {
+	if (vi == nil) != (vj == nil) {
+		return vi != nil // non-nil 먼저(nil 하단)
+	}
+	if vi != nil && *vi != *vj {
+		return *vi < *vj
+	}
+	return oi < oj
+}
+
+// parseInFilter는 PostgREST "eq.x" / "in.(a,b)" 필터를 집합으로 변환한다.
+func parseInFilter(v string) map[string]bool {
+	set := map[string]bool{}
+	switch {
+	case strings.HasPrefix(v, "eq."):
+		set[strings.TrimPrefix(v, "eq.")] = true
+	case strings.HasPrefix(v, "in.("):
+		inner := strings.TrimSuffix(strings.TrimPrefix(v, "in.("), ")")
+		for _, id := range strings.Split(inner, ",") {
+			set[id] = true
+		}
+	}
+	return set
+}
+
+// parseEqInt는 "eq.3" 필터를 정수로 변환한다. 필터 없으면 ok=false.
+func parseEqInt(v string) (int, bool) {
+	if !strings.HasPrefix(v, "eq.") {
+		return 0, false
+	}
+	n, err := strconv.Atoi(strings.TrimPrefix(v, "eq."))
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 func parseIDEqFilter(q url.Values) string {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -20,33 +21,30 @@ func NewMarkerController(mu domain.MarkerUsecase) *MarkerController {
 	return &MarkerController{markerUsecase: mu}
 }
 
+// GetMarkers는 day 마커 목록 또는 단건을 분기 반환함.
+// :markerId가 정수면 day 목록(?sort=, day=0=미정), 그 외(UUID)면 단건 마커.
 func (mc *MarkerController) GetMarkers(c *gin.Context) {
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	tripID := c.Param("tripId")
+	param := c.Param("markerId")
+	sort := c.Query("sort")
 
-	var q *string
-	if s := c.Query("q"); s != "" {
-		q = &s
-	}
-	var catID *string
-	if s := c.Query("category_id"); s != "" {
-		catID = &s
-	}
+	day, atoiErr := strconv.Atoi(param)
+	slog.Info("[marker] GetMarkers: 분기",
+		"tripID", tripID, "param", param, "sort", sort,
+		"isDay", atoiErr == nil, "day", day)
 
-	markers, err := mc.markerUsecase.GetMarkers(c.Request.Context(), token, tripID, q, catID)
-	if err != nil {
-		mc.handleError(c, err)
+	if atoiErr == nil {
+		markers, err := mc.markerUsecase.GetMarkersByDay(c.Request.Context(), token, tripID, day, sort)
+		if err != nil {
+			mc.handleError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, markers)
 		return
 	}
-	c.JSON(http.StatusOK, markers)
-}
 
-func (mc *MarkerController) GetMarker(c *gin.Context) {
-	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	tripID := c.Param("tripId")
-	markerID := c.Param("markerId")
-
-	marker, err := mc.markerUsecase.GetMarker(c.Request.Context(), token, tripID, markerID)
+	marker, err := mc.markerUsecase.GetMarker(c.Request.Context(), token, tripID, param)
 	if err != nil {
 		mc.handleError(c, err)
 		return
@@ -86,6 +84,7 @@ func (mc *MarkerController) UpdateMarker(c *gin.Context) {
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	tripID := c.Param("tripId")
 	markerID := c.Param("markerId")
+	userID := c.GetString(middleware.UserIDKey)
 
 	var input domain.UpdateMarkerInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -98,7 +97,7 @@ func (mc *MarkerController) UpdateMarker(c *gin.Context) {
 		return
 	}
 
-	marker, err := mc.markerUsecase.UpdateMarker(c.Request.Context(), token, tripID, markerID, input)
+	marker, err := mc.markerUsecase.UpdateMarker(c.Request.Context(), token, tripID, markerID, userID, input)
 	if err != nil {
 		mc.handleError(c, err)
 		return
@@ -126,6 +125,7 @@ func (mc *MarkerController) handleError(c *gin.Context, err error) {
 	var ve *domain.ValidationError
 	switch {
 	case errors.As(err, &ve):
+		slog.Warn("[marker] 400 검증 실패", "msg", ve.Message)
 		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
 	case errors.Is(err, domain.ErrNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "리소스를 찾을 수 없습니다."})

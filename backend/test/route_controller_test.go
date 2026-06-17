@@ -1,0 +1,279 @@
+package test
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+	"testing"
+
+	"doh/backend/domain"
+	"doh/backend/test/testutil"
+)
+
+const routeTripID = "trip-route"
+
+func setupRoute(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.TestKeys) {
+	t.Helper()
+	fs := testutil.NewFakeSupabase(t)
+	fs.Trips = append(fs.Trips, domain.Trip{ID: routeTripID})
+	keys := testutil.NewTestKeys(t)
+	router := testutil.NewTestRouteRouter(t, fs.Server.URL, keys, fs.Server.Client())
+	return router, fs, keys
+}
+
+func strPtr(s string) *string { return &s }
+
+// seedStop은 day1에 마커 + stop을 시드.
+func seedStop(fs *testutil.FakeSupabase, mdID, markerID string, order int, visit *string) {
+	fs.Markers = append(fs.Markers, domain.Marker{
+		ID: markerID, TripID: routeTripID, Name: markerID, Latitude: 37.5, Longitude: 127.0,
+	})
+	fs.MarkerDays = append(fs.MarkerDays, testutil.FakeMarkerDay{
+		ID: mdID, MarkerID: markerID, TripID: routeTripID, DayIndex: 1, Order: order, VisitTime: visit,
+	})
+}
+
+func findMarkerDay(fs *testutil.FakeSupabase, markerID string) *testutil.FakeMarkerDay {
+	for i := range fs.MarkerDays {
+		if fs.MarkerDays[i].MarkerID == markerID {
+			return &fs.MarkerDays[i]
+		}
+	}
+	return nil
+}
+
+func dayMarkersPath(day int) string {
+	return "/api/v1/trips/" + routeTripID + "/days/" + strconv.Itoa(day) + "/markers"
+}
+
+func stopPath(day int, markerID string) string {
+	return dayMarkersPath(day) + "/" + markerID
+}
+
+func reorderPath(day int) string {
+	return "/api/v1/trips/" + routeTripID + "/days/" + strconv.Itoa(day) + "/reorder"
+}
+
+// ── PATCH /days/:dayIndex/markers/:markerId ─────────────────────────────────────
+
+func TestUpdateStop_VisitTimeSuccess(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{"visit_time": "09:30"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var stop domain.RouteStop
+	json.NewDecoder(w.Body).Decode(&stop)
+	if stop.VisitTime == nil || *stop.VisitTime != "09:30" {
+		t.Errorf("visit_time=%v want 09:30", stop.VisitTime)
+	}
+	if md := findMarkerDay(fs, "ma"); md == nil || md.VisitTime == nil || *md.VisitTime != "09:30" {
+		t.Errorf("persisted visit_time mismatch: %+v", md)
+	}
+}
+
+func TestUpdateStop_TransportSuccess(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{"transport_to_next": "car"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var stop domain.RouteStop
+	json.NewDecoder(w.Body).Decode(&stop)
+	if stop.TransportToNext == nil || *stop.TransportToNext != "car" {
+		t.Errorf("transport_to_next=%v want car", stop.TransportToNext)
+	}
+}
+
+func TestUpdateStop_TransportOnLastStop(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil) // mb가 마지막
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "mb"), tok, map[string]any{"transport_to_next": "car"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+func TestUpdateStop_InvalidTransport(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{"transport_to_next": "subway"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+func TestUpdateStop_InvalidVisitTime(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{"visit_time": "25:99"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+func TestUpdateStop_MarkerNotInDay(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "zzz"), tok, map[string]any{"visit_time": "09:30"})
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status=%d want 404", w.Code)
+	}
+}
+
+func TestUpdateStop_NoToken(t *testing.T) {
+	router, _, _ := setupRoute(t)
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), "", map[string]any{"visit_time": "09:30"})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status=%d want 401", w.Code)
+	}
+}
+
+// visit_time·transport에 null을 보내면 둘 다 해제(NULL)되는지 검증.
+func TestUpdateStop_ClearVisitTimeAndTransport(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, strPtr("09:30:00")) // 기존 방문시간
+	seedStop(fs, "md-b", "mb", 2, nil)
+	findMarkerDay(fs, "ma").TransportToNext = strPtr("car") // 기존 이동수단
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{
+		"visit_time": nil, "transport_to_next": nil,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var stop domain.RouteStop
+	json.NewDecoder(w.Body).Decode(&stop)
+	if stop.VisitTime != nil || stop.TransportToNext != nil {
+		t.Errorf("visit_time=%v transport=%v want both nil", stop.VisitTime, stop.TransportToNext)
+	}
+	if md := findMarkerDay(fs, "ma"); md.VisitTime != nil || md.TransportToNext != nil {
+		t.Errorf("persisted not cleared: %+v", md)
+	}
+}
+
+// 컨트롤러 경로의 day<1 가드 → 400.
+func TestUpdateStop_DayBelowOne(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, stopPath(0, "ma"), tok, map[string]any{"visit_time": "09:30"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 본문 4KB 초과 → 413.
+func TestUpdateStop_BodyTooLarge(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{
+		"transport_to_next": strings.Repeat("x", 5000),
+	})
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status=%d want 413", w.Code)
+	}
+}
+
+// ── PATCH /days/:dayIndex/reorder ───────────────────────────────────────────────
+
+func TestReorderDay_Success(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+	seedStop(fs, "md-c", "mc", 3, nil)
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{"mc", "ma", "mb"}})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var resp map[string]int
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["reordered"] != 3 {
+		t.Errorf("reordered=%d want 3", resp["reordered"])
+	}
+	expect := map[string]int{"mc": 1, "ma": 2, "mb": 3}
+	for id, want := range expect {
+		if md := findMarkerDay(fs, id); md == nil || md.Order != want {
+			t.Errorf("%s order=%v want %d", id, md, want)
+		}
+	}
+}
+
+func TestReorderDay_SetMismatch(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{"ma"}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+func TestReorderDay_NoToken(t *testing.T) {
+	router, _, _ := setupRoute(t)
+	w := doMarker(router, http.MethodPatch, reorderPath(1), "", map[string]any{"marker_ids": []string{"ma"}})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status=%d want 401", w.Code)
+	}
+}
+
+// marker_ids에 중복 → 400.
+func TestReorderDay_Duplicate(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{"ma", "ma"}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 빈 marker_ids → 400.
+func TestReorderDay_EmptyArray(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 컨트롤러 경로의 day<1 가드 → 400.
+func TestReorderDay_DayBelowOne(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, reorderPath(0), tok, map[string]any{"marker_ids": []string{"ma"}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}

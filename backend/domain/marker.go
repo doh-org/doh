@@ -22,6 +22,17 @@ type Marker struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+// DayMarker는 day 마커 목록 1행 — 마커 전체필드 + 그 day stop 속성.
+// 미정(day=0)이면 stop 필드 모두 null.
+type DayMarker struct {
+	Marker
+	Order           *int     `json:"order"`
+	VisitTime       *string  `json:"visit_time"`
+	TransportToNext *string  `json:"transport_to_next"`
+	DistanceToNext  *float64 `json:"distance_to_next"`
+	DurationToNext  *int     `json:"duration_to_next"`
+}
+
 type CreateMarkerInput struct {
 	Name       string         `json:"name"`
 	Latitude   float64        `json:"latitude"`
@@ -48,16 +59,16 @@ var ValidSources = map[string]bool{
 
 type MarkerRepository interface {
 	CreateMarker(ctx context.Context, token, tripID, userID string, input CreateMarkerInput) (*Marker, error)
-	GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]Marker, error)
+	GetMarkersByDay(ctx context.Context, token, tripID string, day int, sort StopSort) ([]DayMarker, error)
 	GetMarker(ctx context.Context, token, tripID, markerID string) (*Marker, error)
-	UpdateMarker(ctx context.Context, token, tripID, markerID string, input UpdateMarkerInput) (*Marker, error)
+	UpdateMarker(ctx context.Context, token, tripID, markerID, userID string, input UpdateMarkerInput) (*Marker, error)
 	DeleteMarker(ctx context.Context, token, tripID, markerID string) error
 }
 
 type MarkerUsecase interface {
 	CreateMarker(ctx context.Context, token, tripID, userID string, input CreateMarkerInput) (*Marker, error)
-	GetMarkers(ctx context.Context, token, tripID string, q, categoryID *string) ([]Marker, error)
+	GetMarkersByDay(ctx context.Context, token, tripID string, day int, sort string) ([]DayMarker, error)
 	GetMarker(ctx context.Context, token, tripID, markerID string) (*Marker, error)
-	UpdateMarker(ctx context.Context, token, tripID, markerID string, input UpdateMarkerInput) (*Marker, error)
+	UpdateMarker(ctx context.Context, token, tripID, markerID, userID string, input UpdateMarkerInput) (*Marker, error)
 	DeleteMarker(ctx context.Context, token, tripID, markerID string) error
 }
