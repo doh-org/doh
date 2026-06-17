@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"doh/backend/domain"
@@ -148,6 +149,54 @@ func TestUpdateStop_NoToken(t *testing.T) {
 	}
 }
 
+// visit_time·transport에 null을 보내면 둘 다 해제(NULL)되는지 검증.
+func TestUpdateStop_ClearVisitTimeAndTransport(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, strPtr("09:30:00")) // 기존 방문시간
+	seedStop(fs, "md-b", "mb", 2, nil)
+	findMarkerDay(fs, "ma").TransportToNext = strPtr("car") // 기존 이동수단
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{
+		"visit_time": nil, "transport_to_next": nil,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var stop domain.RouteStop
+	json.NewDecoder(w.Body).Decode(&stop)
+	if stop.VisitTime != nil || stop.TransportToNext != nil {
+		t.Errorf("visit_time=%v transport=%v want both nil", stop.VisitTime, stop.TransportToNext)
+	}
+	if md := findMarkerDay(fs, "ma"); md.VisitTime != nil || md.TransportToNext != nil {
+		t.Errorf("persisted not cleared: %+v", md)
+	}
+}
+
+// 컨트롤러 경로의 day<1 가드 → 400.
+func TestUpdateStop_DayBelowOne(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, stopPath(0, "ma"), tok, map[string]any{"visit_time": "09:30"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 본문 4KB 초과 → 413.
+func TestUpdateStop_BodyTooLarge(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, stopPath(1, "ma"), tok, map[string]any{
+		"transport_to_next": strings.Repeat("x", 5000),
+	})
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status=%d want 413", w.Code)
+	}
+}
+
 // ── PATCH /days/:dayIndex/reorder ───────────────────────────────────────────────
 
 func TestReorderDay_Success(t *testing.T) {
@@ -191,5 +240,40 @@ func TestReorderDay_NoToken(t *testing.T) {
 	w := doMarker(router, http.MethodPatch, reorderPath(1), "", map[string]any{"marker_ids": []string{"ma"}})
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status=%d want 401", w.Code)
+	}
+}
+
+// marker_ids에 중복 → 400.
+func TestReorderDay_Duplicate(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+	seedStop(fs, "md-a", "ma", 1, nil)
+	seedStop(fs, "md-b", "mb", 2, nil)
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{"ma", "ma"}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 빈 marker_ids → 400.
+func TestReorderDay_EmptyArray(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, reorderPath(1), tok, map[string]any{"marker_ids": []string{}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
+	}
+}
+
+// 컨트롤러 경로의 day<1 가드 → 400.
+func TestReorderDay_DayBelowOne(t *testing.T) {
+	router, fs, keys := setupRoute(t)
+	tok := markerToken(t, keys, fs, "user-1")
+
+	w := doMarker(router, http.MethodPatch, reorderPath(0), tok, map[string]any{"marker_ids": []string{"ma"}})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d want 400", w.Code)
 	}
 }
