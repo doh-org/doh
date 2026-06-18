@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_cursor.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/trip_card.dart';
@@ -95,7 +96,7 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                         child: TextField(
                           controller: _searchCtrl,
                           autofocus: true,
-                          cursorColor: AppColors.folderOrange,
+                          cursorColor: appCursorColor(),
                           onChanged: (v) => setState(() => _query = v),
                           style: const TextStyle(
                             fontFamily: 'Pretendard',

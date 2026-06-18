@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
@@ -79,7 +80,7 @@ class _MarkerBottomSheetState extends ConsumerState<MarkerBottomSheet> {
         children: [
           TextField(
             controller: _nameController,
-            cursorColor: const Color(0xFFFE8505),
+            cursorColor: appCursorColor(),
             decoration: const InputDecoration(labelText: '장소 이름'),
             autofocus: true,
           ),

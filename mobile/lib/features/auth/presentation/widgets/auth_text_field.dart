@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_cursor.dart';
 
 class AuthTextField extends StatelessWidget {
   const AuthTextField({
@@ -24,7 +25,7 @@ class AuthTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      cursorColor: AppColors.folderOrange,
+      cursorColor: appCursorColor(),
       style: const TextStyle(
         fontFamily: 'Pretendard',
         fontSize: 18,

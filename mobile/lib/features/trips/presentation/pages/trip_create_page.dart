@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_cursor.dart';
 import '../../data/repositories/trip_repository_impl.dart';
 import '../providers/trip_provider.dart';
 
@@ -186,7 +187,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   child: TextField(
                     controller: _titleCtrl,
                     maxLength: 14,
-                    cursorColor: AppColors.folderOrange,
+                    cursorColor: appCursorColor(),
                     onChanged: (_) => setState(() {}),
                     style: const TextStyle(fontFamily: 'Pretendard', fontSize: 14),
                     decoration: const InputDecoration(
