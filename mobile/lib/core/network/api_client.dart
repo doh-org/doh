@@ -22,6 +22,9 @@ Dio apiClient(Ref ref) {
         }
         handler.next(options);
       },
+      onResponse: (response, handler) {
+        handler.next(response);
+      },
       onError: (error, handler) {
         final statusCode = error.response?.statusCode;
         final data = error.response?.data;
