@@ -41,7 +41,8 @@ class _MapPageState extends ConsumerState<MapPage> {
   List<NaverPlace> _searchOverlays = [];
   bool _searchingOverlay = false;
   bool _searchBtnPressed = false;
-  final Set<String> _likedMarkerIds = {};
+  // v0 제외: 마커 좋아요(찜) 기능 — 좋아요한 마커 id 보관. 추후 복구
+  // final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
 
   bool _routeEdit = false;
@@ -120,7 +121,8 @@ class _MapPageState extends ConsumerState<MapPage> {
           marker: marker,
           tripId: _tripId,
           allMarkers: allMarkers,
-          isLiked: _likedMarkerIds.contains(marker.id),
+          // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+          // isLiked: _likedMarkerIds.contains(marker.id),
         ),
       ),
     );
@@ -674,15 +676,17 @@ class _MapPageState extends ConsumerState<MapPage> {
                       onDaySelected: (d) => setState(() => _selectedDay = d),
                       markers: filteredMarkers,
                       categoryMap: categoryMap,
-                      likedIds: _likedMarkerIds,
+                      // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+                      // likedIds: _likedMarkerIds,
                       hasError: markersAsync.hasError,
                       canEditRoute: _selectedDay != 0,
                       onEditRoute: () => setState(() => _routeEdit = true),
                       onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-                      onLikeTap: (id) =>
-                          setState(() => _likedMarkerIds.contains(id)
-                              ? _likedMarkerIds.remove(id)
-                              : _likedMarkerIds.add(id)),
+                      // v0 제외: 마커 좋아요(찜) 토글 — 추후 복구
+                      // onLikeTap: (id) =>
+                      //     setState(() => _likedMarkerIds.contains(id)
+                      //         ? _likedMarkerIds.remove(id)
+                      //         : _likedMarkerIds.add(id)),
                       onDelete: _confirmDelete,
                     ),
             ),
@@ -703,12 +707,13 @@ class _PlaceListSheet extends StatelessWidget {
     required this.onDaySelected,
     required this.markers,
     required this.categoryMap,
-    required this.likedIds,
+    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+    // required this.likedIds,
     required this.hasError,
     required this.canEditRoute,
     required this.onEditRoute,
     required this.onMarkerTap,
-    required this.onLikeTap,
+    // required this.onLikeTap,
     required this.onDelete,
   });
 
@@ -720,12 +725,13 @@ class _PlaceListSheet extends StatelessWidget {
   final ValueChanged<int> onDaySelected;
   final List<TripMarker> markers;
   final Map<String, Category> categoryMap;
-  final Set<String> likedIds;
+  // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+  // final Set<String> likedIds;
   final bool hasError;
   final bool canEditRoute;
   final VoidCallback onEditRoute;
   final void Function(TripMarker) onMarkerTap;
-  final void Function(String) onLikeTap;
+  // final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
 
   Color _categoryColor(Category? cat) => categoryChipColor(cat?.name);
@@ -997,10 +1003,11 @@ class _PlaceListSheet extends StatelessWidget {
                       category: cat?.name ?? '기타',
                       categoryColor: _categoryColor(cat),
                       categoryIcon: _categoryIcon(cat?.name),
-                      isLiked: likedIds.contains(m.id),
-                      likeCount: 0,
+                      // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+                      // isLiked: likedIds.contains(m.id),
+                      // likeCount: 0,
                       onTap: () => onMarkerTap(m),
-                      onLikeTap: () => onLikeTap(m.id),
+                      // onLikeTap: () => onLikeTap(m.id),
                     ),
                   );
                 },

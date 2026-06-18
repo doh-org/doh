@@ -18,7 +18,8 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
     required this.marker,
     required this.tripId,
     required this.allMarkers,
-    this.isLiked = false,
+    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+    // this.isLiked = false,
     this.onMarkerSaved,
     super.key,
   });
@@ -26,7 +27,8 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
   final TripMarker marker;
   final String tripId;
   final List<TripMarker> allMarkers;
-  final bool isLiked;
+  // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+  // final bool isLiked;
   final VoidCallback? onMarkerSaved;
 
   @override
@@ -42,7 +44,8 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   bool _editingName = false;
   bool _saved = true;
   bool _bookmarkLoading = false;
-  late bool _isLiked;
+  // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+  // late bool _isLiked;
 
   static const _transportLabels = ['차량', '대중교통', '자전거', '도보'];
   static const _transportIcons = [
@@ -58,7 +61,8 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     _marker = widget.marker;
     _destinationId = widget.marker.id;
     _nameCtrl = TextEditingController(text: widget.marker.name);
-    _isLiked = widget.isLiked;
+    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+    // _isLiked = widget.isLiked;
     _saved = widget.allMarkers.any((m) => m.id == widget.marker.id);
   }
 
@@ -342,17 +346,18 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                                 : const Color(0xFFD5D5D5),
                           ),
                   ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => setState(() => _isLiked = !_isLiked),
-                    child: Icon(
-                      _isLiked ? Icons.favorite : Icons.favorite_border,
-                      size: 25,
-                      color: _isLiked
-                          ? const Color(0xFFFE8505)
-                          : const Color(0xFFD5D5D5),
-                    ),
-                  ),
+                  // v0 제외: 마커 좋아요(찜) 버튼 — 하트 토글. 추후 복구
+                  // const SizedBox(width: 10),
+                  // GestureDetector(
+                  //   onTap: () => setState(() => _isLiked = !_isLiked),
+                  //   child: Icon(
+                  //     _isLiked ? Icons.favorite : Icons.favorite_border,
+                  //     size: 25,
+                  //     color: _isLiked
+                  //         ? const Color(0xFFFE8505)
+                  //         : const Color(0xFFD5D5D5),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
