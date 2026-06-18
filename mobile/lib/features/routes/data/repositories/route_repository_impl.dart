@@ -1,73 +1,57 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../../features/auth/presentation/providers/auth_provider.dart';
-import '../../domain/entities/trip_route.dart';
+import '../../domain/entities/route_stop.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../datasources/route_remote_datasource.dart';
-import '../models/route_model.dart';
+import '../models/route_stop_model.dart';
 
 part 'route_repository_impl.g.dart';
 
 @riverpod
-RouteRepository routeRepository(Ref ref) => RouteRepositoryImpl(
-      ref.watch(routeRemoteDatasourceProvider),
-      ref.watch(authNotifierProvider).valueOrNull?.id ?? '',
-    );
+RouteRepository routeRepository(Ref ref) =>
+    RouteRepositoryImpl(ref.watch(routeRemoteDatasourceProvider));
 
 class RouteRepositoryImpl implements RouteRepository {
-  const RouteRepositoryImpl(this._datasource, this._userId);
+  const RouteRepositoryImpl(this._datasource);
   final RouteRemoteDatasource _datasource;
-  final String _userId;
 
   @override
-  Future<List<TripRoute>> getRoutes(String tripId) async {
-    final models = await _datasource.getRoutes(tripId);
+  Future<List<RouteStop>> getDayStops(
+    String tripId,
+    int day, {
+    required RouteSort sort,
+  }) async {
+    final models = await _datasource.getDayStops(tripId, day, sort: sort.query);
     return models.map((m) => m.toEntity()).toList();
   }
 
   @override
-  Future<TripRoute> createRoute({
-    required String tripId,
-    required String title,
-    required TransportMode transportMode,
-    String? description,
+  Future<RouteStop> updateStop(
+    String tripId,
+    int day,
+    String markerId, {
+    String? visitTime,
+    bool clearVisitTime = false,
+    TransportMode? transport,
+    bool clearTransport = false,
   }) async {
-    final model = await _datasource.createRoute({
-      'trip_id': tripId,
-      'created_by': _userId,
-      'title': title,
-      'transport_mode': transportMode.name,
-      if (description != null) 'description': description,
-    });
+    final body = <String, dynamic>{};
+    if (clearVisitTime) {
+      body['visit_time'] = null;
+    } else if (visitTime != null) {
+      body['visit_time'] = visitTime;
+    }
+    if (clearTransport) {
+      body['transport_to_next'] = null;
+    } else if (transport != null) {
+      body['transport_to_next'] = transport.name;
+    }
+    final model = await _datasource.updateStop(tripId, day, markerId, body);
     return model.toEntity();
   }
 
   @override
-  Future<void> deleteRoute(String routeId) =>
-      _datasource.deleteRoute(routeId);
-
-  @override
-  Future<List<RouteWaypoint>> getWaypoints(String routeId) async {
-    final data = await _datasource.getWaypoints(routeId);
-    return data
-        .map((e) => RouteWaypoint(
-              id: e['id'] as String,
-              routeId: e['route_id'] as String,
-              markerId: e['marker_id'] as String,
-              order: e['order'] as int,
-            ))
-        .toList();
-  }
-
-  @override
-  Future<void> addWaypoint(
-      String routeId, String markerId, int order) async {
-    // TODO: implement via datasource
-  }
-
-  @override
-  Future<void> removeWaypoint(String waypointId) async {
-    // TODO: implement via datasource
-  }
+  Future<int> reorder(String tripId, int day, List<String> markerIds) =>
+      _datasource.reorder(tripId, day, markerIds);
 }

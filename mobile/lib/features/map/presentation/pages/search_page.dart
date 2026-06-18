@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
@@ -227,7 +228,7 @@ class _SearchBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               autofocus: true,
-              cursorColor: const Color(0xFFFE8505),
+              cursorColor: appCursorColor(),
               onChanged: onChanged,
               style: const TextStyle(
                 fontFamily: 'Pretendard',

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../markers/presentation/utils/category_colors.dart';
+import '../../../routes/domain/entities/route_stop.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
+import '../../../../shared/widgets/update_error_dialog.dart';
+import '../utils/map_navigation.dart';
 import 'marker_edit_chips_sheet.dart';
 
 class MarkerDetailSheet extends ConsumerStatefulWidget {
@@ -115,11 +118,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
           );
         }
       } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('저장에 실패했습니다.')),
-          );
-        }
+        if (mounted) showUpdateErrorDialog(context, '저장에 실패했습니다.');
       } finally {
         if (mounted) setState(() => _bookmarkLoading = false);
       }
@@ -171,6 +170,14 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     );
   }
 
+  // 이동수단 탭 인덱스 → TransportMode. 0=차량,1=대중교통,2=자전거,3=도보.
+  static const List<TransportMode> _transportModes = [
+    TransportMode.car,
+    TransportMode.publictransit,
+    TransportMode.bicycle,
+    TransportMode.foot,
+  ];
+
   Future<void> _openNavigation() async {
     final TripMarker? dest = widget.allMarkers
         .where((m) => m.id == _destinationId)
@@ -179,95 +186,18 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         ? null
         : widget.allMarkers.where((m) => m.id == _departureId).firstOrNull;
 
-    final double dLat = dest?.latitude ?? _marker.latitude;
-    final double dLng = dest?.longitude ?? _marker.longitude;
-    final String dName = dest?.name ?? _marker.name;
-
-    if (_transportIndex == 0) {
-      await _launchOrFallback(
-        appUri: _tmapUri(dep, dLat, dLng, dName),
-        webUri: _naverWebUri(dep, dLat, dLng, dName, 'car'),
-        storeUri: 'https://play.google.com/store/apps/details?id=com.skt.tmap.ku',
-        appLabel: '티맵',
-      );
-    } else {
-      const List<String> appTypes = ['', 'public', 'bicycle', 'walk'];
-      const List<String> webTypes = ['', 'transit', 'bicycle', 'walk'];
-      await _launchOrFallback(
-        appUri: _naverAppUri(dep, dLat, dLng, dName, appTypes[_transportIndex]),
-        webUri: _naverWebUri(dep, dLat, dLng, dName, webTypes[_transportIndex]),
-        storeUri: 'https://play.google.com/store/apps/details?id=com.nhn.android.nmap',
-        appLabel: '네이버 지도',
-      );
-    }
-  }
-
-  Future<void> _launchOrFallback({
-    required String appUri,
-    required String webUri,
-    required String storeUri,
-    required String appLabel,
-  }) async {
-    final Uri uri = Uri.parse(appUri);
-    try {
-      final bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (launched) return;
-    } catch (_) {}
-    if (!mounted) return;
-    await showGeneralDialog<void>(
+    await launchNavigation(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: '닫기',
-      barrierColor: Colors.black26,
-      pageBuilder: (_, __, ___) => Align(
-        alignment: Alignment.center,
-        child: _AppNotInstalledDialog(
-          appLabel: appLabel,
-          webUri: webUri,
-          storeUri: storeUri,
-        ),
+      mode: _transportModes[_transportIndex],
+      destination: NavPoint(
+        name: dest?.name ?? _marker.name,
+        lat: dest?.latitude ?? _marker.latitude,
+        lng: dest?.longitude ?? _marker.longitude,
       ),
+      departure: dep == null
+          ? null
+          : NavPoint(name: dep.name, lat: dep.latitude, lng: dep.longitude),
     );
-  }
-
-  String _tmapUri(TripMarker? dep, double dLat, double dLng, String dName) {
-    final String enc = Uri.encodeQueryComponent(dName);
-    final StringBuffer sb = StringBuffer(
-      'tmap://route?rGoY=$dLat&rGoX=$dLng&rGoName=$enc',
-    );
-    if (dep != null) {
-      sb.write(
-        '&rStY=${dep.latitude}&rStX=${dep.longitude}&rStName=${Uri.encodeQueryComponent(dep.name)}',
-      );
-    }
-    return sb.toString();
-  }
-
-  String _naverAppUri(
-      TripMarker? dep, double dLat, double dLng, String dName, String type) {
-    final String enc = Uri.encodeQueryComponent(dName);
-    final StringBuffer sb = StringBuffer(
-      'nmap://route/$type?dlat=$dLat&dlng=$dLng&dname=$enc&appname=com.doh.memotrip',
-    );
-    if (dep != null) {
-      sb.write(
-        '&slat=${dep.latitude}&slng=${dep.longitude}&sname=${Uri.encodeQueryComponent(dep.name)}',
-      );
-    }
-    return sb.toString();
-  }
-
-  String _naverWebUri(
-      TripMarker? dep, double dLat, double dLng, String dName, String type) {
-    final String encDest = Uri.encodeComponent(dName);
-    // Naver Maps v5 directions: lng,lat,name,PLACE_TYPE,-1 (5 fields required)
-    final String destSegment = '$dLng,$dLat,$encDest,PLACE,-1';
-    if (dep == null) {
-      return 'https://map.naver.com/v5/directions/-/$destSegment/-/$type?c=$dLng,$dLat,15,0,0,0,dh';
-    }
-    final String encDep = Uri.encodeComponent(dep.name);
-    final String depSegment = '${dep.longitude},${dep.latitude},$encDep,PLACE,-1';
-    return 'https://map.naver.com/v5/directions/$depSegment/$destSegment/-/$type?c=$dLng,$dLat,15,0,0,0,dh';
   }
 
   @override
@@ -328,7 +258,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                   children: [
                     _InfoChip(
                       label: category?.name ?? '없음',
-                      color: categoryColor(category?.name).withValues(alpha: 0.5),
+                      color: categoryChipColor(category?.name),
                     ),
                     if (dayCount > 0) ...[
                       if (_marker.visitDays.isEmpty) ...[
@@ -363,7 +293,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                         ? TextField(
                             controller: _nameCtrl,
                             autofocus: true,
-                            cursorColor: const Color(0xFFFE8505),
+                            cursorColor: appCursorColor(),
                             onSubmitted: (_) {
                               setState(() => _editingName = false);
                               _saveName();
@@ -1079,111 +1009,6 @@ class _OrangeCheckIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: const Icon(Icons.check, size: 20, color: Colors.white),
-    );
-  }
-}
-
-class _AppNotInstalledDialog extends StatelessWidget {
-  const _AppNotInstalledDialog({
-    required this.appLabel,
-    required this.webUri,
-    required this.storeUri,
-  });
-  final String appLabel;
-  final String webUri;
-  final String storeUri;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: 300,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(17),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.navigation_outlined, size: 36, color: Color(0xFFFE8505)),
-            const SizedBox(height: 12),
-            Text(
-              '$appLabel 앱이 설치되어 있지 않습니다.',
-              style: const TextStyle(
-                fontFamily: 'Pretendard',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF070707),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await launchUrl(
-                        Uri.parse(webUri),
-                        mode: LaunchMode.externalApplication,
-                      );
-                    },
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F2F4),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        '네이버 지도 웹',
-                        style: TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF070707),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await launchUrl(
-                        Uri.parse(storeUri),
-                        mode: LaunchMode.externalApplication,
-                      );
-                    },
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xCCFE8505),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$appLabel 설치',
-                        style: const TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

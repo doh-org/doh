@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../data/repositories/member_repository_impl.dart';
 import '../../domain/repositories/member_repository.dart';
 import '../providers/member_provider.dart';
@@ -43,7 +44,7 @@ class MemberListPage extends ConsumerWidget {
         title: const Text('멤버 초대'),
         content: TextField(
           controller: emailController,
-          cursorColor: const Color(0xFFFE8505),
+          cursorColor: appCursorColor(),
           decoration: const InputDecoration(labelText: '이메일'),
           keyboardType: TextInputType.emailAddress,
         ),

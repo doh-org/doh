@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../markers/presentation/widgets/category_chip.dart';
+import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../domain/entities/naver_place.dart';
 
 class PlaceAddSheet extends ConsumerStatefulWidget {
@@ -71,11 +73,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
       ref.invalidate(markerEntitiesProvider(widget.tripId));
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('저장에 실패했습니다.')),
-        );
-      }
+      if (mounted) showUpdateErrorDialog(context, '저장에 실패했습니다.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -124,7 +122,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
           TextField(
             controller: _nameCtrl,
             autofocus: widget.naverPlace == null,
-            cursorColor: const Color(0xFFFE8505),
+            cursorColor: appCursorColor(),
             decoration: InputDecoration(
               hintText: '장소 이름',
               hintStyle: const TextStyle(

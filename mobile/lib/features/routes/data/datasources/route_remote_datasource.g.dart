@@ -7,7 +7,7 @@ part of 'route_remote_datasource.dart';
 // **************************************************************************
 
 String _$routeRemoteDatasourceHash() =>
-    r'8f7bed040baf9d87c15bef29831e1a13ed3449af';
+    r'ba53abd08909f76c13b155e48e2233a4d9f7a0aa';
 
 /// See also [routeRemoteDatasource].
 @ProviderFor(routeRemoteDatasource)
