@@ -41,9 +41,9 @@ class BottomNavBar extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _NavItem(icon: Icons.map_outlined, label: '지도', index: 0, current: currentIndex, onTap: onMapTap),
-                  const SizedBox(width: 60),
+                  const SizedBox(width: 80),
                   _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
-                  const SizedBox(width: 60),
+                  const SizedBox(width: 80),
                   _NavItem(icon: Icons.person_outline, label: '내 정보', index: 2, current: currentIndex, onTap: null),
                 ],
               ),
