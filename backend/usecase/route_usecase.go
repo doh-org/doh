@@ -88,7 +88,8 @@ func (u *routeUsecase) ReorderDay(ctx context.Context, token, tripID string, day
 		return 0, err
 	}
 
-	stops, err := u.routeRepo.GetDayStops(ctx, token, tripID, day, domain.SortByVisitTime)
+	// order 기준 조회 → 기존 순서(oldOrder) 도출. 집합검증은 순서 무관.
+	stops, err := u.routeRepo.GetDayStops(ctx, token, tripID, day, domain.SortByOrder)
 	if err != nil {
 		return 0, err
 	}
@@ -98,10 +99,42 @@ func (u *routeUsecase) ReorderDay(ctx context.Context, token, tripID string, day
 	if len(stops) <= 1 {
 		return len(stops), nil // no-op
 	}
-	if err := u.routeRepo.ReorderDay(ctx, token, tripID, day, markerIDs); err != nil {
+
+	oldOrder := make([]string, len(stops))
+	for i, s := range stops {
+		oldOrder[i] = s.MarkerID
+	}
+	stale := staleTransportMarkers(oldOrder, markerIDs)
+
+	if err := u.routeRepo.ReorderDay(ctx, token, tripID, day, markerIDs, stale); err != nil {
 		return 0, err
 	}
 	return len(markerIDs), nil
+}
+
+// staleTransportMarkers는 재정렬로 직후 stop(successor)이 바뀐 marker를 찾는다.
+// transport_to_next는 "다음 stop까지의 구간"이므로 successor가 바뀌면 무효 → 해제 대상.
+func staleTransportMarkers(oldOrder, newOrder []string) map[string]bool {
+	successor := func(order []string) map[string]string {
+		m := make(map[string]string, len(order))
+		for i, id := range order {
+			if i+1 < len(order) {
+				m[id] = order[i+1]
+			} else {
+				m[id] = "" // 마지막 = 다음 없음
+			}
+		}
+		return m
+	}
+	oldSucc := successor(oldOrder)
+	newSucc := successor(newOrder)
+	stale := map[string]bool{}
+	for id, ns := range newSucc {
+		if oldSucc[id] != ns {
+			stale[id] = true
+		}
+	}
+	return stale
 }
 
 // buildStopPatch는 RawMessage 입력을 검증·정규화한다(미제공/null/값 3상태).

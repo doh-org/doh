@@ -207,21 +207,33 @@ func (r *routeRepository) UpdateStop(ctx context.Context, token, tripID string, 
 
 // ReorderDay는 markerIDs 순서대로 order를 1..N 재작성함(bulk upsert, 단일 트랜잭션).
 // uq_md_trip_day_order DEFERRABLE 덕에 중간 중복 위반 없음. 집합 일치 검증은 usecase.
-func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, day int, markerIDs []string) error {
-	idMap, err := r.markerDayIDs(ctx, token, tripID, day)
+// clearTransport[markerID]==true인 stop은 이동수단·거리·시간 캐시를 NULL로 해제하고,
+// 그 외 stop은 현재 값을 보존한다(PostgREST 벌크 upsert는 균일 컬럼 필요 → 모든 row가 동일 키).
+func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, day int, markerIDs []string, clearTransport map[string]bool) error {
+	cur, err := r.markerDayRows(ctx, token, tripID, day)
 	if err != nil {
 		return err
 	}
 
 	rows := make([]map[string]any, 0, len(markerIDs))
 	for i, mid := range markerIDs {
-		id, ok := idMap[mid]
+		c, ok := cur[mid]
 		if !ok {
 			return domain.ErrNotFound
 		}
-		rows = append(rows, map[string]any{
-			"id": id, "marker_id": mid, "trip_id": tripID, "day_index": day, "order": i + 1,
-		})
+		row := map[string]any{
+			"id": c.ID, "marker_id": mid, "trip_id": tripID, "day_index": day, "order": i + 1,
+		}
+		if clearTransport[mid] {
+			row["transport_to_next"] = nil
+			row["distance_to_next"] = nil
+			row["duration_to_next"] = nil
+		} else {
+			row["transport_to_next"] = c.TransportToNext
+			row["distance_to_next"] = c.DistanceToNext
+			row["duration_to_next"] = c.DurationToNext
+		}
+		rows = append(rows, row)
 	}
 
 	resp, err := r.restReq(ctx, http.MethodPost, r.supabaseURL+"/rest/v1/marker_days", rows, token, "resolution=merge-duplicates,return=minimal")
@@ -236,11 +248,20 @@ func (r *routeRepository) ReorderDay(ctx context.Context, token, tripID string, 
 	return nil
 }
 
-func (r *routeRepository) markerDayIDs(ctx context.Context, token, tripID string, day int) (map[string]string, error) {
+// markerDayRow는 reorder 시 보존/해제 판단에 필요한 현재 stop 값.
+type markerDayRow struct {
+	ID              string
+	TransportToNext *string
+	DistanceToNext  *float64
+	DurationToNext  *int
+}
+
+// markerDayRows는 (trip, day) stop의 현재 id·이동수단·캐시를 marker_id 키로 반환한다.
+func (r *routeRepository) markerDayRows(ctx context.Context, token, tripID string, day int) (map[string]markerDayRow, error) {
 	q := url.Values{}
 	q.Set("trip_id", "eq."+tripID)
 	q.Set("day_index", "eq."+strconv.Itoa(day))
-	q.Set("select", "id,marker_id")
+	q.Set("select", "id,marker_id,transport_to_next,distance_to_next,duration_to_next")
 
 	resp, err := r.restReq(ctx, http.MethodGet, r.supabaseURL+"/rest/v1/marker_days?"+q.Encode(), nil, token, "")
 	if err != nil {
@@ -252,18 +273,26 @@ func (r *routeRepository) markerDayIDs(ctx context.Context, token, tripID string
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("markerDayIDs: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("markerDayRows: status %d", resp.StatusCode)
 	}
 	var rows []struct {
-		ID       string `json:"id"`
-		MarkerID string `json:"marker_id"`
+		ID              string   `json:"id"`
+		MarkerID        string   `json:"marker_id"`
+		TransportToNext *string  `json:"transport_to_next"`
+		DistanceToNext  *float64 `json:"distance_to_next"`
+		DurationToNext  *int     `json:"duration_to_next"`
 	}
 	if err := json.Unmarshal(b, &rows); err != nil {
 		return nil, err
 	}
-	result := make(map[string]string, len(rows))
+	result := make(map[string]markerDayRow, len(rows))
 	for _, row := range rows {
-		result[row.MarkerID] = row.ID
+		result[row.MarkerID] = markerDayRow{
+			ID:              row.ID,
+			TransportToNext: row.TransportToNext,
+			DistanceToNext:  row.DistanceToNext,
+			DurationToNext:  row.DurationToNext,
+		}
 	}
 	return result, nil
 }
