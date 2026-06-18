@@ -6,7 +6,7 @@ part of 'route_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$routesHash() => r'393ce654ef0c3efc0441b92f2951f5a32389a273';
+String _$dayStopsHash() => r'15a329898e5b6866f62577d580a5c666ec2e1ff0';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,30 +29,44 @@ class _SystemHash {
   }
 }
 
-/// See also [routes].
-@ProviderFor(routes)
-const routesProvider = RoutesFamily();
+/// 선택 Day의 stop 목록(정렬 적용).
+///
+/// Copied from [dayStops].
+@ProviderFor(dayStops)
+const dayStopsProvider = DayStopsFamily();
 
-/// See also [routes].
-class RoutesFamily extends Family<AsyncValue<List<TripRoute>>> {
-  /// See also [routes].
-  const RoutesFamily();
+/// 선택 Day의 stop 목록(정렬 적용).
+///
+/// Copied from [dayStops].
+class DayStopsFamily extends Family<AsyncValue<List<RouteStop>>> {
+  /// 선택 Day의 stop 목록(정렬 적용).
+  ///
+  /// Copied from [dayStops].
+  const DayStopsFamily();
 
-  /// See also [routes].
-  RoutesProvider call(
+  /// 선택 Day의 stop 목록(정렬 적용).
+  ///
+  /// Copied from [dayStops].
+  DayStopsProvider call(
     String tripId,
+    int day,
+    RouteSort sort,
   ) {
-    return RoutesProvider(
+    return DayStopsProvider(
       tripId,
+      day,
+      sort,
     );
   }
 
   @override
-  RoutesProvider getProviderOverride(
-    covariant RoutesProvider provider,
+  DayStopsProvider getProviderOverride(
+    covariant DayStopsProvider provider,
   ) {
     return call(
       provider.tripId,
+      provider.day,
+      provider.sort,
     );
   }
 
@@ -68,31 +82,41 @@ class RoutesFamily extends Family<AsyncValue<List<TripRoute>>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'routesProvider';
+  String? get name => r'dayStopsProvider';
 }
 
-/// See also [routes].
-class RoutesProvider extends AutoDisposeFutureProvider<List<TripRoute>> {
-  /// See also [routes].
-  RoutesProvider(
+/// 선택 Day의 stop 목록(정렬 적용).
+///
+/// Copied from [dayStops].
+class DayStopsProvider extends AutoDisposeFutureProvider<List<RouteStop>> {
+  /// 선택 Day의 stop 목록(정렬 적용).
+  ///
+  /// Copied from [dayStops].
+  DayStopsProvider(
     String tripId,
+    int day,
+    RouteSort sort,
   ) : this._internal(
-          (ref) => routes(
-            ref as RoutesRef,
+          (ref) => dayStops(
+            ref as DayStopsRef,
             tripId,
+            day,
+            sort,
           ),
-          from: routesProvider,
-          name: r'routesProvider',
+          from: dayStopsProvider,
+          name: r'dayStopsProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$routesHash,
-          dependencies: RoutesFamily._dependencies,
-          allTransitiveDependencies: RoutesFamily._allTransitiveDependencies,
+                  : _$dayStopsHash,
+          dependencies: DayStopsFamily._dependencies,
+          allTransitiveDependencies: DayStopsFamily._allTransitiveDependencies,
           tripId: tripId,
+          day: day,
+          sort: sort,
         );
 
-  RoutesProvider._internal(
+  DayStopsProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -100,42 +124,53 @@ class RoutesProvider extends AutoDisposeFutureProvider<List<TripRoute>> {
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.tripId,
+    required this.day,
+    required this.sort,
   }) : super.internal();
 
   final String tripId;
+  final int day;
+  final RouteSort sort;
 
   @override
   Override overrideWith(
-    FutureOr<List<TripRoute>> Function(RoutesRef provider) create,
+    FutureOr<List<RouteStop>> Function(DayStopsRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
-      override: RoutesProvider._internal(
-        (ref) => create(ref as RoutesRef),
+      override: DayStopsProvider._internal(
+        (ref) => create(ref as DayStopsRef),
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         tripId: tripId,
+        day: day,
+        sort: sort,
       ),
     );
   }
 
   @override
-  AutoDisposeFutureProviderElement<List<TripRoute>> createElement() {
-    return _RoutesProviderElement(this);
+  AutoDisposeFutureProviderElement<List<RouteStop>> createElement() {
+    return _DayStopsProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is RoutesProvider && other.tripId == tripId;
+    return other is DayStopsProvider &&
+        other.tripId == tripId &&
+        other.day == day &&
+        other.sort == sort;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, tripId.hashCode);
+    hash = _SystemHash.combine(hash, day.hashCode);
+    hash = _SystemHash.combine(hash, sort.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -143,17 +178,27 @@ class RoutesProvider extends AutoDisposeFutureProvider<List<TripRoute>> {
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin RoutesRef on AutoDisposeFutureProviderRef<List<TripRoute>> {
+mixin DayStopsRef on AutoDisposeFutureProviderRef<List<RouteStop>> {
   /// The parameter `tripId` of this provider.
   String get tripId;
+
+  /// The parameter `day` of this provider.
+  int get day;
+
+  /// The parameter `sort` of this provider.
+  RouteSort get sort;
 }
 
-class _RoutesProviderElement
-    extends AutoDisposeFutureProviderElement<List<TripRoute>> with RoutesRef {
-  _RoutesProviderElement(super.provider);
+class _DayStopsProviderElement
+    extends AutoDisposeFutureProviderElement<List<RouteStop>> with DayStopsRef {
+  _DayStopsProviderElement(super.provider);
 
   @override
-  String get tripId => (origin as RoutesProvider).tripId;
+  String get tripId => (origin as DayStopsProvider).tripId;
+  @override
+  int get day => (origin as DayStopsProvider).day;
+  @override
+  RouteSort get sort => (origin as DayStopsProvider).sort;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
