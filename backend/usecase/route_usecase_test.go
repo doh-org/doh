@@ -16,6 +16,7 @@ type stubRouteRepo struct {
 	stops         map[int][]domain.RouteStop
 	updateCalled  int
 	reorderCalled int
+	lastClear     map[string]bool // 마지막 ReorderDay의 clearTransport 인자
 }
 
 func newStubRouteRepo() *stubRouteRepo {
@@ -45,8 +46,9 @@ func (s *stubRouteRepo) UpdateStop(_ context.Context, _, _ string, day int, mark
 	return nil
 }
 
-func (s *stubRouteRepo) ReorderDay(_ context.Context, _, _ string, day int, markerIDs []string) error {
+func (s *stubRouteRepo) ReorderDay(_ context.Context, _, _ string, day int, markerIDs []string, clearTransport map[string]bool) error {
 	s.reorderCalled++
+	s.lastClear = clearTransport
 	byID := make(map[string]domain.RouteStop, len(s.stops[day]))
 	for _, st := range s.stops[day] {
 		byID[st.MarkerID] = st
@@ -252,6 +254,38 @@ func TestReorderDay_Success(t *testing.T) {
 	}
 	if rr.stops[1][0].MarkerID != "m3" || rr.stops[1][0].Order != 1 {
 		t.Errorf("first stop after reorder = %+v, want m3/order1", rr.stops[1][0])
+	}
+	// old m1→m2,m2→m3,m3→end / new m3→m1,m1→m2,m2→end.
+	// successor 바뀐 m2·m3만 해제, m1은 successor(m2) 유지 → 보존.
+	want := map[string]bool{"m2": true, "m3": true}
+	if len(rr.lastClear) != len(want) || !rr.lastClear["m2"] || !rr.lastClear["m3"] || rr.lastClear["m1"] {
+		t.Errorf("clearTransport = %v, want %v", rr.lastClear, want)
+	}
+}
+
+func TestStaleTransportMarkers(t *testing.T) {
+	cases := []struct {
+		name     string
+		old, new []string
+		want     map[string]bool
+	}{
+		{"no_change", []string{"a", "b", "c"}, []string{"a", "b", "c"}, map[string]bool{}},
+		{"rotate", []string{"a", "b", "c"}, []string{"c", "a", "b"}, map[string]bool{"b": true, "c": true}},
+		{"swap_middle", []string{"a", "b", "c", "d"}, []string{"a", "c", "b", "d"}, map[string]bool{"a": true, "c": true, "b": true}},
+		{"reverse", []string{"a", "b"}, []string{"b", "a"}, map[string]bool{"a": true, "b": true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := usecase.StaleTransportMarkers(tc.old, tc.new)
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for k, v := range tc.want {
+				if got[k] != v {
+					t.Errorf("[%s] got %v, want %v", k, got[k], tc.want)
+				}
+			}
+		})
 	}
 }
 
