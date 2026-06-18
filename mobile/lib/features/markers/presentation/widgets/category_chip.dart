@@ -17,8 +17,8 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color base = categoryColor(category.name);
-    final Color bgColor = selected ? base : base.withValues(alpha: 0.5);
+    final Color bgColor =
+        selected ? categoryColor(category.name) : categoryChipColor(category.name);
     final textColor = selected ? Colors.white : const Color(0xFF1F2125);
 
     return GestureDetector(

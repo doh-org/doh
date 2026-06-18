@@ -18,6 +18,7 @@ import '../widgets/day_filter_bar.dart';
 import '../widgets/map_view.dart';
 import '../widgets/marker_detail_sheet.dart';
 import '../widgets/place_card.dart';
+import '../widgets/route_edit_sheet.dart';
 import 'search_page.dart';
 
 class MapPage extends ConsumerStatefulWidget {
@@ -42,6 +43,8 @@ class _MapPageState extends ConsumerState<MapPage> {
   bool _searchBtnPressed = false;
   final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
+
+  bool _routeEdit = false;
 
   static const _sheetInitial = 0.45;
   static const _sheetMin = 0.13;
@@ -648,24 +651,40 @@ class _MapPageState extends ConsumerState<MapPage> {
               maxChildSize: _sheetMax,
               snap: true,
               snapSizes: const [_sheetMin, _sheetInitial, _sheetMax],
-              builder: (_, scrollCtrl) => _PlaceListSheet(
-                scrollController: scrollCtrl,
-                placeCount: allMarkers.length,
-                tripTitle: trip?.title ?? '',
-                dayCount: _dayCount(trip),
-                selectedDay: _selectedDay,
-                onDaySelected: (d) => setState(() => _selectedDay = d),
-                markers: filteredMarkers,
-                categoryMap: categoryMap,
-                likedIds: _likedMarkerIds,
-                hasError: markersAsync.hasError,
-                onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-                onLikeTap: (id) =>
-                    setState(() => _likedMarkerIds.contains(id)
-                        ? _likedMarkerIds.remove(id)
-                        : _likedMarkerIds.add(id)),
-                onDelete: _confirmDelete,
-              ),
+              builder: (_, scrollCtrl) => _routeEdit
+                  ? RouteEditSheet(
+                      scrollController: scrollCtrl,
+                      tripId: _tripId,
+                      selectedDay: _selectedDay,
+                      dayCount: _dayCount(trip),
+                      placeCount: allMarkers.length,
+                      categoryMap: categoryMap,
+                      onDaySelected: (d) => setState(() {
+                        _selectedDay = d;
+                        if (d == 0) _routeEdit = false;
+                      }),
+                      onExitEdit: () => setState(() => _routeEdit = false),
+                    )
+                  : _PlaceListSheet(
+                      scrollController: scrollCtrl,
+                      placeCount: allMarkers.length,
+                      tripTitle: trip?.title ?? '',
+                      dayCount: _dayCount(trip),
+                      selectedDay: _selectedDay,
+                      onDaySelected: (d) => setState(() => _selectedDay = d),
+                      markers: filteredMarkers,
+                      categoryMap: categoryMap,
+                      likedIds: _likedMarkerIds,
+                      hasError: markersAsync.hasError,
+                      canEditRoute: _selectedDay != 0,
+                      onEditRoute: () => setState(() => _routeEdit = true),
+                      onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+                      onLikeTap: (id) =>
+                          setState(() => _likedMarkerIds.contains(id)
+                              ? _likedMarkerIds.remove(id)
+                              : _likedMarkerIds.add(id)),
+                      onDelete: _confirmDelete,
+                    ),
             ),
           ],
         ),
@@ -686,6 +705,8 @@ class _PlaceListSheet extends StatelessWidget {
     required this.categoryMap,
     required this.likedIds,
     required this.hasError,
+    required this.canEditRoute,
+    required this.onEditRoute,
     required this.onMarkerTap,
     required this.onLikeTap,
     required this.onDelete,
@@ -701,12 +722,13 @@ class _PlaceListSheet extends StatelessWidget {
   final Map<String, Category> categoryMap;
   final Set<String> likedIds;
   final bool hasError;
+  final bool canEditRoute;
+  final VoidCallback onEditRoute;
   final void Function(TripMarker) onMarkerTap;
   final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
 
-  Color _categoryColor(Category? cat) =>
-      categoryColor(cat?.name).withValues(alpha: 0.5);
+  Color _categoryColor(Category? cat) => categoryChipColor(cat?.name);
 
   IconData _categoryIcon(String? name) => switch (name) {
         '카페' => Icons.coffee,
@@ -754,17 +776,17 @@ class _PlaceListSheet extends StatelessWidget {
                 // 헤더
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.bookmark,
-                          size: 22, color: Color(0xFFFE8505)),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RichText(
+                      // 제목 줄: 경로편집탭과 동일하게 아이콘·제목·버튼 중앙 정렬
+                      Row(
+                        children: [
+                          const Icon(Icons.bookmark,
+                              size: 22, color: Color(0xFFFE8505)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: RichText(
                               text: TextSpan(
                                 style:
                                     const TextStyle(fontFamily: 'Pretendard'),
@@ -793,37 +815,43 @@ class _PlaceListSheet extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              dayCount == 0
-                                  ? tripTitle
-                                  : dayCount == 1
-                                      ? '$tripTitle  |  당일'
-                                      : '$tripTitle  |  ${dayCount - 1}박 $dayCount일',
-                              style: const TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFFB2B2B2),
+                          ),
+                          if (canEditRoute)
+                            TextButton(
+                              onPressed: onEditRoute,
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                '경로 편집',
+                                style: TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF2A6FDB),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          '경로 편집',
-                          style: TextStyle(
+                      const SizedBox(height: 4),
+                      // 부제(여행일)는 제목 텍스트 아래에 동일 들여쓰기 유지
+                      Padding(
+                        padding: const EdgeInsets.only(left: 28),
+                        child: Text(
+                          dayCount == 0
+                              ? tripTitle
+                              : dayCount == 1
+                                  ? '$tripTitle  |  당일'
+                                  : '$tripTitle  |  ${dayCount - 1}박 $dayCount일',
+                          style: const TextStyle(
                             fontFamily: 'Pretendard',
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF2A6FDB),
+                            color: Color(0xFFB2B2B2),
                           ),
                         ),
                       ),
