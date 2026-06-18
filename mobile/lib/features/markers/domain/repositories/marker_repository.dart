@@ -2,7 +2,7 @@ import '../entities/category.dart';
 import '../entities/marker.dart';
 
 abstract interface class MarkerRepository {
-  Future<List<TripMarker>> getMarkers(String tripId);
+  Future<List<TripMarker>> getMarkers(String tripId, int dayCount);
 
   Future<TripMarker> createMarker({
     required String tripId,

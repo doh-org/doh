@@ -18,10 +18,27 @@ class MarkerRepositoryImpl implements MarkerRepository {
   const MarkerRepositoryImpl(this._datasource);
   final MarkerRemoteDatasource _datasource;
 
+  // 전체 마커 캐시(tripId별). 변이 시 무효화.
+  static final Map<String, List<TripMarker>> _markersCache = {};
+
   @override
-  Future<List<TripMarker>> getMarkers(String tripId) async {
-    final models = await _datasource.getMarkers(tripId);
-    return models.map((m) => m.toEntity()).toList();
+  Future<List<TripMarker>> getMarkers(String tripId, int dayCount) async {
+    final List<TripMarker>? cached = _markersCache[tripId];
+    if (cached != null) return cached;
+
+    // 미정(0)+각 day(1..dayCount) 병렬 조회 후 id로 중복 제거.
+    final List<List<MarkerModel>> lists = await Future.wait([
+      for (int d = 0; d <= dayCount; d++) _datasource.getMarkersByDay(tripId, d),
+    ]);
+    final Map<String, TripMarker> byId = {};
+    for (final List<MarkerModel> list in lists) {
+      for (final MarkerModel m in list) {
+        byId.putIfAbsent(m.id, () => m.toEntity());
+      }
+    }
+    final List<TripMarker> result = byId.values.toList();
+    _markersCache[tripId] = result;
+    return result;
   }
 
   @override
@@ -48,6 +65,7 @@ class MarkerRepositoryImpl implements MarkerRepository {
       'detail': detail ?? <String, dynamic>{},
       'visit_days': visitDays,
     });
+    _markersCache.remove(tripId);
     return model.toEntity();
   }
 
@@ -71,12 +89,15 @@ class MarkerRepositoryImpl implements MarkerRepository {
     if (visitDays != null) body['visit_days'] = visitDays;
     if (memo != null) body['memo'] = memo;
     final model = await _datasource.updateMarker(tripId, markerId, body);
+    _markersCache.remove(tripId);
     return model.toEntity();
   }
 
   @override
-  Future<void> deleteMarker(String tripId, String markerId) =>
-      _datasource.deleteMarker(tripId, markerId);
+  Future<void> deleteMarker(String tripId, String markerId) async {
+    await _datasource.deleteMarker(tripId, markerId);
+    _markersCache.remove(tripId);
+  }
 
   static final Map<String, List<Category>> _categoryCache = {};
 

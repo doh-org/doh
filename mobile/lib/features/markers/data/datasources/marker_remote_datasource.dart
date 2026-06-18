@@ -16,8 +16,16 @@ class MarkerRemoteDatasource {
   const MarkerRemoteDatasource(this._dio);
   final Dio _dio;
 
-  Future<List<MarkerModel>> getMarkers(String tripId) async {
-    final r = await _dio.get('/api/v1/trips/$tripId/markers');
+  /// GET /markers/:day — day=0=미정, day>=1=해당 day stop.
+  Future<List<MarkerModel>> getMarkersByDay(
+    String tripId,
+    int day, {
+    String sort = 'visit_time',
+  }) async {
+    final r = await _dio.get(
+      '/api/v1/trips/$tripId/markers/$day',
+      queryParameters: {'sort': sort},
+    );
     return (r.data as List)
         .map((e) => MarkerModel.fromJson(e as Map<String, dynamic>))
         .toList();
