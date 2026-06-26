@@ -143,7 +143,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1F1D1A),
                       ),
@@ -232,7 +232,7 @@ class _SearchBar extends StatelessWidget {
               onChanged: onChanged,
               style: const TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF1F2125),
               ),
@@ -240,7 +240,7 @@ class _SearchBar extends StatelessWidget {
                 hintText: '지하철역, 카페, 식당 ....',
                 hintStyle: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   color: Color(0xFFB2B2B2),
                 ),
                 border: InputBorder.none,
@@ -280,7 +280,7 @@ class _EmptyState extends StatelessWidget {
           color: const Color(0x80FEC181),
           borderRadius: BorderRadius.circular(17),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
         child: Row(
           children: [
             const Icon(Icons.info_outline, size: 20, color: Color(0xFFFE8505)),
@@ -293,7 +293,7 @@ class _EmptyState extends StatelessWidget {
                   '지도와',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F2125),
                     height: 1.2,
@@ -303,7 +303,7 @@ class _EmptyState extends StatelessWidget {
                   text: const TextSpan(
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
@@ -375,7 +375,7 @@ class _ResultList extends StatelessWidget {
                   '검색 결과',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F2125),
                   ),
@@ -393,7 +393,7 @@ class _ResultList extends StatelessWidget {
                     '$totalCount',
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF7E7E7E),
                     ),
@@ -431,7 +431,7 @@ class _ResultList extends StatelessWidget {
                       '저장된 장소 ${localTotal - 5}개 더보기',
                       style: const TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFFE8505),
                       ),
@@ -517,7 +517,7 @@ class _LocalItem extends StatelessWidget {
                           marker.name,
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1F2125),
                           ),
@@ -527,7 +527,7 @@ class _LocalItem extends StatelessWidget {
                           catName,
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Color(0xFFB2B2B2),
                           ),
                         ),
@@ -540,7 +540,7 @@ class _LocalItem extends StatelessWidget {
                           '저장됨',
                           style: TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFFFE8505),
                           ),
@@ -552,7 +552,7 @@ class _LocalItem extends StatelessWidget {
                               marker.address!,
                               style: const TextStyle(
                                 fontFamily: 'Pretendard',
-                                fontSize: 12,
+                                fontSize: 13,
                                 color: Color(0xFFB2B2B2),
                               ),
                               maxLines: 1,
@@ -615,7 +615,7 @@ class _NaverItem extends StatelessWidget {
                             place.title,
                             style: const TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF1F2125),
                             ),
@@ -625,7 +625,7 @@ class _NaverItem extends StatelessWidget {
                             place.category,
                             style: const TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 12,
+                              fontSize: 13,
                               color: Color(0xFFB2B2B2),
                             ),
                           ),
@@ -636,7 +636,7 @@ class _NaverItem extends StatelessWidget {
                         place.address,
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           color: Color(0xFFB2B2B2),
                         ),
                         maxLines: 1,

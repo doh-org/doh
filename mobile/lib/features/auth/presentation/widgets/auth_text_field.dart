@@ -28,7 +28,7 @@ class AuthTextField extends StatelessWidget {
       cursorColor: appCursorColor(),
       style: const TextStyle(
         fontFamily: 'Pretendard',
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: FontWeight.w500,
         color: AppColors.dark,
       ),
@@ -36,7 +36,7 @@ class AuthTextField extends StatelessWidget {
         hintText: hintText,
         hintStyle: const TextStyle(
           fontFamily: 'Pretendard',
-          fontSize: 18,
+          fontSize: 15,
           fontWeight: FontWeight.w500,
           color: AppColors.gray,
         ),

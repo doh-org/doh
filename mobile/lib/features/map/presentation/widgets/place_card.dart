@@ -85,7 +85,7 @@ class PlaceCard extends StatelessWidget {
                   category,
                   style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
                   ),
@@ -120,7 +120,7 @@ class PlaceCard extends StatelessWidget {
                 address ?? category,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF7E7E7E),
                 ),
@@ -152,7 +152,7 @@ class PlaceCard extends StatelessWidget {
             //             '$likeCount',
             //             style: const TextStyle(
             //               fontFamily: 'Pretendard',
-            //               fontSize: 12,
+            //               fontSize: 13,
             //               fontWeight: FontWeight.w500,
             //               color: Color(0xFF757575),
             //             ),

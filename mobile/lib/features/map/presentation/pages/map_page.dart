@@ -113,17 +113,12 @@ class _MapPageState extends ConsumerState<MapPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, scroll) => MarkerDetailSheet(
-          marker: marker,
-          tripId: _tripId,
-          allMarkers: allMarkers,
-          // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
-          // isLiked: _likedMarkerIds.contains(marker.id),
-        ),
+      builder: (_) => MarkerDetailSheet(
+        marker: marker,
+        tripId: _tripId,
+        allMarkers: allMarkers,
+        // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+        // isLiked: _likedMarkerIds.contains(marker.id),
       ),
     );
     if (mounted && _sheetController.isAttached) {
@@ -474,7 +469,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                             _searchedPlaceName ?? '지하철역, 카페, 식당 ....',
                             style: TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w400,
                               color: _searchedPlaceName != null
                                   ? const Color(0xFF1F2125)
@@ -581,7 +576,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                                     '현위치에서 검색',
                                     style: TextStyle(
                                       fontFamily: 'Pretendard',
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF1F2125),
                                     ),
@@ -623,7 +618,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                                           trip?.title ?? '여행 선택',
                                           style: const TextStyle(
                                             fontFamily: 'Pretendard',
-                                            fontSize: 12,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                             color: Color(0xFF1F2125),
                                           ),
@@ -800,21 +795,21 @@ class _PlaceListSheet extends StatelessWidget {
                                   const TextSpan(
                                     text: '저장한 장소 ',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF070707)),
                                   ),
                                   TextSpan(
                                     text: '$placeCount',
                                     style: const TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFFFE8505)),
                                   ),
                                   const TextSpan(
                                     text: '곳',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF070707)),
                                   ),
@@ -835,7 +830,7 @@ class _PlaceListSheet extends StatelessWidget {
                                 '경로 편집',
                                 style: TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF2A6FDB),
                                 ),
@@ -855,7 +850,7 @@ class _PlaceListSheet extends StatelessWidget {
                                   : '$tripTitle  |  ${dayCount - 1}박 $dayCount일',
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFFB2B2B2),
                           ),
@@ -903,7 +898,7 @@ class _PlaceListSheet extends StatelessWidget {
                             '장소 목록을 불러오지 못했습니다',
                             style: TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF1F2125),
                               height: 1.2,
@@ -913,7 +908,7 @@ class _PlaceListSheet extends StatelessWidget {
                             text: const TextSpan(
                               style: TextStyle(
                                 fontFamily: 'Pretendard',
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 height: 1.2,
                               ),
@@ -952,7 +947,7 @@ class _PlaceListSheet extends StatelessWidget {
                       '저장된 장소가 없습니다',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFFB2B2B2),
                       ),
@@ -962,7 +957,7 @@ class _PlaceListSheet extends StatelessWidget {
                       '검색 또는 지도를 꾹 눌러 장소를 추가해보세요.',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 12,
+                        fontSize: 13,
                         color: Color(0xFFFE8505),
                       ),
                     ),
@@ -1075,7 +1070,7 @@ class _TripSelectorSheet extends StatelessWidget {
                 '폴더 선택',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF070707),
                 ),
@@ -1085,7 +1080,7 @@ class _TripSelectorSheet extends StatelessWidget {
                 '${trips.length}개',
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFFB2B2B2),
                 ),
@@ -1148,7 +1143,7 @@ class _TripSelectorSheet extends StatelessWidget {
                                 trips[i].title,
                                 style: const TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF070707),
                                 ),
@@ -1160,7 +1155,7 @@ class _TripSelectorSheet extends StatelessWidget {
                                 _dateRange(trips[i]),
                                 style: const TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFFB2B2B2),
                                 ),
@@ -1220,7 +1215,7 @@ class _DeleteDialog extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: Color(0xCCEC2113),
                     ),
@@ -1247,7 +1242,7 @@ class _DeleteDialog extends StatelessWidget {
                         '취소',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF070707),
                         ),
@@ -1269,7 +1264,7 @@ class _DeleteDialog extends StatelessWidget {
                         '삭제',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

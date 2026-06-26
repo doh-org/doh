@@ -234,7 +234,11 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               offset: Offset(4, 0)),
         ],
       ),
-      child: SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -440,7 +444,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                                 _transportLabels[i],
                                 style: TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: active
                                       ? const Color(0xFFFDFDFD)
@@ -486,7 +490,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                         '길찾기',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFFFDFDFD),
                         ),
@@ -496,8 +500,9 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 9 + MediaQuery.of(context).padding.bottom),
           ],
+        ),
         ),
       ),
     );
@@ -530,7 +535,7 @@ class _InfoRow extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFB2B2B2),
                 ),
@@ -540,7 +545,7 @@ class _InfoRow extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF1F2125),
                 ),
@@ -675,7 +680,7 @@ class _InfoChip extends StatelessWidget {
         label,
         style: const TextStyle(
           fontFamily: 'Pretendard',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
@@ -701,13 +706,13 @@ class _RouteTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 45,
+        height: 48,
         width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFFF1F2F4),
           borderRadius: BorderRadius.circular(17),
         ),
-        padding: const EdgeInsets.only(left: 15, right: 65, top: 5, bottom: 5),
+        padding: const EdgeInsets.only(left: 15, right: 65, top: 4, bottom: 4),
         child: Row(
           children: [
             Container(
@@ -728,7 +733,7 @@ class _RouteTile extends StatelessWidget {
                     label,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFFB2B2B2),
                     ),
@@ -737,7 +742,7 @@ class _RouteTile extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF1F2125),
                     ),
@@ -845,7 +850,7 @@ class _RoutePickerSheet extends StatelessWidget {
                               'Day ',
                               style: TextStyle(
                                 fontFamily: 'Pretendard',
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF7E7E7E),
                               ),
@@ -854,7 +859,7 @@ class _RoutePickerSheet extends StatelessWidget {
                               '$day',
                               style: const TextStyle(
                                 fontFamily: 'Pretendard',
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFFFE8505),
                               ),
@@ -885,7 +890,7 @@ class _RoutePickerSheet extends StatelessWidget {
                           '미정',
                           style: TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF7E7E7E),
                           ),
@@ -941,7 +946,7 @@ class _PickerItem extends StatelessWidget {
           name,
           style: const TextStyle(
             fontFamily: 'Pretendard',
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1F2125),
           ),
@@ -1055,7 +1060,7 @@ class _DeleteConfirmDialog extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: Color(0xCCEC2113),
                     ),
@@ -1082,7 +1087,7 @@ class _DeleteConfirmDialog extends StatelessWidget {
                         '취소',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF070707),
                         ),
@@ -1104,7 +1109,7 @@ class _DeleteConfirmDialog extends StatelessWidget {
                         '삭제',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

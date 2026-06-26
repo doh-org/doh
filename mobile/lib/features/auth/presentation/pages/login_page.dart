@@ -109,7 +109,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   _errorMessage!,
                   style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: AppColors.error,
                   ),
@@ -154,7 +154,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     '계정이 없으신가요? ',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       color: AppColors.dark,
                     ),
                   ),
@@ -164,7 +164,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       '회원가입',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.blue,
                       ),
@@ -182,7 +182,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       '또는',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: AppColors.gray,
                       ),
@@ -207,7 +207,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     'Google로 계속하기',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: AppColors.dark,
                     ),
@@ -230,7 +230,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     '카카오로 계속하기',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: AppColors.dark,
                     ),
@@ -253,7 +253,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     '네이버로 계속하기',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: AppColors.white,
                     ),

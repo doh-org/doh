@@ -100,7 +100,7 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                           onChanged: (v) => setState(() => _query = v),
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 14,
+                            fontSize: 15,
                             color: Color(0xFF070707),
                           ),
                           decoration: const InputDecoration(
@@ -116,7 +116,7 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                             hintText: '폴더 명을 입력하세요.',
                             hintStyle: TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 14,
+                              fontSize: 15,
                               color: Color(0xFFB2B2B2),
                             ),
                             isDense: true,

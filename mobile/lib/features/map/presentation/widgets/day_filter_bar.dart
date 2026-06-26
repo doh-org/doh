@@ -51,7 +51,7 @@ class DayFilterBar extends StatelessWidget {
                   labels[i],
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: selected ? Colors.white : const Color(0xFF1F2125),
                   ),

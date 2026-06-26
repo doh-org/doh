@@ -44,7 +44,7 @@ class CategoryChip extends StatelessWidget {
           category.name,
           style: TextStyle(
             fontFamily: 'Pretendard',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: textColor,
           ),

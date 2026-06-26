@@ -20,7 +20,7 @@ class KakaoLoginButton extends StatelessWidget {
         ),
         child: const Text(
           '카카오로 시작하기',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
     );

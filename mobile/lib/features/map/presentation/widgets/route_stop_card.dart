@@ -149,7 +149,7 @@ class _RouteStopCardState extends State<RouteStopCard>
                 _timeLabel,
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: fg,
                 ),
@@ -163,7 +163,7 @@ class _RouteStopCardState extends State<RouteStopCard>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: fg,
                 ),
@@ -195,7 +195,7 @@ class _RouteStopCardState extends State<RouteStopCard>
         widget.categoryName ?? '기타',
         style: const TextStyle(
           fontFamily: 'Pretendard',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: fg,
         ),
@@ -233,7 +233,7 @@ class _RouteStopCardState extends State<RouteStopCard>
             transportLabel(m),
             style: const TextStyle(
               fontFamily: 'Pretendard',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: _ink,
             ),
@@ -264,7 +264,7 @@ class _RouteStopCardState extends State<RouteStopCard>
               m == null ? '이동수단' : transportLabel(m),
               style: const TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: _ink,
               ),

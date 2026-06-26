@@ -122,7 +122,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                 '8자 이상, 대문자·소문자·숫자 포함',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: AppColors.gray,
                 ),
@@ -138,7 +138,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   _errorMessage!,
                   style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: AppColors.error,
                   ),
@@ -183,7 +183,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     '이미 계정이 있으신가요? ',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       color: AppColors.dark,
                     ),
                   ),
@@ -193,7 +193,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       '로그인',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.blue,
                       ),

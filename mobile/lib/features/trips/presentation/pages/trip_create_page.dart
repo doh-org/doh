@@ -110,7 +110,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
           pageTitle,
           style: const TextStyle(
             fontFamily: 'Pretendard',
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1F1D1A),
           ),
@@ -137,7 +137,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 _titleCtrl.text.isEmpty ? '새 여행' : _titleCtrl.text,
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: (_colorIndex == 0 || _colorIndex == 4) ? const Color(0xFF000000) : Colors.white,
                 ),
@@ -189,13 +189,13 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                     maxLength: 14,
                     cursorColor: appCursorColor(),
                     onChanged: (_) => setState(() {}),
-                    style: const TextStyle(fontFamily: 'Pretendard', fontSize: 14),
+                    style: const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
                     decoration: const InputDecoration(
                       counterText: '',
                       hintText: '서울 맛집 여행, 수원 가을 여행...',
                       hintStyle: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         color: Color(0xFFB2B2B2),
                       ),
                       filled: true,
@@ -217,7 +217,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                       '${_titleCtrl.text.length}/14',
                       style: const TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: AppColors.folderOrange,
                       ),
@@ -237,7 +237,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                     _nightsLabel(),
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.folderOrange,
                     ),
@@ -271,7 +271,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   titleTextFormatter: (date, _) => '${date.year}년 ${date.month}월',
                   titleTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1F2125),
                   ),
@@ -281,13 +281,13 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 daysOfWeekStyle: const DaysOfWeekStyle(
                   weekdayStyle: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.gray,
                   ),
                   weekendStyle: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.gray,
                   ),
@@ -297,19 +297,19 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 calendarStyle: CalendarStyle(
                   defaultTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F1D1A),
                   ),
                   weekendTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F1D1A),
                   ),
                   outsideTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: AppColors.gray,
                   ),
@@ -319,7 +319,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   ),
                   rangeStartTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
@@ -329,14 +329,14 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   ),
                   rangeEndTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                   rangeHighlightColor: AppColors.folderOrange.withAlpha(51),
                   withinRangeTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F1D1A),
                   ),
@@ -361,7 +361,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         text,
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           color: color,
                         ),
                       ),
@@ -375,7 +375,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         '${day.day}',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           color: color,
                         ),
                       ),
@@ -389,7 +389,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         '${day.day}',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           color: color.withAlpha(100),
                         ),
                       ),
@@ -408,7 +408,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         '${day.day}',
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -428,7 +428,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         '${day.day}',
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -480,7 +480,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         ctaLabel,
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFFFDFDFD),
                         ),
@@ -516,7 +516,7 @@ class _Label extends StatelessWidget {
       text: TextSpan(
         style: const TextStyle(
           fontFamily: 'Pretendard',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: Color(0xFF1F2125),
         ),
