@@ -57,8 +57,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
       return;
     }
     if (!_isValidPassword(pw)) {
-      setState(() =>
-          _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
+      setState(() => _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
       return;
     }
     if (nickname.isEmpty) {
@@ -80,10 +79,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -92,22 +91,23 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                 '회원가입',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.black,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.folderOrange,
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              AuthTextField(
+              const SizedBox(height: 28),
+              _LabeledField(
+                label: '이메일',
                 controller: _emailCtrl,
-                hintText: '이메일',
+                hintText: '이메일을 입력하세요',
                 keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 12),
-              AuthTextField(
+              const SizedBox(height: 15),
+              _LabeledField(
+                label: '비밀번호',
                 controller: _pwCtrl,
-                hintText: '비밀번호',
+                hintText: '비밀번호를 입력하세요',
                 obscureText: _obscurePw,
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -117,43 +117,51 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   onPressed: () => setState(() => _obscurePw = !_obscurePw),
                 ),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                '8자 이상, 대문자·소문자·숫자 포함',
-                style: TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.gray,
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Text(
+                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.folderOrange,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              AuthTextField(
+              const SizedBox(height: 15),
+              _LabeledField(
+                label: '닉네임',
                 controller: _nicknameCtrl,
-                hintText: '닉네임',
+                hintText: '닉네임을 입력하세요',
               ),
               const SizedBox(height: 8),
               if (_errorMessage != null)
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    fontFamily: 'Pretendard',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.error,
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.error,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 52,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _onSignUp,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: const Color(0xCC2A6FDB),
                     foregroundColor: AppColors.white,
-                    disabledBackgroundColor: AppColors.primary.withAlpha(128),
+                    disabledBackgroundColor: const Color(0x662A6FDB),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(17),
                     ),
                   ),
                   child: isLoading
@@ -169,8 +177,9 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                           '회원가입',
                           style: TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 20,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
+                            color: Color(0xFFFDFDFD),
                           ),
                         ),
                 ),
@@ -184,7 +193,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     style: TextStyle(
                       fontFamily: 'Pretendard',
                       fontSize: 15,
-                      color: AppColors.dark,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.gray,
                     ),
                   ),
                   GestureDetector(
@@ -194,8 +204,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       style: TextStyle(
                         fontFamily: 'Pretendard',
                         fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.blue,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.folderOrange,
                       ),
                     ),
                   ),
@@ -206,6 +216,56 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// 라벨이 박스 위에 붙는 입력 필드. 박스는 AuthTextField 재사용.
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({
+    required this.label,
+    required this.controller,
+    required this.hintText,
+    this.keyboardType = TextInputType.text,
+    this.obscureText = false,
+    this.suffixIcon,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final String hintText;
+  final TextInputType keyboardType;
+  final bool obscureText;
+  final Widget? suffixIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 4),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.dark,
+            ),
+          ),
+        ),
+        AuthTextField(
+          controller: controller,
+          hintText: hintText,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          suffixIcon: suffixIcon,
+          fillColor: AppColors.background,
+          focusFillColor: const Color(0xFFFEDFBF),
+          borderRadius: 17,
+        ),
+      ],
     );
   }
 }

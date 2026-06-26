@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/auth/presentation/pages/account_info_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
@@ -68,6 +69,10 @@ GoRouter appRouter(Ref ref) {
         ],
       ),
       // 탭바 없는 독립 화면
+      GoRoute(
+        path: '/account',
+        builder: (_, __) => const AccountInfoPage(),
+      ),
       GoRoute(
         path: '/trips/create',
         builder: (_, __) => const TripCreatePage(),

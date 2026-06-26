@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/trip_repository_impl.dart';
 import '../providers/trip_provider.dart';
 
@@ -105,7 +106,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: const BackButton(color: AppColors.dark),
+        leading: AppBackButton(onTap: () => context.go('/trips')),
         title: Text(
           pageTitle,
           style: const TextStyle(
@@ -139,7 +140,9 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                   fontFamily: 'Pretendard',
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  color: (_colorIndex == 0 || _colorIndex == 4) ? const Color(0xFF000000) : Colors.white,
+                  color: (_colorIndex == 0 || _colorIndex == 4)
+                      ? const Color(0xFF000000)
+                      : Colors.white,
                 ),
               ),
             ),
@@ -189,7 +192,8 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                     maxLength: 14,
                     cursorColor: appCursorColor(),
                     onChanged: (_) => setState(() {}),
-                    style: const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
+                    style:
+                        const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
                     decoration: const InputDecoration(
                       counterText: '',
                       hintText: '서울 맛집 여행, 수원 가을 여행...',
@@ -268,7 +272,8 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 headerStyle: HeaderStyle(
                   formatButtonVisible: false,
                   titleCentered: true,
-                  titleTextFormatter: (date, _) => '${date.year}년 ${date.month}월',
+                  titleTextFormatter: (date, _) =>
+                      '${date.year}년 ${date.month}월',
                   titleTextStyle: const TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 13,

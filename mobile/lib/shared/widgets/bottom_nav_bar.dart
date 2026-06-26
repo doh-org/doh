@@ -44,7 +44,7 @@ class BottomNavBar extends ConsumerWidget {
                   const SizedBox(width: 80),
                   _NavItem(icon: Icons.folder_outlined, label: '폴더', index: 1, current: currentIndex, onTap: null),
                   const SizedBox(width: 80),
-                  _NavItem(icon: Icons.person_outline, label: '내 정보', index: 2, current: currentIndex, onTap: null),
+                  _NavItem(icon: Icons.person_outline, label: '내 정보', index: 2, current: currentIndex, onTap: () => context.push('/account')),
                 ],
               ),
             ),

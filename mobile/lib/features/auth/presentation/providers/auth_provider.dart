@@ -49,6 +49,15 @@ class AuthNotifier extends _$AuthNotifier {
     state = const AsyncData(null);
   }
 
+  // 회원 탈퇴. TODO: 백엔드 탈퇴 API(DELETE /me) 연동. 현재는 로컬 세션만 정리.
+  Future<void> withdraw() async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(logoutUsecaseProvider).call();
+    } catch (_) {}
+    state = const AsyncData(null);
+  }
+
   Future<void> refreshUser() async {
     try {
       final user = await ref.read(authRepositoryProvider).getMe();
