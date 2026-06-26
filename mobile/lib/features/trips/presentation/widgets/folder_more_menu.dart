@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -51,6 +52,12 @@ class _MoreMenu extends ConsumerWidget {
   final double top;
   final double right;
 
+  void _openInquiry(BuildContext context) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push('/inquiry');
+  }
+
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     Navigator.of(context).pop();
     await ref.read(authNotifierProvider.notifier).logout();
@@ -82,9 +89,10 @@ class _MoreMenu extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _MenuItem(label: '약관 정보', onTap: () => Navigator.pop(context)),
+                  _MenuItem(
+                      label: '약관 정보', onTap: () => Navigator.pop(context)),
                   const _MenuDivider(),
-                  _MenuItem(label: '문의하기', onTap: () => Navigator.pop(context)),
+                  _MenuItem(label: '문의하기', onTap: () => _openInquiry(context)),
                   const _MenuDivider(),
                   _MenuItem(
                     label: '로그아웃',

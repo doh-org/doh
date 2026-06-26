@@ -9,6 +9,7 @@ import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/map/presentation/pages/map_page.dart';
+import '../../features/support/presentation/pages/inquiry_page.dart';
 import '../../features/trips/presentation/pages/trip_create_page.dart';
 import '../../features/trips/presentation/pages/trip_list_page.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
@@ -72,6 +73,10 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/account',
         builder: (_, __) => const AccountInfoPage(),
+      ),
+      GoRoute(
+        path: '/inquiry',
+        builder: (_, __) => const InquiryPage(),
       ),
       GoRoute(
         path: '/trips/create',
