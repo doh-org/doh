@@ -44,6 +44,34 @@ func NewTestRouter(
 	return r
 }
 
+// NewTestAccountRouter는 운영 경로(controller→usecase→repository)로
+// 탈퇴·비번변경·재설정 엔드포인트를 구성한다.
+func NewTestAccountRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	ur := repository.NewUserRepository(supabaseURL, "fake-anon-key", "fake-service-key", client)
+	au := usecase.NewAuthUsecase(ur, "fake-key")
+	ac := controller.NewAuthController(au)
+
+	r := gin.New()
+	authGroup := r.Group("/api/v1/auth")
+
+	public := authGroup.Group("")
+	public.Use(middleware.RateLimit())
+	public.POST("/recover", ac.Recover)
+
+	protected := authGroup.Group("")
+	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	protected.PUT("/password", ac.ChangePassword)
+	protected.DELETE("/me", ac.DeleteMe)
+
+	return r
+}
+
 func NewTestMarkerRouter(
 	t *testing.T,
 	supabaseURL string,

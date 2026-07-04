@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-var endpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+// Endpoint는 Turnstile 검증 URL. 테스트에서 fake로 교체 가능한 seam.
+var Endpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 var client   = &http.Client{Timeout: 5 * time.Second}
 
 type response struct {
@@ -22,7 +23,7 @@ func Verify(secretKey, token string) error {
 	form.Set("secret", secretKey)
 	form.Set("response", token)
 
-	resp, err := client.PostForm(endpoint, form)
+	resp, err := client.PostForm(Endpoint, form)
 	if err != nil {
 		return err
 	}

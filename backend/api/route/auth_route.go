@@ -13,7 +13,7 @@ import (
 )
 
 func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *gin.RouterGroup) {
-	ur := repository.NewUserRepository(env.SupabaseURL, env.SupabaseAnonKey, nil)
+	ur := repository.NewUserRepository(env.SupabaseURL, env.SupabaseAnonKey, env.SupabaseServiceRoleKey, nil)
 	au := usecase.NewAuthUsecase(ur, env.TurnstileSecretKey)
 	ac := controller.NewAuthController(au)
 
@@ -21,9 +21,12 @@ func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *
 	public.Use(middleware.RateLimit())
 	public.POST("/signup", ac.Signup)
 	public.POST("/login", ac.Login)
+	public.POST("/recover", ac.Recover)
 
 	protected := group.Group("")
 	protected.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
 	protected.POST("/logout", ac.Logout)
 	protected.GET("/me", ac.Me)
+	protected.PUT("/password", ac.ChangePassword)
+	protected.DELETE("/me", ac.DeleteMe)
 }
