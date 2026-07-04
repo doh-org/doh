@@ -7,49 +7,34 @@ version: 1.0.0+1
 environment:
   sdk: '>=3.4.0 <4.0.0'
 
+# sort_pub_dependencies 린트에 맞춰 알파벳순 정렬 (카테고리 주석은 각 항목 오른쪽에)
 dependencies:
+  dio: ^5.8.0+1 # Network
+  equatable: ^2.0.7
   flutter:
     sdk: flutter
-
-  # Supabase
-  supabase_flutter: ^2.8.4
-
-  # State management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-
-  # Navigation
-  go_router: ^14.8.1
-
-  # Maps
-  flutter_naver_map: ^1.3.0
+  flutter_naver_map: ^1.3.0 # Maps
+  flutter_riverpod: ^2.6.1 # State management
+  freezed_annotation: ^3.0.0
   geolocator: ^13.0.2
+  go_router: ^14.8.1 # Navigation
+  json_annotation: ^4.9.0
+  riverpod_annotation: ^2.6.1
+  shared_preferences: ^2.3.4 # Storage
+  supabase_flutter: ^2.8.4 # Supabase
   table_calendar: ^3.1.2
-
-  # Network
-  dio: ^5.8.0+1
+  url_launcher: ^6.3.1 # 외부 지도앱 연동 (티맵, 카카오맵)
   web_socket_channel: ^3.0.2
 
-  # External app navigation (티맵, 카카오맵)
-  url_launcher: ^6.3.1
-
-  # Storage
-  shared_preferences: ^2.3.4
-
-  # Utilities
-  freezed_annotation: ^3.0.0
-  json_annotation: ^4.9.0
-  equatable: ^2.0.7
-
 dev_dependencies:
+  build_runner: ^2.4.15
+  custom_lint: ^0.7.5
+  flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
-  build_runner: ^2.4.15
   freezed: ^3.0.0
   json_serializable: ^6.9.5
   riverpod_generator: ^2.6.3
-  custom_lint: ^0.7.5
   riverpod_lint: ^2.6.3
 
 flutter:

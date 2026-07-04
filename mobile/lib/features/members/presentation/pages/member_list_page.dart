@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cursor.dart';
 import '../../data/repositories/member_repository_impl.dart';
-import '../../domain/repositories/member_repository.dart';
 import '../providers/member_provider.dart';
 import '../widgets/member_tile.dart';
 

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../data/repositories/marker_repository_impl.dart';
 import '../../domain/entities/marker.dart';
-import '../../domain/repositories/marker_repository.dart';
 import '../providers/marker_provider.dart';
 import 'category_chip.dart';
 

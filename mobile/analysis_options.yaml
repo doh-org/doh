@@ -1,5 +1,11 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # freezed 생성자 파라미터의 @JsonKey는 코드젠이 필드로 복사해 실제로 유효.
+    # freezed 공식 문서가 권장하는 억제 설정.
+    invalid_annotation_target: ignore
+
 linter:
   rules:
     prefer_single_quotes: true

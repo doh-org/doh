@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class WsClient {
@@ -9,7 +7,7 @@ class WsClient {
 
   static WebSocketChannel connect(String tripId, String token) {
     final uri = Uri.parse(
-      '${_wsBaseUrl}/trips/$tripId/ws?token=$token',
+      '$_wsBaseUrl/trips/$tripId/ws?token=$token',
     );
     _channel = WebSocketChannel.connect(uri);
     return _channel!;
