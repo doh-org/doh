@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"doh/backend/domain"
@@ -120,59 +121,76 @@ func (r *userRepository) GetProfile(ctx context.Context, userID, email, accessTo
 	return &user, nil
 }
 
-// ChangePassword는 사용자 JWT로 본인 비밀번호를 변경한다. PUT /auth/v1/user.
-func (r *userRepository) ChangePassword(ctx context.Context, accessToken, newPassword string) error {
-	b, err := json.Marshal(map[string]any{"password": newPassword})
+// doDrain은 요청을 보내고 응답 본문은 버린 뒤 상태코드만 반환한다.
+// keep-alive 재사용을 위해 body는 반드시 읽고 닫는다. 응답 크기는 4KB로 제한.
+func (r *userRepository) doDrain(req *http.Request) (int, error) {
+	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	return resp.StatusCode, nil
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, r.supabaseURL+"/auth/v1/user", bytes.NewReader(b))
+// jsonReq는 JSON 본문 요청을 만들고 apikey/Authorization 헤더를 붙인다.
+// bearer가 빈 문자열이면 Authorization은 생략한다.
+func (r *userRepository) jsonReq(ctx context.Context, method, path string, body map[string]any, bearer string) (*http.Request, error) {
+	b, err := json.Marshal(body)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, method, r.supabaseURL+path, bytes.NewReader(b))
+	if err != nil {
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("apikey", r.supabaseAnonKey)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	return req, nil
+}
 
-	resp, err := r.httpClient.Do(req)
+// ChangePassword는 사용자 JWT로 본인 비밀번호를 변경한다. PUT /auth/v1/user.
+func (r *userRepository) ChangePassword(ctx context.Context, accessToken, newPassword string) error {
+	req, err := r.jsonReq(ctx, http.MethodPut, "/auth/v1/user", map[string]any{"password": newPassword}, accessToken)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		slog.Error("changePassword: unexpected status", "status", resp.StatusCode)
-		return domain.ErrAuthFailed
+	status, err := r.doDrain(req)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	switch {
+	case status == http.StatusOK || status == http.StatusNoContent:
+		return nil
+	case status == http.StatusUnauthorized:
+		// 토큰 무효/만료 → 인증 실패로 전달
+		return domain.ErrAuthFailed
+	case status >= 400 && status < 500:
+		// Supabase가 새 비밀번호 거부(422: 이전과 동일 등) → 400으로 안내
+		slog.Warn("changePassword rejected", "status", status)
+		return &domain.ValidationError{Message: "새 비밀번호가 거부되었습니다. 다른 비밀번호를 사용해주세요."}
+	default:
+		return fmt.Errorf("changePassword: status %d", status)
+	}
 }
 
 // RequestRecovery는 비밀번호 재설정 메일 발송을 요청한다. POST /auth/v1/recover.
+// 실패 로깅은 호출자(usecase)가 담당한다(이중 로깅 방지).
 func (r *userRepository) RequestRecovery(ctx context.Context, email string) error {
-	b, err := json.Marshal(map[string]any{"email": email})
+	req, err := r.jsonReq(ctx, http.MethodPost, "/auth/v1/recover", map[string]any{"email": email}, "")
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.supabaseURL+"/auth/v1/recover", bytes.NewReader(b))
+	status, err := r.doDrain(req)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", r.supabaseAnonKey)
-
-	resp, err := r.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode >= 400 {
-		slog.Error("requestRecovery: unexpected status", "status", resp.StatusCode)
-		return fmt.Errorf("requestRecovery: status %d", resp.StatusCode)
+	if status >= 400 {
+		return fmt.Errorf("requestRecovery: status %d", status)
 	}
 	return nil
 }
@@ -180,9 +198,10 @@ func (r *userRepository) RequestRecovery(ctx context.Context, email string) erro
 // DeleteOwnedTrips는 사용자 JWT로 본인 소유 trip을 하드삭제한다.
 // RLS trips_delete_owner로 본인 trip만 삭제되며, 자식은 FK CASCADE로 정리된다.
 func (r *userRepository) DeleteOwnedTrips(ctx context.Context, accessToken, userID string) error {
-	url := fmt.Sprintf("%s/rest/v1/trips?owner_id=eq.%s", r.supabaseURL, userID)
+	// userID는 JWT sub(UUID)지만 방어적으로 escape
+	reqURL := fmt.Sprintf("%s/rest/v1/trips?owner_id=eq.%s", r.supabaseURL, url.QueryEscape(userID))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
 	if err != nil {
 		return err
 	}
@@ -190,16 +209,13 @@ func (r *userRepository) DeleteOwnedTrips(ctx context.Context, accessToken, user
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Prefer", "return=minimal")
 
-	resp, err := r.httpClient.Do(req)
+	status, err := r.doDrain(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		slog.Error("deleteOwnedTrips: unexpected status", "status", resp.StatusCode, "user_id", userID)
-		return fmt.Errorf("deleteOwnedTrips: status %d", resp.StatusCode)
+	if status != http.StatusNoContent && status != http.StatusOK {
+		slog.Error("deleteOwnedTrips: unexpected status", "status", status, "user_id", userID)
+		return fmt.Errorf("deleteOwnedTrips: status %d", status)
 	}
 	return nil
 }
@@ -207,25 +223,22 @@ func (r *userRepository) DeleteOwnedTrips(ctx context.Context, accessToken, user
 // DeleteAuthUser는 service_role admin API로 auth.users 행을 hard delete한다.
 // service_role key는 RLS를 전면 우회하므로 이 메서드에서만 사용한다.
 func (r *userRepository) DeleteAuthUser(ctx context.Context, userID string) error {
-	url := fmt.Sprintf("%s/auth/v1/admin/users/%s", r.supabaseURL, userID)
+	reqURL := fmt.Sprintf("%s/auth/v1/admin/users/%s", r.supabaseURL, url.PathEscape(userID))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("apikey", r.supabaseServiceKey)
 	req.Header.Set("Authorization", "Bearer "+r.supabaseServiceKey)
 
-	resp, err := r.httpClient.Do(req)
+	status, err := r.doDrain(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		slog.Error("deleteAuthUser: unexpected status", "status", resp.StatusCode, "user_id", userID)
-		return fmt.Errorf("deleteAuthUser: status %d", resp.StatusCode)
+	if status != http.StatusOK && status != http.StatusNoContent {
+		slog.Error("deleteAuthUser: unexpected status", "status", status, "user_id", userID)
+		return fmt.Errorf("deleteAuthUser: status %d", status)
 	}
 	return nil
 }

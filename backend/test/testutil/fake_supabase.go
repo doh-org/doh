@@ -95,8 +95,13 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 
 	mux.HandleFunc("/auth/v1/user", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		// PUT = 비밀번호 변경
+		// PUT = 비밀번호 변경. 세션 무효면 실제 Supabase처럼 401.
 		if r.Method == http.MethodPut {
+			if !fs.SessionValid {
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "invalid_token"})
+				return
+			}
 			if fs.ChangePwError != 0 {
 				w.WriteHeader(fs.ChangePwError)
 				return

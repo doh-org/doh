@@ -134,6 +134,34 @@ func TestChangePassword_Success(t *testing.T) {
 	}
 }
 
+// Supabase가 새 비밀번호를 거부(422: 이전과 동일 등)하면 401이 아닌 400으로 안내한다.
+func TestChangePassword_SupabaseRejects_Returns400(t *testing.T) {
+	router, fs, keys := setupAccount(t)
+	fs.ChangePwError = http.StatusUnprocessableEntity
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
+		"new_password": "SamePass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// Supabase 5xx는 그대로 서버 오류(500)로 매핑된다.
+func TestChangePassword_SupabaseServerError_Returns500(t *testing.T) {
+	router, fs, keys := setupAccount(t)
+	fs.ChangePwError = http.StatusInternalServerError
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d want 500, body=%s", w.Code, w.Body)
+	}
+}
+
 func TestChangePassword_WeakPassword(t *testing.T) {
 	router, fs, keys := setupAccount(t)
 	tok := accountToken(t, keys, fs)
