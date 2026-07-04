@@ -1,9 +1,15 @@
-package auth
+package usecase
 
 import (
+	"errors"
 	"strings"
 	"testing"
+
+	"doh/backend/domain"
 )
+
+// internal/auth(구 경로) 삭제로 이식한 입력 검증 단위 테스트.
+// 같은 패키지(usecase)라 비공개 헬퍼를 직접 호출한다.
 
 func TestValidateEmail(t *testing.T) {
 	cases := []struct {
@@ -50,9 +56,9 @@ func TestValidatePassword(t *testing.T) {
 				t.Errorf("validatePassword(%q) err=%v wantErr=%v", tc.password, err, tc.wantErr)
 			}
 			if tc.wantErr && err != nil {
-				ve, ok := err.(*ValidationError)
-				if !ok {
-					t.Errorf("expected *ValidationError, got %T", err)
+				var ve *domain.ValidationError // 타입까지 보장해야 controller가 400으로 매핑
+				if !errors.As(err, &ve) {
+					t.Errorf("expected *domain.ValidationError, got %T", err)
 				} else if ve.Message != tc.errMsg {
 					t.Errorf("message=%q want=%q", ve.Message, tc.errMsg)
 				}

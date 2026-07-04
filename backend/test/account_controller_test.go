@@ -25,7 +25,7 @@ func setupAccount(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil
 	t.Cleanup(func() { captcha.Endpoint = old })
 
 	keys := testutil.NewTestKeys(t)
-	router := testutil.NewTestAccountRouter(t, fs.Server.URL, keys, fs.Server.Client())
+	router := testutil.NewTestAuthRouter(t, fs.Server.URL, keys, fs.Server.Client())
 	return router, fs, keys
 }
 

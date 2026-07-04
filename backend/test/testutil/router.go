@@ -8,7 +8,6 @@ import (
 
 	"doh/backend/api/controller"
 	"doh/backend/api/middleware"
-	"doh/backend/internal/auth"
 	"doh/backend/repository"
 	"doh/backend/usecase"
 )
@@ -17,36 +16,9 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func NewTestRouter(
-	t *testing.T,
-	supabaseURL string,
-	keys *TestKeys,
-	client *http.Client,
-) http.Handler {
-	t.Helper()
-	svc := auth.NewServiceWithClient(supabaseURL, "fake-anon-key", "fake-key", client)
-	h := auth.NewHandler(svc)
-
-	r := gin.New()
-	v1 := r.Group("/api/v1")
-	authGroup := v1.Group("/auth")
-
-	public := authGroup.Group("")
-	public.Use(middleware.RateLimit())
-	public.POST("/signup", h.Signup)
-	public.POST("/login", h.Login)
-
-	protected := authGroup.Group("")
-	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
-	protected.POST("/logout", h.Logout)
-	protected.GET("/me", h.Me)
-
-	return r
-}
-
-// NewTestAccountRouter는 운영 경로(controller→usecase→repository)로
-// 탈퇴·비번변경·재설정 엔드포인트를 구성한다.
-func NewTestAccountRouter(
+// NewTestAuthRouter는 운영 배선(NewAuthRouter)과 동일한
+// controller→usecase→repository 경로로 auth 전체 엔드포인트를 구성한다.
+func NewTestAuthRouter(
 	t *testing.T,
 	supabaseURL string,
 	keys *TestKeys,
@@ -62,10 +34,14 @@ func NewTestAccountRouter(
 
 	public := authGroup.Group("")
 	public.Use(middleware.RateLimit())
+	public.POST("/signup", ac.Signup)
+	public.POST("/login", ac.Login)
 	public.POST("/recover", ac.Recover)
 
 	protected := authGroup.Group("")
 	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	protected.POST("/logout", ac.Logout)
+	protected.GET("/me", ac.Me)
 	protected.PUT("/password", ac.ChangePassword)
 	protected.DELETE("/me", ac.DeleteMe)
 
