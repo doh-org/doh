@@ -52,6 +52,11 @@ class AuthRemoteDatasource {
     await _dio.post('/api/v1/auth/logout');
   }
 
+  // 회원 탈퇴. 백엔드가 소유 trip 선삭제 후 계정을 영구 삭제한다.
+  Future<void> deleteMe() async {
+    await _dio.delete('/api/v1/auth/me');
+  }
+
   Future<UserResponseModel> getMe() async {
     final response = await _dio.get('/api/v1/auth/me');
     return UserResponseModel.fromJson(response.data as Map<String, dynamic>);

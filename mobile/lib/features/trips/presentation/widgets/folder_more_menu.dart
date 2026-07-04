@@ -5,22 +5,22 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-const _menuWidth = 180.0;
-const _itemHeight = 62.5;
-const _defaultBg = AppColors.background; // 평소: 회색
-const _pressBg = Color(0xFFFEDFBF); // 눌렀을 때: 주황
-const _divider = AppColors.white;
+const double _menuWidth = 180.0;
+const double _itemHeight = 62.5;
+const Color _defaultBg = AppColors.background; // 평소: 회색
+const Color _pressBg = Color(0xFFFEDFBF); // 눌렀을 때: 주황
+const Color _divider = AppColors.white;
 
 // ⋯ 더보기 버튼. 탭 시 자기 위치 아래에 설정 메뉴를 띄운다.
 class FolderMoreButton extends StatelessWidget {
   const FolderMoreButton({super.key});
 
   void _open(BuildContext context) {
-    final box = context.findRenderObject() as RenderBox;
-    final origin = box.localToGlobal(Offset.zero);
-    final screenW = MediaQuery.of(context).size.width;
-    final top = origin.dy + box.size.height + 5;
-    final right = screenW - (origin.dx + box.size.width);
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset origin = box.localToGlobal(Offset.zero);
+    final double screenW = MediaQuery.of(context).size.width;
+    final double top = origin.dy + box.size.height + 5;
+    final double right = screenW - (origin.dx + box.size.width);
 
     showGeneralDialog<void>(
       context: context,

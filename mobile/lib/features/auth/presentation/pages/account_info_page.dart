@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
+import '../../../../shared/widgets/update_error_dialog.dart';
+import '../../domain/entities/user.dart';
 import '../providers/auth_provider.dart';
 
-const _fieldBg = AppColors.background; // 평소: 회색 #F1F2F4
-const _focusBg = Color(0x80FEC181); // 눌렀을 때(포커스): 주황
-const _saveBg = Color(0xCC2A6FDB);
+const Color _fieldBg = AppColors.background; // 평소: 회색 #F1F2F4
+const Color _focusBg = Color(0x80FEC181); // 눌렀을 때(포커스): 주황
+const Color _saveBg = Color(0xCC2A6FDB);
 
 // 계정 정보 페이지. 더보기 메뉴 > 계정 정보 진입.
 class AccountInfoPage extends ConsumerStatefulWidget {
@@ -20,9 +22,9 @@ class AccountInfoPage extends ConsumerStatefulWidget {
 }
 
 class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
-  final _currentPwCtrl = TextEditingController();
-  final _newPwCtrl = TextEditingController();
-  final _confirmPwCtrl = TextEditingController();
+  final TextEditingController _currentPwCtrl = TextEditingController();
+  final TextEditingController _newPwCtrl = TextEditingController();
+  final TextEditingController _confirmPwCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -40,7 +42,7 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
   }
 
   Future<void> _confirmWithdraw() async {
-    final ok = await showGeneralDialog<bool>(
+    final bool? ok = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
       barrierLabel: '닫기',
@@ -48,13 +50,19 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
       pageBuilder: (_, __, ___) => const Center(child: _WithdrawDialog()),
     );
     if (ok != true) return;
-    await ref.read(authNotifierProvider.notifier).withdraw();
-    // 상태가 null이 되면 라우터 redirect가 /login으로 이동시킨다.
+
+    final bool deleted =
+        await ref.read(authNotifierProvider.notifier).withdraw();
+    // 성공 → 상태 null → 라우터 redirect가 /login으로 이동시킨다.
+    // 실패 → 세션 유지된 채 실패 안내.
+    if (!deleted && mounted) {
+      await showUpdateErrorDialog(context, '탈퇴에 실패했습니다.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final User? user = ref.watch(authNotifierProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: Colors.white,

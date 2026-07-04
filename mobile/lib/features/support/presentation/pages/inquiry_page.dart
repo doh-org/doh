@@ -5,8 +5,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 
-const _boxBg = AppColors.background; // #F1F2F4
-const _sendBg = Color(0xCC2A6FDB);
+const Color _boxBg = AppColors.background; // #F1F2F4
+const Color _sendBg = Color(0xCC2A6FDB);
 
 // 문의하기 페이지. 더보기 메뉴 > 문의하기 진입.
 // TODO: 전송·사진 첨부는 백엔드/이미지 피커 연동 전 프론트 UI만 구현.
@@ -18,7 +18,7 @@ class InquiryPage extends StatefulWidget {
 }
 
 class _InquiryPageState extends State<InquiryPage> {
-  final _contentCtrl = TextEditingController();
+  final TextEditingController _contentCtrl = TextEditingController();
   final List<String> _photos = [];
 
   @override
