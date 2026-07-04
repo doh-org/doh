@@ -8,16 +8,14 @@ import (
 	"unicode"
 
 	"doh/backend/domain"
-	"doh/backend/internal/captcha"
 )
 
 type authUsecase struct {
-	userRepo     domain.UserRepository
-	turnstileKey string
+	userRepo domain.UserRepository
 }
 
-func NewAuthUsecase(userRepo domain.UserRepository, turnstileKey string) domain.AuthUsecase {
-	return &authUsecase{userRepo: userRepo, turnstileKey: turnstileKey}
+func NewAuthUsecase(userRepo domain.UserRepository) domain.AuthUsecase {
+	return &authUsecase{userRepo: userRepo}
 }
 
 func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) (*domain.AuthResponse, error) {
@@ -33,15 +31,6 @@ func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) (*do
 	if err := validateNickname(req.Nickname); err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.CaptchaToken) == "" {
-		return nil, &domain.ValidationError{Message: "보안 인증 토큰이 필요합니다."}
-	}
-
-	if err := captcha.Verify(u.turnstileKey, req.CaptchaToken); err != nil {
-		slog.Warn("signup captcha failed", "err", err)
-		return nil, domain.ErrCaptcha
-	}
-
 	// nickname을 raw_user_meta_data에 포함 → 트리거가 public.users에 자동 INSERT
 	accessToken, refreshToken, userID, err := u.userRepo.SignupWithEmail(ctx, req.Email, req.Password, sanitizeNickname(req.Nickname))
 	if err != nil {
@@ -69,15 +58,6 @@ func (u *authUsecase) Login(ctx context.Context, req domain.LoginRequest) (*doma
 	if err := validateEmail(req.Email); err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.CaptchaToken) == "" {
-		return nil, &domain.ValidationError{Message: "보안 인증 토큰이 필요합니다."}
-	}
-
-	if err := captcha.Verify(u.turnstileKey, req.CaptchaToken); err != nil {
-		slog.Warn("login captcha failed", "err", err)
-		return nil, domain.ErrCaptcha
-	}
-
 	accessToken, refreshToken, userID, err := u.userRepo.LoginWithEmail(ctx, req.Email, req.Password)
 	if err != nil {
 		return nil, domain.ErrAuthFailed
@@ -145,21 +125,13 @@ func (u *authUsecase) ChangePassword(ctx context.Context, accessToken, email str
 }
 
 // Recover는 재설정 메일을 요청한다. 사용자 열거 방지를 위해 repo 결과와 무관하게
-// captcha/검증 실패만 에러로 반환하고 발송 실패는 흡수한다.
+// 입력 검증 실패만 에러로 반환하고 발송 실패는 흡수한다.
 func (u *authUsecase) Recover(ctx context.Context, req domain.RecoverRequest) error {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	if err := validateEmail(req.Email); err != nil {
 		return err
 	}
-	if strings.TrimSpace(req.CaptchaToken) == "" {
-		return &domain.ValidationError{Message: "보안 인증 토큰이 필요합니다."}
-	}
-	if err := captcha.Verify(u.turnstileKey, req.CaptchaToken); err != nil {
-		slog.Warn("recover captcha failed", "err", err)
-		return domain.ErrCaptcha
-	}
-
 	if err := u.userRepo.RequestRecovery(ctx, req.Email); err != nil {
 		slog.Error("recover request failed", "err", err) // 흡수: 열거 방지
 	}

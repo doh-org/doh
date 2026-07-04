@@ -14,7 +14,7 @@ import (
 
 func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *gin.RouterGroup) {
 	ur := repository.NewUserRepository(env.SupabaseURL, env.SupabaseAnonKey, env.SupabaseServiceRoleKey, nil)
-	au := usecase.NewAuthUsecase(ur, env.TurnstileSecretKey)
+	au := usecase.NewAuthUsecase(ur)
 	ac := controller.NewAuthController(au)
 
 	public := group.Group("")

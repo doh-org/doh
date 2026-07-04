@@ -25,7 +25,6 @@ class AuthRemoteDatasource {
       data: {
         'email': email,
         'password': password,
-        'captcha_token': 'test',
       },
     );
     return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);
@@ -42,7 +41,6 @@ class AuthRemoteDatasource {
         'email': email,
         'password': password,
         'nickname': nickname,
-        'captcha_token': 'test',
       },
     );
     return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);

@@ -13,7 +13,6 @@ type Env struct {
 	SupabaseURL            string
 	SupabaseAnonKey        string
 	SupabaseServiceRoleKey string
-	TurnstileSecretKey     string
 }
 
 func NewEnv() (*Env, error) {
@@ -25,7 +24,6 @@ func NewEnv() (*Env, error) {
 		SupabaseURL:            os.Getenv("SUPABASE_URL"),
 		SupabaseAnonKey:        os.Getenv("SUPABASE_ANON_KEY"),
 		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
-		TurnstileSecretKey:     os.Getenv("TURNSTILE_SECRET_KEY"),
 	}
 
 	if env.SupabaseURL == "" {
@@ -33,9 +31,6 @@ func NewEnv() (*Env, error) {
 	}
 	if env.SupabaseServiceRoleKey == "" {
 		return nil, fmt.Errorf("SUPABASE_SERVICE_ROLE_KEY is required")
-	}
-	if env.TurnstileSecretKey == "" {
-		return nil, fmt.Errorf("TURNSTILE_SECRET_KEY is required")
 	}
 
 	return env, nil

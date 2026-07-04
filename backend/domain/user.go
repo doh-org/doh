@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	ErrCaptcha     = errors.New("captcha failed")
 	ErrAuthFailed  = errors.New("auth failed")
 	ErrEmailExists = errors.New("email already exists")
 )
@@ -19,14 +18,12 @@ func (e *ValidationError) Error() string { return e.Message }
 type SignupRequest struct {
 	Email        string `json:"email"`
 	Password     string `json:"password"`
-	Nickname     string `json:"nickname"`
-	CaptchaToken string `json:"captcha_token"`
+	Nickname string `json:"nickname"`
 }
 
 type LoginRequest struct {
-	Email        string `json:"email"`
-	Password     string `json:"password"`
-	CaptchaToken string `json:"captcha_token"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type ChangePasswordRequest struct {
@@ -39,8 +36,7 @@ type RefreshRequest struct {
 }
 
 type RecoverRequest struct {
-	Email        string `json:"email"`
-	CaptchaToken string `json:"captcha_token"`
+	Email string `json:"email"`
 }
 
 type UserResponse struct {

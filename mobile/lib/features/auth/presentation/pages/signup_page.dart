@@ -35,7 +35,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
       ValidationException e => e.message,
       AuthException e => e.message,
       ConflictException e => e.message,
-      CaptchaException e => e.message,
       NetworkException e => e.message,
       AppException e => e.message,
       _ => '연결에 실패했습니다. 다시 시도해주세요.',
