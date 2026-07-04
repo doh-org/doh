@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/app_exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
+import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../providers/auth_provider.dart';
 
@@ -25,6 +28,7 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
   final TextEditingController _currentPwCtrl = TextEditingController();
   final TextEditingController _newPwCtrl = TextEditingController();
   final TextEditingController _confirmPwCtrl = TextEditingController();
+  bool _saving = false; // 저장 중 중복 탭 방지
 
   @override
   void dispose() {
@@ -37,8 +41,42 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
   bool get _pwMismatch =>
       _confirmPwCtrl.text.isNotEmpty && _newPwCtrl.text != _confirmPwCtrl.text;
 
-  void _save() {
-    // TODO: 백엔드 비밀번호 변경 API 연동.
+  // 비밀번호 변경. 백엔드가 현재 비밀번호 재인증 → 불일치면 서버 메시지 표시.
+  Future<void> _save() async {
+    if (_saving) return;
+    final String current = _currentPwCtrl.text;
+    final String next = _newPwCtrl.text;
+
+    // 로컬 검증: 빈 값·재입력 불일치는 서버까지 안 가고 즉시 안내
+    if (current.isEmpty || next.isEmpty) {
+      await showUpdateErrorDialog(context, '비밀번호를 모두 입력해주세요.');
+      return;
+    }
+    if (next != _confirmPwCtrl.text) {
+      await showUpdateErrorDialog(context, '새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await ref.read(authRepositoryProvider).changePassword(current, next);
+      if (!mounted) return;
+      _currentPwCtrl.clear();
+      _newPwCtrl.clear();
+      _confirmPwCtrl.clear();
+      await showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '닫기',
+        barrierColor: Colors.black26,
+        pageBuilder: (_, __, ___) => const Center(child: BookmarkSavedDialog()),
+      );
+    } on AppException catch (e) {
+      // 현재 비번 불일치·정책 위반 등 → 서버 메시지 그대로 안내
+      if (mounted) await showUpdateErrorDialog(context, e.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _confirmWithdraw() async {

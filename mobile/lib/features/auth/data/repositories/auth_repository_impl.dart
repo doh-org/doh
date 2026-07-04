@@ -79,6 +79,18 @@ class AuthRepositoryImpl implements AuthRepository {
     await _tokenStorage.clear();
   }
 
+  // 비밀번호 변경. 실패 시 서버 메시지(현재 비번 불일치 등)를 AppException으로 전달.
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      await _datasource.changePassword(currentPassword, newPassword);
+    } on DioException catch (e) {
+      final Object? error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
   @override
   Future<User?> getCurrentUser() => _tokenStorage.getUser();
 
