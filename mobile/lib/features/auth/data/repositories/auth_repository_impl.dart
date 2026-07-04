@@ -65,6 +65,20 @@ class AuthRepositoryImpl implements AuthRepository {
     await _tokenStorage.clear();
   }
 
+  // 탈퇴는 logout과 달리 서버 삭제가 성공해야만 세션을 지운다.
+  // (실패를 삼키면 계정이 남은 채 로그아웃돼 사용자가 탈퇴로 오인)
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      await _datasource.deleteMe();
+    } on DioException catch (e) {
+      final Object? error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+    await _tokenStorage.clear();
+  }
+
   @override
   Future<User?> getCurrentUser() => _tokenStorage.getUser();
 

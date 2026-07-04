@@ -113,7 +113,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
             '카테고리',
             style: TextStyle(
               fontFamily: 'Pretendard',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Color(0xFFB2B2B2),
             ),
@@ -124,7 +124,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
                   '카테고리 없음',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     color: Color(0xFFB2B2B2),
                   ),
                 )
@@ -151,7 +151,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
               '방문 날짜',
               style: TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFFB2B2B2),
               ),
@@ -204,7 +204,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
                           label,
                           style: TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: active
                                 ? Colors.white
@@ -244,7 +244,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
                 '저장',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),

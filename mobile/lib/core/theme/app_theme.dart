@@ -26,12 +26,12 @@ class AppTheme {
     ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.black),
-      displayMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.dark),
+      displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.dark),
       displaySmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.dark),
       bodyLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.dark),
-      bodyMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.dark),
-      labelLarge: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark),
-      bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.gray),
+      bodyMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.dark),
+      labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.dark),
+      bodySmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.gray),
     ),
   );
 }

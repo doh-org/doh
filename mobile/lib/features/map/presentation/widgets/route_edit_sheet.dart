@@ -243,19 +243,19 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
                       const TextSpan(
                           text: '저장한 장소 ',
                           style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF070707))),
                       TextSpan(
                           text: '${widget.placeCount}',
                           style: const TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: _orange)),
                       const TextSpan(
                           text: '곳',
                           style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF070707))),
                     ],
@@ -273,7 +273,7 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
                   '카드 탭',
                   style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF7E7E7E)),
                 ),
@@ -313,7 +313,7 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
                 _sorting ? '정렬 중…' : '시간순 정렬',
                 style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: _orange),
               ),
@@ -334,7 +334,7 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
               '장소가 없습니다',
               style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFFB2B2B2)),
             ),

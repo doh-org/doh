@@ -3,6 +3,7 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cursor.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
@@ -68,8 +69,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
     if (v.trim().isNotEmpty) {
       final NLatLng? c = widget.center;
-      final String? coordinate = c != null ? '${c.longitude},${c.latitude}' : null;
-      ref.read(naverSearchNotifierProvider.notifier).search(v.trim(), coordinate: coordinate);
+      final String? coordinate =
+          c != null ? '${c.longitude},${c.latitude}' : null;
+      ref
+          .read(naverSearchNotifierProvider.notifier)
+          .search(v.trim(), coordinate: coordinate);
     } else {
       ref.read(naverSearchNotifierProvider.notifier).clear();
     }
@@ -107,13 +111,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     Navigator.pop(context, marker);
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<TripMarker>> markersAsync = ref.watch(markerEntitiesProvider(widget.tripId));
-    final AsyncValue<List<NaverPlace>> naverAsync = ref.watch(naverSearchNotifierProvider);
+    final AsyncValue<List<TripMarker>> markersAsync =
+        ref.watch(markerEntitiesProvider(widget.tripId));
+    final AsyncValue<List<NaverPlace>> naverAsync =
+        ref.watch(naverSearchNotifierProvider);
     final Map<String, Category> categoryMap = {
-      for (final Category c in ref.watch(categoriesProvider(widget.tripId)).valueOrNull ?? [])
+      for (final Category c
+          in ref.watch(categoriesProvider(widget.tripId)).valueOrNull ?? [])
         c.id: c
     };
     final List<TripMarker> localAll = markersAsync.valueOrNull ?? [];
@@ -133,9 +139,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               height: 52,
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                    onPressed: () => Navigator.pop(context),
+                  AppBackButton(
+                    onTap: () => Navigator.pop(context),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 12, 0),
                   ),
                   const Expanded(
                     child: Text(
@@ -143,13 +149,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1F1D1A),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  const SizedBox(width: 52),
                 ],
               ),
             ),
@@ -187,8 +193,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       categoryIcon: _categoryIcon,
                       onLocalTap: _selectLocalMarker,
                       onNaverTap: (p) => Navigator.pop(context, p),
-                      onExpand: () =>
-                          setState(() => _localExpanded = true),
+                      onExpand: () => setState(() => _localExpanded = true),
                     ),
             ),
           ],
@@ -217,9 +222,7 @@ class _SearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x1A000000),
-              blurRadius: 2,
-              offset: Offset(0, 4)),
+              color: Color(0x1A000000), blurRadius: 2, offset: Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -232,7 +235,7 @@ class _SearchBar extends StatelessWidget {
               onChanged: onChanged,
               style: const TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF1F2125),
               ),
@@ -240,7 +243,7 @@ class _SearchBar extends StatelessWidget {
                 hintText: '지하철역, 카페, 식당 ....',
                 hintStyle: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   color: Color(0xFFB2B2B2),
                 ),
                 border: InputBorder.none,
@@ -257,8 +260,8 @@ class _SearchBar extends StatelessWidget {
                     onTap: onClear,
                     child: const Padding(
                       padding: EdgeInsets.only(right: 16),
-                      child: Icon(Icons.close,
-                          size: 20, color: Color(0xFF8A847B)),
+                      child:
+                          Icon(Icons.close, size: 20, color: Color(0xFF8A847B)),
                     ),
                   ),
           ),
@@ -280,7 +283,7 @@ class _EmptyState extends StatelessWidget {
           color: const Color(0x80FEC181),
           borderRadius: BorderRadius.circular(17),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
         child: Row(
           children: [
             const Icon(Icons.info_outline, size: 20, color: Color(0xFFFE8505)),
@@ -293,7 +296,7 @@ class _EmptyState extends StatelessWidget {
                   '지도와',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F2125),
                     height: 1.2,
@@ -303,7 +306,7 @@ class _EmptyState extends StatelessWidget {
                   text: const TextSpan(
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
@@ -368,14 +371,13 @@ class _ResultList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
             child: Row(
               children: [
-                const Icon(Icons.bookmark,
-                    size: 18, color: Color(0xFFFE8505)),
+                const Icon(Icons.bookmark, size: 18, color: Color(0xFFFE8505)),
                 const SizedBox(width: 5),
                 const Text(
                   '검색 결과',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF1F2125),
                   ),
@@ -393,7 +395,7 @@ class _ResultList extends StatelessWidget {
                     '$totalCount',
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF7E7E7E),
                     ),
@@ -431,13 +433,12 @@ class _ResultList extends StatelessWidget {
                       '저장된 장소 ${localTotal - 5}개 더보기',
                       style: const TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFFE8505),
                       ),
                     ),
-                    const Icon(Icons.add,
-                        size: 14, color: Color(0xFFFE8505)),
+                    const Icon(Icons.add, size: 14, color: Color(0xFFFE8505)),
                   ],
                 ),
               ),
@@ -500,76 +501,76 @@ class _LocalItem extends StatelessWidget {
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
           child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            children: [
-              // 카테고리 원 (size-40)
-              _CategoryCircle(color: color, icon: icon),
-              const SizedBox(width: 10),
-              // 텍스트
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          marker.name,
-                          style: const TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2125),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          catName,
-                          style: const TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 12,
-                            color: Color(0xFFB2B2B2),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Text(
-                          '저장됨',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFFE8505),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        if (marker.address != null)
-                          Flexible(
-                            child: Text(
-                              marker.address!,
-                              style: const TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 12,
-                                color: Color(0xFFB2B2B2),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              children: [
+                // 카테고리 원 (size-40)
+                _CategoryCircle(color: color, icon: icon),
+                const SizedBox(width: 10),
+                // 텍스트
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            marker.name,
+                            style: const TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F2125),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 6),
+                          Text(
+                            catName,
+                            style: const TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 13,
+                              color: Color(0xFFB2B2B2),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text(
+                            '저장됨',
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFFE8505),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          if (marker.address != null)
+                            Flexible(
+                              child: Text(
+                                marker.address!,
+                                style: const TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 13,
+                                  color: Color(0xFFB2B2B2),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-        ),
-        const Divider(height: 1, indent: 20, endIndent: 20,
-            color: Color(0xFFF1F2F4)),
+        const Divider(
+            height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F2F4)),
       ],
     );
   }
@@ -590,7 +591,8 @@ class _NaverItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String dbCat = _naverToDbCategory(place.categoryPath.isNotEmpty ? place.categoryPath : place.category);
+    final String dbCat = _naverToDbCategory(
+        place.categoryPath.isNotEmpty ? place.categoryPath : place.category);
     final Color color = categoryColor(dbCat);
     final IconData icon = categoryIcon(dbCat);
 
@@ -615,7 +617,7 @@ class _NaverItem extends StatelessWidget {
                             place.title,
                             style: const TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF1F2125),
                             ),
@@ -625,7 +627,7 @@ class _NaverItem extends StatelessWidget {
                             place.category,
                             style: const TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 12,
+                              fontSize: 13,
                               color: Color(0xFFB2B2B2),
                             ),
                           ),
@@ -636,7 +638,7 @@ class _NaverItem extends StatelessWidget {
                         place.address,
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           color: Color(0xFFB2B2B2),
                         ),
                         maxLines: 1,
@@ -649,8 +651,8 @@ class _NaverItem extends StatelessWidget {
             ),
           ),
         ),
-        const Divider(height: 1, indent: 20, endIndent: 20,
-            color: Color(0xFFF1F2F4)),
+        const Divider(
+            height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F2F4)),
       ],
     );
   }

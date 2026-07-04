@@ -153,7 +153,7 @@ class AppNotInstalledDialog extends StatelessWidget {
               '$appLabel 앱이 설치되어 있지 않습니다.',
               style: const TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF070707),
               ),

@@ -113,7 +113,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
             '장소명',
             style: TextStyle(
               fontFamily: 'Pretendard',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Color(0xFFB2B2B2),
             ),
@@ -127,7 +127,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
               hintText: '장소 이름',
               hintStyle: const TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFFB2B2B2),
               ),
@@ -152,7 +152,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
             ),
             style: const TextStyle(
               fontFamily: 'Pretendard',
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w500,
               color: Color(0xFF1F2125),
             ),
@@ -164,7 +164,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
             '카테고리',
             style: TextStyle(
               fontFamily: 'Pretendard',
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Color(0xFFB2B2B2),
             ),
@@ -176,7 +176,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
                     '카테고리 없음',
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       color: Color(0xFFB2B2B2),
                     ),
                   )
@@ -216,7 +216,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
               '방문 날짜 (선택)',
               style: TextStyle(
                 fontFamily: 'Pretendard',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFFB2B2B2),
               ),
@@ -269,7 +269,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
                         label,
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: active
                               ? Colors.white
@@ -307,7 +307,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
                       '저장',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
@@ -19,6 +20,7 @@ import '../widgets/map_view.dart';
 import '../widgets/marker_detail_sheet.dart';
 import '../widgets/place_card.dart';
 import '../widgets/route_edit_sheet.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import 'search_page.dart';
 
 class MapPage extends ConsumerStatefulWidget {
@@ -41,7 +43,8 @@ class _MapPageState extends ConsumerState<MapPage> {
   List<NaverPlace> _searchOverlays = [];
   bool _searchingOverlay = false;
   bool _searchBtnPressed = false;
-  final Set<String> _likedMarkerIds = {};
+  // v0 제외: 마커 좋아요(찜) 기능 — 좋아요한 마커 id 보관. 추후 복구
+  // final Set<String> _likedMarkerIds = {};
   final _sheetController = DraggableScrollableController();
 
   bool _routeEdit = false;
@@ -112,16 +115,12 @@ class _MapPageState extends ConsumerState<MapPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, scroll) => MarkerDetailSheet(
-          marker: marker,
-          tripId: _tripId,
-          allMarkers: allMarkers,
-          isLiked: _likedMarkerIds.contains(marker.id),
-        ),
+      builder: (_) => MarkerDetailSheet(
+        marker: marker,
+        tripId: _tripId,
+        allMarkers: allMarkers,
+        // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+        // isLiked: _likedMarkerIds.contains(marker.id),
       ),
     );
     if (mounted && _sheetController.isAttached) {
@@ -177,7 +176,12 @@ class _MapPageState extends ConsumerState<MapPage> {
           tripId: _tripId,
           allMarkers: allMarkers,
           onMarkerSaved: () {
-            if (mounted) setState(() { _pendingLocation = null; _pendingPlace = null; });
+            if (mounted) {
+              setState(() {
+                _pendingLocation = null;
+                _pendingPlace = null;
+              });
+            }
           },
         ),
       ),
@@ -330,8 +334,10 @@ class _MapPageState extends ConsumerState<MapPage> {
       if (results.isEmpty) return null;
       final NaverPlace nearest = results.first;
       final double dist = _haversine(
-        coord.latitude, coord.longitude,
-        nearest.latitude, nearest.longitude,
+        coord.latitude,
+        coord.longitude,
+        nearest.latitude,
+        nearest.longitude,
       );
       return dist <= 50 ? nearest.title : null;
     } catch (_) {
@@ -339,14 +345,15 @@ class _MapPageState extends ConsumerState<MapPage> {
     }
   }
 
-  static double _haversine(
-      double lat1, double lon1, double lat2, double lon2) {
+  static double _haversine(double lat1, double lon1, double lat2, double lon2) {
     const double r = 6371000;
     final double dLat = (lat2 - lat1) * pi / 180;
     final double dLon = (lon2 - lon1) * pi / 180;
     final double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
-            sin(dLon / 2) * sin(dLon / 2);
+        cos(lat1 * pi / 180) *
+            cos(lat2 * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
     return r * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
@@ -425,269 +432,290 @@ class _MapPageState extends ConsumerState<MapPage> {
                 _searchOverlays = [];
               }),
             ),
-            ),
+          ),
 
-            // 검색바 (탭 → SearchPage)
-            SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.only(top: 15, left: 15, right: 15),
-                child: GestureDetector(
-                  onTap: () async {
-                    final Object? result = await Navigator.push<Object?>(
-                      context,
-                      MaterialPageRoute<Object?>(
-                        builder: (_) => SearchPage(
-                          tripId: _tripId,
-                          trip: trip,
-                          center: _cameraCenter,
-                          initialQuery: _searchedPlaceName,
+          // 검색바 (탭 → SearchPage)
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 15, left: 15, right: 15),
+              child: Row(
+                children: [
+                  AppBackButton(
+                    onTap: () => context.go('/trips'),
+                    padding: const EdgeInsets.only(right: 12),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final Object? result = await Navigator.push<Object?>(
+                          context,
+                          MaterialPageRoute<Object?>(
+                            builder: (_) => SearchPage(
+                              tripId: _tripId,
+                              trip: trip,
+                              center: _cameraCenter,
+                              initialQuery: _searchedPlaceName,
+                            ),
+                          ),
+                        );
+                        await _handleSearchResult(result, trip);
+                      },
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1A000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.search,
+                                color: Color(0xFF8A847B), size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _searchedPlaceName ?? '지하철역, 카페, 식당 ....',
+                                style: TextStyle(
+                                  fontFamily: 'Pretendard',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                  color: _searchedPlaceName != null
+                                      ? const Color(0xFF1F2125)
+                                      : const Color(0xFFB2B2B2),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (_searchedPlaceName != null)
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => setState(() {
+                                  _searchedPlaceName = null;
+                                  _searchOverlays = [];
+                                  _pendingLocation = null;
+                                  _pendingPlace = null;
+                                }),
+                                child: const Padding(
+                                  padding: EdgeInsets.only(left: 8),
+                                  child: Icon(Icons.close,
+                                      size: 18, color: Color(0xFF8A847B)),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    );
-                    await _handleSearchResult(result, trip);
-                  },
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 폴더 칩 (Trip 선택) + 현위치에서 검색
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 73, left: 20, right: 20),
+              child: SizedBox(
+                height: 30,
+                child: LayoutBuilder(
+                  builder: (_, BoxConstraints constraints) {
+                    final double half = constraints.maxWidth / 2;
+                    return Stack(
                       children: [
-                        const Icon(Icons.search,
-                            color: Color(0xFF8A847B), size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _searchedPlaceName ?? '지하철역, 카페, 식당 ....',
-                            style: TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: _searchedPlaceName != null
-                                  ? const Color(0xFF1F2125)
-                                  : const Color(0xFFB2B2B2),
+                        // Stack 전체 너비 확보
+                        SizedBox(width: constraints.maxWidth, height: 30),
+                        // 현위치에서 검색: 가로 중앙 (아래 레이어)
+                        Align(
+                          alignment: Alignment.center,
+                          child: GestureDetector(
+                            onTapDown: (_) {
+                              if (_searchedPlaceName != null &&
+                                  !_searchingOverlay) {
+                                setState(() => _searchBtnPressed = true);
+                              }
+                            },
+                            onTapUp: (_) =>
+                                setState(() => _searchBtnPressed = false),
+                            onTapCancel: () =>
+                                setState(() => _searchBtnPressed = false),
+                            onTap: (_searchedPlaceName == null ||
+                                    _searchingOverlay)
+                                ? null
+                                : () async {
+                                    final messenger =
+                                        ScaffoldMessenger.of(context);
+                                    setState(() => _searchingOverlay = true);
+                                    try {
+                                      final List<NaverPlace> results = await ref
+                                          .read(
+                                              naverLocalSearchDatasourceProvider)
+                                          .search(
+                                            _searchedPlaceName!,
+                                            coordinate:
+                                                '${_cameraCenter.longitude},${_cameraCenter.latitude}',
+                                          );
+                                      if (mounted) {
+                                        setState(
+                                            () => _searchOverlays = results);
+                                      }
+                                    } catch (_) {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                            content: Text('검색에 실패했습니다.')),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setState(
+                                            () => _searchingOverlay = false);
+                                      }
+                                    }
+                                  },
+                            child: IntrinsicWidth(
+                              child: Container(
+                                height: 30,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: _searchBtnPressed
+                                      ? Border.all(
+                                          color: const Color(0xFFFE8505),
+                                          width: 1)
+                                      : null,
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x1A000000),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  '현위치에서 검색',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF1F2125),
+                                  ),
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (_searchedPlaceName != null)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => setState(() {
-                              _searchedPlaceName = null;
-                              _searchOverlays = [];
-                              _pendingLocation = null;
-                              _pendingPlace = null;
-                            }),
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Icon(Icons.close,
-                                  size: 18, color: Color(0xFF8A847B)),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // 폴더 칩 (Trip 선택) + 현위치에서 검색
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 73, left: 20, right: 20),
-                child: SizedBox(
-                  height: 30,
-                  child: LayoutBuilder(
-                    builder: (_, BoxConstraints constraints) {
-                      final double half = constraints.maxWidth / 2;
-                      return Stack(
-                        children: [
-                          // Stack 전체 너비 확보
-                          SizedBox(width: constraints.maxWidth, height: 30),
-                          // 현위치에서 검색: 가로 중앙 (아래 레이어)
-                          Align(
-                            alignment: Alignment.center,
+                        // 폴더 칩: 왼쪽, maxWidth = 절반 - 10px (위 레이어)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: half - 10),
                             child: GestureDetector(
-                              onTapDown: (_) {
-                                if (_searchedPlaceName != null && !_searchingOverlay) {
-                                  setState(() => _searchBtnPressed = true);
-                                }
-                              },
-                              onTapUp: (_) => setState(() => _searchBtnPressed = false),
-                              onTapCancel: () => setState(() => _searchBtnPressed = false),
-                              onTap: (_searchedPlaceName == null || _searchingOverlay)
-                                  ? null
-                                  : () async {
-                                      final messenger =
-                                          ScaffoldMessenger.of(context);
-                                      setState(() => _searchingOverlay = true);
-                                      try {
-                                        final List<NaverPlace> results = await ref
-                                            .read(naverLocalSearchDatasourceProvider)
-                                            .search(
-                                              _searchedPlaceName!,
-                                              coordinate:
-                                                  '${_cameraCenter.longitude},${_cameraCenter.latitude}',
-                                            );
-                                        if (mounted) {
-                                          setState(() => _searchOverlays = results);
-                                        }
-                                      } catch (_) {
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                              content: Text('검색에 실패했습니다.')),
-                                        );
-                                      } finally {
-                                        if (mounted) {
-                                          setState(() => _searchingOverlay = false);
-                                        }
-                                      }
-                                    },
-                              child: IntrinsicWidth(
-                                child: Container(
-                                  height: 30,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: _searchBtnPressed
-                                        ? Border.all(color: const Color(0xFFFE8505), width: 1)
-                                        : null,
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x1A000000),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Text(
-                                    '현위치에서 검색',
-                                    style: TextStyle(
-                                      fontFamily: 'Pretendard',
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF1F2125),
+                              onTap: () => _showTripSelector(
+                                  tripsAsync.valueOrNull ?? []),
+                              child: Container(
+                                height: 30,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x1A000000),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ),
-                          // 폴더 칩: 왼쪽, maxWidth = 절반 - 10px (위 레이어)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: half - 10),
-                              child: GestureDetector(
-                                onTap: () => _showTripSelector(
-                                    tripsAsync.valueOrNull ?? []),
-                                child: Container(
-                                  height: 30,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x1A000000),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.folder_outlined,
-                                          size: 20, color: Color(0xFFFE8505)),
-                                      const SizedBox(width: 3),
-                                      Flexible(
-                                        child: Text(
-                                          trip?.title ?? '여행 선택',
-                                          style: const TextStyle(
-                                            fontFamily: 'Pretendard',
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF1F2125),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.folder_outlined,
+                                        size: 20, color: Color(0xFFFE8505)),
+                                    const SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        trip?.title ?? '여행 선택',
+                                        style: const TextStyle(
+                                          fontFamily: 'Pretendard',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF1F2125),
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
+          ),
 
-            // 바텀 시트
-            DraggableScrollableSheet(
-              controller: _sheetController,
-              initialChildSize: _sheetInitial,
-              minChildSize: _sheetMin,
-              maxChildSize: _sheetMax,
-              snap: true,
-              snapSizes: const [_sheetMin, _sheetInitial, _sheetMax],
-              builder: (_, scrollCtrl) => _routeEdit
-                  ? RouteEditSheet(
-                      scrollController: scrollCtrl,
-                      tripId: _tripId,
-                      selectedDay: _selectedDay,
-                      dayCount: _dayCount(trip),
-                      placeCount: allMarkers.length,
-                      categoryMap: categoryMap,
-                      onDaySelected: (d) => setState(() {
-                        _selectedDay = d;
-                        if (d == 0) _routeEdit = false;
-                      }),
-                      onExitEdit: () => setState(() => _routeEdit = false),
-                    )
-                  : _PlaceListSheet(
-                      scrollController: scrollCtrl,
-                      placeCount: allMarkers.length,
-                      tripTitle: trip?.title ?? '',
-                      dayCount: _dayCount(trip),
-                      selectedDay: _selectedDay,
-                      onDaySelected: (d) => setState(() => _selectedDay = d),
-                      markers: filteredMarkers,
-                      categoryMap: categoryMap,
-                      likedIds: _likedMarkerIds,
-                      hasError: markersAsync.hasError,
-                      canEditRoute: _selectedDay != 0,
-                      onEditRoute: () => setState(() => _routeEdit = true),
-                      onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-                      onLikeTap: (id) =>
-                          setState(() => _likedMarkerIds.contains(id)
-                              ? _likedMarkerIds.remove(id)
-                              : _likedMarkerIds.add(id)),
-                      onDelete: _confirmDelete,
-                    ),
-            ),
-          ],
-        ),
+          // 바텀 시트
+          DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: _sheetInitial,
+            minChildSize: _sheetMin,
+            maxChildSize: _sheetMax,
+            snap: true,
+            snapSizes: const [_sheetMin, _sheetInitial, _sheetMax],
+            builder: (_, scrollCtrl) => _routeEdit
+                ? RouteEditSheet(
+                    scrollController: scrollCtrl,
+                    tripId: _tripId,
+                    selectedDay: _selectedDay,
+                    dayCount: _dayCount(trip),
+                    placeCount: allMarkers.length,
+                    categoryMap: categoryMap,
+                    onDaySelected: (d) => setState(() {
+                      _selectedDay = d;
+                      if (d == 0) _routeEdit = false;
+                    }),
+                    onExitEdit: () => setState(() => _routeEdit = false),
+                  )
+                : _PlaceListSheet(
+                    scrollController: scrollCtrl,
+                    placeCount: allMarkers.length,
+                    tripTitle: trip?.title ?? '',
+                    dayCount: _dayCount(trip),
+                    selectedDay: _selectedDay,
+                    onDaySelected: (d) => setState(() => _selectedDay = d),
+                    markers: filteredMarkers,
+                    categoryMap: categoryMap,
+                    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+                    // likedIds: _likedMarkerIds,
+                    hasError: markersAsync.hasError,
+                    canEditRoute: _selectedDay != 0,
+                    onEditRoute: () => setState(() => _routeEdit = true),
+                    onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+                    // v0 제외: 마커 좋아요(찜) 토글 — 추후 복구
+                    // onLikeTap: (id) =>
+                    //     setState(() => _likedMarkerIds.contains(id)
+                    //         ? _likedMarkerIds.remove(id)
+                    //         : _likedMarkerIds.add(id)),
+                    onDelete: _confirmDelete,
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -703,12 +731,13 @@ class _PlaceListSheet extends StatelessWidget {
     required this.onDaySelected,
     required this.markers,
     required this.categoryMap,
-    required this.likedIds,
+    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+    // required this.likedIds,
     required this.hasError,
     required this.canEditRoute,
     required this.onEditRoute,
     required this.onMarkerTap,
-    required this.onLikeTap,
+    // required this.onLikeTap,
     required this.onDelete,
   });
 
@@ -720,12 +749,13 @@ class _PlaceListSheet extends StatelessWidget {
   final ValueChanged<int> onDaySelected;
   final List<TripMarker> markers;
   final Map<String, Category> categoryMap;
-  final Set<String> likedIds;
+  // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+  // final Set<String> likedIds;
   final bool hasError;
   final bool canEditRoute;
   final VoidCallback onEditRoute;
   final void Function(TripMarker) onMarkerTap;
-  final void Function(String) onLikeTap;
+  // final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
 
   Color _categoryColor(Category? cat) => categoryChipColor(cat?.name);
@@ -794,21 +824,21 @@ class _PlaceListSheet extends StatelessWidget {
                                   const TextSpan(
                                     text: '저장한 장소 ',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF070707)),
                                   ),
                                   TextSpan(
                                     text: '$placeCount',
                                     style: const TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFFFE8505)),
                                   ),
                                   const TextSpan(
                                     text: '곳',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w700,
                                         color: Color(0xFF070707)),
                                   ),
@@ -822,14 +852,13 @@ class _PlaceListSheet extends StatelessWidget {
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               child: const Text(
                                 '경로 편집',
                                 style: TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF2A6FDB),
                                 ),
@@ -849,7 +878,7 @@ class _PlaceListSheet extends StatelessWidget {
                                   : '$tripTitle  |  ${dayCount - 1}박 $dayCount일',
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFFB2B2B2),
                           ),
@@ -884,10 +913,12 @@ class _PlaceListSheet extends StatelessWidget {
                     color: const Color(0x80FEC181),
                     borderRadius: BorderRadius.circular(17),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, size: 20, color: Color(0xFFFE8505)),
+                      const Icon(Icons.info_outline,
+                          size: 20, color: Color(0xFFFE8505)),
                       const SizedBox(width: 10),
                       Column(
                         mainAxisSize: MainAxisSize.min,
@@ -897,7 +928,7 @@ class _PlaceListSheet extends StatelessWidget {
                             '장소 목록을 불러오지 못했습니다',
                             style: TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF1F2125),
                               height: 1.2,
@@ -907,7 +938,7 @@ class _PlaceListSheet extends StatelessWidget {
                             text: const TextSpan(
                               style: TextStyle(
                                 fontFamily: 'Pretendard',
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 height: 1.2,
                               ),
@@ -946,7 +977,7 @@ class _PlaceListSheet extends StatelessWidget {
                       '저장된 장소가 없습니다',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFFB2B2B2),
                       ),
@@ -956,7 +987,7 @@ class _PlaceListSheet extends StatelessWidget {
                       '검색 또는 지도를 꾹 눌러 장소를 추가해보세요.',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
-                        fontSize: 12,
+                        fontSize: 13,
                         color: Color(0xFFFE8505),
                       ),
                     ),
@@ -997,10 +1028,11 @@ class _PlaceListSheet extends StatelessWidget {
                       category: cat?.name ?? '기타',
                       categoryColor: _categoryColor(cat),
                       categoryIcon: _categoryIcon(cat?.name),
-                      isLiked: likedIds.contains(m.id),
-                      likeCount: 0,
+                      // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+                      // isLiked: likedIds.contains(m.id),
+                      // likeCount: 0,
                       onTap: () => onMarkerTap(m),
-                      onLikeTap: () => onLikeTap(m.id),
+                      // onLikeTap: () => onLikeTap(m.id),
                     ),
                   );
                 },
@@ -1068,7 +1100,7 @@ class _TripSelectorSheet extends StatelessWidget {
                 '폴더 선택',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF070707),
                 ),
@@ -1078,7 +1110,7 @@ class _TripSelectorSheet extends StatelessWidget {
                 '${trips.length}개',
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFFB2B2B2),
                 ),
@@ -1141,7 +1173,7 @@ class _TripSelectorSheet extends StatelessWidget {
                                 trips[i].title,
                                 style: const TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF070707),
                                 ),
@@ -1153,7 +1185,7 @@ class _TripSelectorSheet extends StatelessWidget {
                                 _dateRange(trips[i]),
                                 style: const TextStyle(
                                   fontFamily: 'Pretendard',
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFFB2B2B2),
                                 ),
@@ -1197,7 +1229,8 @@ class _DeleteDialog extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.delete_outline, size: 30, color: Color(0xFFEC2113)),
+                  const Icon(Icons.delete_outline,
+                      size: 30, color: Color(0xFFEC2113)),
                   const SizedBox(height: 20),
                   const Text(
                     '삭제하시겠습니까?',
@@ -1213,7 +1246,7 @@ class _DeleteDialog extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: Color(0xCCEC2113),
                     ),
@@ -1240,7 +1273,7 @@ class _DeleteDialog extends StatelessWidget {
                         '취소',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF070707),
                         ),
@@ -1262,7 +1295,7 @@ class _DeleteDialog extends StatelessWidget {
                         '삭제',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),

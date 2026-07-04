@@ -7,10 +7,11 @@ class PlaceCard extends StatelessWidget {
     required this.categoryColor,
     required this.categoryIcon,
     this.address,
-    this.likeCount = 0,
-    this.isLiked = false,
+    // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+    // this.likeCount = 0,
+    // this.isLiked = false,
     this.onTap,
-    this.onLikeTap,
+    // this.onLikeTap,
     super.key,
   });
 
@@ -19,10 +20,11 @@ class PlaceCard extends StatelessWidget {
   final Color categoryColor;
   final IconData categoryIcon;
   final String? address;
-  final int likeCount;
-  final bool isLiked;
+  // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+  // final int likeCount;
+  // final bool isLiked;
   final VoidCallback? onTap;
-  final VoidCallback? onLikeTap;
+  // final VoidCallback? onLikeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +85,7 @@ class PlaceCard extends StatelessWidget {
                   category,
                   style: const TextStyle(
                     fontFamily: 'Pretendard',
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
                   ),
@@ -118,7 +120,7 @@ class PlaceCard extends StatelessWidget {
                 address ?? category,
                 style: const TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF7E7E7E),
                 ),
@@ -127,38 +129,38 @@ class PlaceCard extends StatelessWidget {
               ),
             ),
 
-            // 좋아요 (right-15 vertically centered)
-            Positioned(
-              right: 15,
-              top: 0,
-              bottom: 0,
-              child: GestureDetector(
-                onTap: onLikeTap,
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border,
-                      size: 25,
-                      color: isLiked
-                          ? const Color(0xFFFE8505)
-                          : const Color(0xFFD5D5D5),
-                    ),
-                    if (likeCount > 0)
-                      Text(
-                        '$likeCount',
-                        style: const TextStyle(
-                          fontFamily: 'Pretendard',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF757575),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+            // v0 제외: 마커 좋아요(찜) 버튼 — 하트 토글 + 좋아요 수 표시. 추후 복구
+            // Positioned(
+            //   right: 15,
+            //   top: 0,
+            //   bottom: 0,
+            //   child: GestureDetector(
+            //     onTap: onLikeTap,
+            //     behavior: HitTestBehavior.opaque,
+            //     child: Column(
+            //       mainAxisAlignment: MainAxisAlignment.center,
+            //       children: [
+            //         Icon(
+            //           isLiked ? Icons.favorite : Icons.favorite_border,
+            //           size: 25,
+            //           color: isLiked
+            //               ? const Color(0xFFFE8505)
+            //               : const Color(0xFFD5D5D5),
+            //         ),
+            //         if (likeCount > 0)
+            //           Text(
+            //             '$likeCount',
+            //             style: const TextStyle(
+            //               fontFamily: 'Pretendard',
+            //               fontSize: 13,
+            //               fontWeight: FontWeight.w500,
+            //               color: Color(0xFF757575),
+            //             ),
+            //           ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

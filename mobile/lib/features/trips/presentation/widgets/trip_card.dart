@@ -75,7 +75,7 @@ class TripCard extends StatelessWidget {
                         trip.title,
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.black,
                         ),
@@ -87,7 +87,7 @@ class TripCard extends StatelessWidget {
                         _dateRange(),
                         style: const TextStyle(
                           fontFamily: 'Pretendard',
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w400,
                           color: AppColors.gray,
                         ),
@@ -105,7 +105,7 @@ class TripCard extends StatelessWidget {
                         const TextSpan(
                           text: 'Total ',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: AppColors.gray,
                           ),
@@ -113,7 +113,7 @@ class TripCard extends StatelessWidget {
                         TextSpan(
                           text: '${trip.markerNum}',
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.folderOrange,
                           ),

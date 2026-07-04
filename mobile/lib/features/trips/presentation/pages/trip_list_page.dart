@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
+import '../widgets/folder_more_menu.dart';
 import '../widgets/trip_card.dart';
 
 class TripListPage extends ConsumerStatefulWidget {
@@ -100,7 +101,7 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                           onChanged: (v) => setState(() => _query = v),
                           style: const TextStyle(
                             fontFamily: 'Pretendard',
-                            fontSize: 14,
+                            fontSize: 15,
                             color: Color(0xFF070707),
                           ),
                           decoration: const InputDecoration(
@@ -116,7 +117,7 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                             hintText: '폴더 명을 입력하세요.',
                             hintStyle: TextStyle(
                               fontFamily: 'Pretendard',
-                              fontSize: 14,
+                              fontSize: 15,
                               color: Color(0xFFB2B2B2),
                             ),
                             isDense: true,
@@ -191,7 +192,7 @@ class _Header extends StatelessWidget {
           const Positioned(
             right: 15,
             top: 7,
-            child: Icon(Icons.more_horiz, size: 20, color: AppColors.dark),
+            child: FolderMoreButton(),
           ),
           // 닉네임: 헤더 하단 좌측 (pb-10, px-20)
           Positioned(

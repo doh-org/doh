@@ -45,6 +45,7 @@ class MemberListPage extends ConsumerWidget {
         content: TextField(
           controller: emailController,
           cursorColor: appCursorColor(),
+          style: const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
           decoration: const InputDecoration(labelText: '이메일'),
           keyboardType: TextInputType.emailAddress,
         ),
