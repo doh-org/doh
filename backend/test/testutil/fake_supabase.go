@@ -29,6 +29,12 @@ type FakeSupabase struct {
 	UpdateError int
 	DeleteError int
 
+	// Account (탈퇴·비번)
+	AdminDeleteError int      // 0이면 성공, 그 외 HTTP status
+	RecoverError     int      // 0이면 성공, 그 외 HTTP status
+	ChangePwError    int      // 0이면 성공, 그 외 HTTP status
+	DeletedUserIDs   []string // admin delete 호출된 user_id 기록
+
 	// Markers
 	Markers    []domain.Marker
 	MarkerDays []FakeMarkerDay
@@ -87,14 +93,46 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	mux.HandleFunc("/auth/v1/user", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/auth/v1/user", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		// PUT = 비밀번호 변경
+		if r.Method == http.MethodPut {
+			if fs.ChangePwError != 0 {
+				w.WriteHeader(fs.ChangePwError)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]string{"id": "fake-user-id"})
+			return
+		}
+		// GET = 세션 검증 (미들웨어)
 		if !fs.SessionValid {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "invalid_token"})
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]string{"id": "fake-user-id"})
+	})
+
+	mux.HandleFunc("/auth/v1/recover", func(w http.ResponseWriter, _ *http.Request) {
+		if fs.RecoverError != 0 {
+			w.WriteHeader(fs.RecoverError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mux.HandleFunc("/auth/v1/admin/users/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if fs.AdminDeleteError != 0 {
+			w.WriteHeader(fs.AdminDeleteError)
+			return
+		}
+		id := strings.TrimPrefix(r.URL.Path, "/auth/v1/admin/users/")
+		fs.DeletedUserIDs = append(fs.DeletedUserIDs, id)
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	mux.HandleFunc("/rest/v1/users", func(w http.ResponseWriter, _ *http.Request) {
@@ -139,6 +177,19 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		case http.MethodDelete:
 			if fs.DeleteError != 0 {
 				w.WriteHeader(fs.DeleteError)
+				return
+			}
+			ownerFilter := strings.TrimPrefix(r.URL.Query().Get("owner_id"), "eq.")
+			if ownerFilter != "" {
+				// 본인 owner trip 일괄 삭제 (탈퇴 선삭제)
+				var remaining []domain.Trip
+				for _, t := range fs.Trips {
+					if t.OwnerID != ownerFilter {
+						remaining = append(remaining, t)
+					}
+				}
+				fs.Trips = remaining
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 			for i, t := range fs.Trips {

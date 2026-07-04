@@ -29,6 +29,15 @@ type LoginRequest struct {
 	CaptchaToken string `json:"captcha_token"`
 }
 
+type ChangePasswordRequest struct {
+	NewPassword string `json:"new_password"`
+}
+
+type RecoverRequest struct {
+	Email        string `json:"email"`
+	CaptchaToken string `json:"captcha_token"`
+}
+
 type UserResponse struct {
 	UserID    string    `json:"user_id"`
 	Email     string    `json:"email"`
@@ -47,6 +56,10 @@ type UserRepository interface {
 	LoginWithEmail(ctx context.Context, email, password string) (accessToken, refreshToken, userID string, err error)
 	Logout(ctx context.Context, accessToken string) error
 	GetProfile(ctx context.Context, userID, email, accessToken string) (*UserResponse, error)
+	ChangePassword(ctx context.Context, accessToken, newPassword string) error
+	RequestRecovery(ctx context.Context, email string) error
+	DeleteOwnedTrips(ctx context.Context, accessToken, userID string) error
+	DeleteAuthUser(ctx context.Context, userID string) error
 }
 
 type AuthUsecase interface {
@@ -54,4 +67,7 @@ type AuthUsecase interface {
 	Login(ctx context.Context, req LoginRequest) (*AuthResponse, error)
 	Logout(ctx context.Context, accessToken string) error
 	Me(ctx context.Context, userID, email, accessToken string) (*UserResponse, error)
+	ChangePassword(ctx context.Context, accessToken string, req ChangePasswordRequest) error
+	Recover(ctx context.Context, req RecoverRequest) error
+	DeleteAccount(ctx context.Context, accessToken, userID string) error
 }
