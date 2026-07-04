@@ -1,8 +1,10 @@
 name: test
 
+# develop PR에서도 테스트가 돌아야 함 (기존: main만 트리거 → job 조건의
+# develop 검사가 영원히 실행되지 않는 모순)
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     types: [opened, synchronize, reopened]
 
 jobs:
@@ -24,12 +26,8 @@ jobs:
 
   test-backend:
     needs: changes
-    if: |
-      needs.changes.outputs.backend == 'true' &&
-      (
-        (github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'bugfix/'))) ||
-        (github.base_ref == 'main' && github.head_ref == 'staging')
-      )
+    # develop 대상 PR은 브랜치 종류 무관 전부 테스트 (fix/·refactor/ 등 포함)
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,12 +44,7 @@ jobs:
 
   test-mobile:
     needs: changes
-    if: |
-      needs.changes.outputs.mobile == 'true' &&
-      (
-        (github.base_ref == 'develop' && (startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'bugfix/'))) ||
-        (github.base_ref == 'main' && github.head_ref == 'staging')
-      )
+    if: needs.changes.outputs.mobile == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
