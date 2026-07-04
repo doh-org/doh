@@ -103,10 +103,21 @@ func (u *authUsecase) Me(ctx context.Context, userID, email, accessToken string)
 	return u.userRepo.GetProfile(ctx, userID, email, accessToken)
 }
 
-func (u *authUsecase) ChangePassword(ctx context.Context, accessToken string, req domain.ChangePasswordRequest) error {
+// ChangePassword는 현재 비밀번호 재확인 후 변경한다.
+// Supabase PUT /auth/v1/user는 자체 재확인이 없어, 로그인 API로 재인증한다.
+func (u *authUsecase) ChangePassword(ctx context.Context, accessToken, email string, req domain.ChangePasswordRequest) error {
+	if strings.TrimSpace(req.CurrentPassword) == "" {
+		return &domain.ValidationError{Message: "현재 비밀번호를 입력해주세요."}
+	}
 	if err := validatePassword(req.NewPassword); err != nil {
 		return err
 	}
+
+	// 재인증: 실패 = 현재 비밀번호 불일치. 발급된 임시 세션 토큰은 사용하지 않고 버린다.
+	if _, _, _, err := u.userRepo.LoginWithEmail(ctx, email, req.CurrentPassword); err != nil {
+		return &domain.ValidationError{Message: "현재 비밀번호가 일치하지 않습니다."}
+	}
+
 	return u.userRepo.ChangePassword(ctx, accessToken, req.NewPassword)
 }
 
@@ -132,13 +143,10 @@ func (u *authUsecase) Recover(ctx context.Context, req domain.RecoverRequest) er
 	return nil
 }
 
-// DeleteAccount는 본인 owner trip을 먼저 삭제(사용자 JWT+RLS)한 뒤
-// service_role로 auth.users를 삭제한다. 1단계 실패 시 2단계는 수행하지 않는다.
-func (u *authUsecase) DeleteAccount(ctx context.Context, accessToken, userID string) error {
-	if err := u.userRepo.DeleteOwnedTrips(ctx, accessToken, userID); err != nil {
-		return err
-	}
-	return u.userRepo.DeleteAuthUser(ctx, userID)
+// DeleteAccount는 DB 함수(delete_user_account) 단일 트랜잭션으로
+// 소유 trip과 auth.users를 함께 삭제한다 → 부분실패 불가.
+func (u *authUsecase) DeleteAccount(ctx context.Context, userID string) error {
+	return u.userRepo.DeleteAccount(ctx, userID)
 }
 
 // --- 입력 검증 헬퍼 ---

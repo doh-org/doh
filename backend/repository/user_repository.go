@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"time"
 
 	"doh/backend/domain"
@@ -195,40 +194,21 @@ func (r *userRepository) RequestRecovery(ctx context.Context, email string) erro
 	return nil
 }
 
-// DeleteOwnedTrips는 사용자 JWT로 본인 소유 trip을 하드삭제한다.
-// RLS trips_delete_owner로 본인 trip만 삭제되며, 자식은 FK CASCADE로 정리된다.
-func (r *userRepository) DeleteOwnedTrips(ctx context.Context, accessToken, userID string) error {
-	// userID는 JWT sub(UUID)지만 방어적으로 escape
-	reqURL := fmt.Sprintf("%s/rest/v1/trips?owner_id=eq.%s", r.supabaseURL, url.QueryEscape(userID))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+// DeleteAccount는 DB 함수 delete_user_account를 RPC로 호출한다.
+// 함수가 소유 trip + auth.users를 한 트랜잭션으로 지우므로 부분실패가 없다.
+// service_role 전용 함수라 여기서만 service key를 사용한다.
+func (r *userRepository) DeleteAccount(ctx context.Context, userID string) error {
+	b, err := json.Marshal(map[string]any{"p_user_id": userID})
 	if err != nil {
 		return err
 	}
-	req.Header.Set("apikey", r.supabaseAnonKey)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Prefer", "return=minimal")
 
-	status, err := r.doDrain(req)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		r.supabaseURL+"/rest/v1/rpc/delete_user_account", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
-	if status != http.StatusNoContent && status != http.StatusOK {
-		slog.Error("deleteOwnedTrips: unexpected status", "status", status, "user_id", userID)
-		return fmt.Errorf("deleteOwnedTrips: status %d", status)
-	}
-	return nil
-}
-
-// DeleteAuthUser는 service_role admin API로 auth.users 행을 hard delete한다.
-// service_role key는 RLS를 전면 우회하므로 이 메서드에서만 사용한다.
-func (r *userRepository) DeleteAuthUser(ctx context.Context, userID string) error {
-	reqURL := fmt.Sprintf("%s/auth/v1/admin/users/%s", r.supabaseURL, url.PathEscape(userID))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
-	if err != nil {
-		return err
-	}
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("apikey", r.supabaseServiceKey)
 	req.Header.Set("Authorization", "Bearer "+r.supabaseServiceKey)
 
@@ -236,9 +216,9 @@ func (r *userRepository) DeleteAuthUser(ctx context.Context, userID string) erro
 	if err != nil {
 		return err
 	}
-	if status != http.StatusOK && status != http.StatusNoContent {
-		slog.Error("deleteAuthUser: unexpected status", "status", status, "user_id", userID)
-		return fmt.Errorf("deleteAuthUser: status %d", status)
+	if status != http.StatusNoContent && status != http.StatusOK {
+		slog.Error("deleteAccount: unexpected status", "status", status, "user_id", userID)
+		return fmt.Errorf("deleteAccount: status %d", status)
 	}
 	return nil
 }

@@ -30,10 +30,10 @@ type FakeSupabase struct {
 	DeleteError int
 
 	// Account (탈퇴·비번)
-	AdminDeleteError int      // 0이면 성공, 그 외 HTTP status
-	RecoverError     int      // 0이면 성공, 그 외 HTTP status
-	ChangePwError    int      // 0이면 성공, 그 외 HTTP status
-	DeletedUserIDs   []string // admin delete 호출된 user_id 기록
+	DeleteAccountError int      // 탈퇴 RPC: 0이면 성공, 그 외 HTTP status
+	RecoverError       int      // 0이면 성공, 그 외 HTTP status
+	ChangePwError      int      // 0이면 성공, 그 외 HTTP status
+	DeletedUserIDs     []string // 탈퇴 RPC 호출된 user_id 기록
 
 	// Markers
 	Markers    []domain.Marker
@@ -126,17 +126,29 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mux.HandleFunc("/auth/v1/admin/users/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
+	// 탈퇴 RPC: DB 함수처럼 trip 삭제 + 계정 삭제를 한 번에(원자적으로) 처리
+	mux.HandleFunc("/rest/v1/rpc/delete_user_account", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if fs.AdminDeleteError != 0 {
-			w.WriteHeader(fs.AdminDeleteError)
+		if fs.DeleteAccountError != 0 {
+			// 실패 → 아무것도 삭제되지 않음 (단일 트랜잭션 재현)
+			w.WriteHeader(fs.DeleteAccountError)
 			return
 		}
-		id := strings.TrimPrefix(r.URL.Path, "/auth/v1/admin/users/")
-		fs.DeletedUserIDs = append(fs.DeletedUserIDs, id)
+		var body struct {
+			UserID string `json:"p_user_id"`
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		var remaining []domain.Trip
+		for _, t := range fs.Trips {
+			if t.OwnerID != body.UserID { // 소유 trip만 제거
+				remaining = append(remaining, t)
+			}
+		}
+		fs.Trips = remaining
+		fs.DeletedUserIDs = append(fs.DeletedUserIDs, body.UserID)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
@@ -182,19 +194,6 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		case http.MethodDelete:
 			if fs.DeleteError != 0 {
 				w.WriteHeader(fs.DeleteError)
-				return
-			}
-			ownerFilter := strings.TrimPrefix(r.URL.Query().Get("owner_id"), "eq.")
-			if ownerFilter != "" {
-				// 본인 owner trip 일괄 삭제 (탈퇴 선삭제)
-				var remaining []domain.Trip
-				for _, t := range fs.Trips {
-					if t.OwnerID != ownerFilter {
-						remaining = append(remaining, t)
-					}
-				}
-				fs.Trips = remaining
-				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 			for i, t := range fs.Trips {
