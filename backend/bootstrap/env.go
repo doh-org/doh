@@ -13,6 +13,10 @@ type Env struct {
 	SupabaseURL            string
 	SupabaseAnonKey        string
 	SupabaseServiceRoleKey string
+	NaverSearchClientID    string // 검색 오픈API (developers.naver.com)
+	NaverSearchSecret      string
+	NcpMapClientID         string // NCP API Gateway (역지오코딩)
+	NcpMapSecret           string
 }
 
 func NewEnv() (*Env, error) {
@@ -24,6 +28,10 @@ func NewEnv() (*Env, error) {
 		SupabaseURL:            os.Getenv("SUPABASE_URL"),
 		SupabaseAnonKey:        os.Getenv("SUPABASE_ANON_KEY"),
 		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
+		NaverSearchClientID:    os.Getenv("NAVER_SEARCH_CLIENT_ID"),
+		NaverSearchSecret:      os.Getenv("NAVER_SEARCH_CLIENT_SECRET"),
+		NcpMapClientID:         os.Getenv("NAVER_MAP_CLIENT_ID"),
+		NcpMapSecret:           os.Getenv("NAVER_MAP_CLIENT_SECRET"),
 	}
 
 	if env.SupabaseURL == "" {
@@ -31,6 +39,12 @@ func NewEnv() (*Env, error) {
 	}
 	if env.SupabaseServiceRoleKey == "" {
 		return nil, fmt.Errorf("SUPABASE_SERVICE_ROLE_KEY is required")
+	}
+	if env.NaverSearchClientID == "" || env.NaverSearchSecret == "" {
+		return nil, fmt.Errorf("NAVER_SEARCH_CLIENT_ID/SECRET is required")
+	}
+	if env.NcpMapClientID == "" || env.NcpMapSecret == "" {
+		return nil, fmt.Errorf("NAVER_MAP_CLIENT_ID/SECRET is required")
 	}
 
 	return env, nil
