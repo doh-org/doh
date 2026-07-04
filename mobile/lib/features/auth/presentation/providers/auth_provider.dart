@@ -70,4 +70,10 @@ class AuthNotifier extends _$AuthNotifier {
       state = AsyncData(user);
     } catch (_) {}
   }
+
+  // refresh 재발급 최종 실패(토큰 만료) 시 인터셉터가 호출.
+  // 상태 null → 라우터 redirect가 /login으로 보낸다.
+  void sessionExpired() {
+    state = const AsyncData(null);
+  }
 }
