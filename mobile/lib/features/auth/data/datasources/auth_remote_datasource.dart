@@ -57,6 +57,17 @@ class AuthRemoteDatasource {
     await _dio.delete('/api/v1/auth/me');
   }
 
+  // 비밀번호 변경. 백엔드가 현재 비밀번호 재인증 후 변경한다.
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _dio.put(
+      '/api/v1/auth/password',
+      data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+  }
+
   Future<UserResponseModel> getMe() async {
     final response = await _dio.get('/api/v1/auth/me');
     return UserResponseModel.fromJson(response.data as Map<String, dynamic>);
