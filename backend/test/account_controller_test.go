@@ -79,35 +79,28 @@ func TestDeleteAccount_Success(t *testing.T) {
 	if len(fs.Trips) != 1 || fs.Trips[0].ID != "t2" {
 		t.Errorf("trips=%v want only t2", fs.Trips)
 	}
-	// admin delete가 본인 id로 호출됨
+	// 탈퇴 RPC가 본인 id로 호출됨
 	if len(fs.DeletedUserIDs) != 1 || fs.DeletedUserIDs[0] != "fake-user-id" {
 		t.Errorf("DeletedUserIDs=%v want [fake-user-id]", fs.DeletedUserIDs)
 	}
 }
 
-func TestDeleteAccount_AdminError(t *testing.T) {
+// RPC(단일 트랜잭션) 실패 → 500, trip·계정 모두 그대로(부분실패 없음)
+func TestDeleteAccount_RPCFails_NothingDeleted(t *testing.T) {
 	router, fs, keys := setupAccount(t)
-	fs.AdminDeleteError = http.StatusInternalServerError
+	fs.Trips = []domain.Trip{{ID: "t1", OwnerID: "fake-user-id", Title: "내 여행"}}
+	fs.DeleteAccountError = http.StatusInternalServerError
 	tok := accountToken(t, keys, fs)
 
 	w := doAccount(t, router, http.MethodDelete, "/api/v1/auth/me", tok, nil)
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("status=%d want 500", w.Code)
 	}
-}
-
-// trip 선삭제 실패 시 admin delete를 호출하지 않는다(부분삭제 방지).
-func TestDeleteAccount_TripPreDeleteFails_NoAdminCall(t *testing.T) {
-	router, fs, keys := setupAccount(t)
-	fs.DeleteError = http.StatusInternalServerError
-	tok := accountToken(t, keys, fs)
-
-	w := doAccount(t, router, http.MethodDelete, "/api/v1/auth/me", tok, nil)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("status=%d want 500", w.Code)
+	if len(fs.Trips) != 1 {
+		t.Errorf("trips=%v want untouched", fs.Trips)
 	}
 	if len(fs.DeletedUserIDs) != 0 {
-		t.Errorf("DeletedUserIDs=%v want empty (admin not called)", fs.DeletedUserIDs)
+		t.Errorf("DeletedUserIDs=%v want empty", fs.DeletedUserIDs)
 	}
 }
 
@@ -127,10 +120,39 @@ func TestChangePassword_Success(t *testing.T) {
 	tok := accountToken(t, keys, fs)
 
 	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
-		"new_password": "NewPass123",
+		"current_password": "OldPass123",
+		"new_password":     "NewPass123",
 	})
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	}
+}
+
+// 현재 비밀번호 불일치(재인증 실패) → 400
+func TestChangePassword_WrongCurrentPassword(t *testing.T) {
+	router, fs, keys := setupAccount(t)
+	fs.LoginError = true // 재인증 로그인 실패 재현
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
+		"current_password": "WrongPass123",
+		"new_password":     "NewPass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 현재 비밀번호 누락 → 400
+func TestChangePassword_MissingCurrentPassword(t *testing.T) {
+	router, fs, keys := setupAccount(t)
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
 	}
 }
 
@@ -141,7 +163,8 @@ func TestChangePassword_SupabaseRejects_Returns400(t *testing.T) {
 	tok := accountToken(t, keys, fs)
 
 	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
-		"new_password": "SamePass123",
+		"current_password": "OldPass123",
+		"new_password":     "SamePass123",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
@@ -155,7 +178,8 @@ func TestChangePassword_SupabaseServerError_Returns500(t *testing.T) {
 	tok := accountToken(t, keys, fs)
 
 	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
-		"new_password": "NewPass123",
+		"current_password": "OldPass123",
+		"new_password":     "NewPass123",
 	})
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("status=%d want 500, body=%s", w.Code, w.Body)
@@ -167,7 +191,8 @@ func TestChangePassword_WeakPassword(t *testing.T) {
 	tok := accountToken(t, keys, fs)
 
 	w := doAccount(t, router, http.MethodPut, "/api/v1/auth/password", tok, map[string]any{
-		"new_password": "short",
+		"current_password": "OldPass123",
+		"new_password":     "short",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)

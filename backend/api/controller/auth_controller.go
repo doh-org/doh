@@ -98,7 +98,8 @@ func (ac *AuthController) ChangePassword(c *gin.Context) {
 	}
 
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-	if err := ac.authUsecase.ChangePassword(c.Request.Context(), token, req); err != nil {
+	email := c.GetString(middleware.UserEmailKey) // 재인증(현재 비번 확인)에 사용
+	if err := ac.authUsecase.ChangePassword(c.Request.Context(), token, email, req); err != nil {
 		ac.handleError(c, err)
 		return
 	}
@@ -120,10 +121,9 @@ func (ac *AuthController) Recover(c *gin.Context) {
 
 func (ac *AuthController) DeleteMe(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 
 	// 실패 상세(user_id 포함)는 repository에서 이미 로깅됨 → 여기선 매핑만
-	if err := ac.authUsecase.DeleteAccount(c.Request.Context(), token, userID); err != nil {
+	if err := ac.authUsecase.DeleteAccount(c.Request.Context(), userID); err != nil {
 		ac.handleError(c, err)
 		return
 	}
