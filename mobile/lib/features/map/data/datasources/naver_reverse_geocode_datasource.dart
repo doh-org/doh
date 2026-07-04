@@ -2,37 +2,26 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/config/app_config.dart';
+import '../../../../core/network/api_client.dart';
 
 part 'naver_reverse_geocode_datasource.g.dart';
 
 @riverpod
 NaverReverseGeocodeDatasource naverReverseGeocodeDatasource(Ref ref) =>
-    NaverReverseGeocodeDatasource();
+    NaverReverseGeocodeDatasource(ref.watch(apiClientProvider));
 
+// 좌표→주소 변환. 시크릿 보호를 위해 NCP 직접 호출 대신 Go 프록시 경유(JWT).
 class NaverReverseGeocodeDatasource {
-  NaverReverseGeocodeDatasource() {
-    _dio = Dio(BaseOptions(
-      baseUrl: 'https://maps.apigw.ntruss.com',
-      headers: {
-        'X-NCP-APIGW-API-KEY-ID': AppConfig.naverMapClientId,
-        'X-NCP-APIGW-API-KEY': AppConfig.naverMapClientSecret,
-      },
-    ));
-  }
+  NaverReverseGeocodeDatasource(this._dio);
 
-  late final Dio _dio;
+  final Dio _dio;
 
   Future<({String? address, String? area})> reverseGeocodeDetails(
       double lat, double lng) async {
     try {
       final Response<dynamic> r = await _dio.get<dynamic>(
-        '/map-reversegeocode/v2/gc',
-        queryParameters: {
-          'coords': '$lng,$lat',
-          'output': 'json',
-          'orders': 'roadaddr,addr',
-        },
+        '/api/v1/geocode/reverse',
+        queryParameters: {'lat': lat, 'lng': lng},
       );
       final List<dynamic>? results =
           (r.data as Map<String, dynamic>?)?['results'] as List<dynamic>?;
@@ -54,12 +43,8 @@ class NaverReverseGeocodeDatasource {
   Future<String?> reverseGeocode(double lat, double lng) async {
     try {
       final Response<dynamic> r = await _dio.get<dynamic>(
-        '/map-reversegeocode/v2/gc',
-        queryParameters: {
-          'coords': '$lng,$lat',
-          'output': 'json',
-          'orders': 'roadaddr,addr',
-        },
+        '/api/v1/geocode/reverse',
+        queryParameters: {'lat': lat, 'lng': lng},
       );
       final List<dynamic>? results =
           (r.data as Map<String, dynamic>?)?['results'] as List<dynamic>?;

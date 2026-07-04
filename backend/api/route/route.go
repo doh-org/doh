@@ -16,4 +16,5 @@ func Setup(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, r *gin.Engine) 
 	NewCategoryRouter(env, keys, tripsGroup)
 	NewMarkerRouter(env, keys, tripsGroup)
 	NewRouteRouter(env, keys, tripsGroup)
+	NewNaverRouter(env, keys, v1) // /places/search, /geocode/reverse 프록시
 }

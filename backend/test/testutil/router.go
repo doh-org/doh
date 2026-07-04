@@ -8,6 +8,7 @@ import (
 
 	"doh/backend/api/controller"
 	"doh/backend/api/middleware"
+	"doh/backend/internal/naver"
 	"doh/backend/repository"
 	"doh/backend/usecase"
 )
@@ -114,6 +115,28 @@ func NewTestTripRouter(
 	trips.GET("/:tripId", tc.GetTrip)
 	trips.PATCH("/:tripId", tc.UpdateTrip)
 	trips.DELETE("/:tripId", tc.DeleteTrip)
+
+	return r
+}
+
+// NewTestNaverRouter는 네이버 프록시 라우트를 운영 배선과 동일하게 구성한다.
+func NewTestNaverRouter(
+	t *testing.T,
+	supabaseURL string,
+	keys *TestKeys,
+	client *http.Client,
+) http.Handler {
+	t.Helper()
+	nc := controller.NewNaverController(
+		naver.NewClient("fake-search-id", "fake-search-secret", "fake-ncp-id", "fake-ncp-secret", client),
+	)
+
+	r := gin.New()
+	g := r.Group("/api/v1")
+	g.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	g.Use(middleware.RateLimit())
+	g.GET("/places/search", nc.SearchPlaces)
+	g.GET("/geocode/reverse", nc.ReverseGeocode)
 
 	return r
 }
