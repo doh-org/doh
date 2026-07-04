@@ -95,6 +95,29 @@ func (u *authUsecase) Login(ctx context.Context, req domain.LoginRequest) (*doma
 	}, nil
 }
 
+// Refresh는 refresh 토큰으로 새 세션을 발급한다. 무효/만료 → 401.
+func (u *authUsecase) Refresh(ctx context.Context, refreshToken string) (*domain.AuthResponse, error) {
+	if strings.TrimSpace(refreshToken) == "" {
+		return nil, &domain.ValidationError{Message: "refresh 토큰이 필요합니다."}
+	}
+
+	accessToken, newRefresh, userID, email, err := u.userRepo.RefreshSession(ctx, refreshToken)
+	if err != nil {
+		return nil, domain.ErrAuthFailed // 만료·무효·회전됨 → 재로그인 유도
+	}
+
+	user, err := u.userRepo.GetProfile(ctx, userID, email, accessToken)
+	if err != nil {
+		return nil, domain.ErrAuthFailed
+	}
+
+	return &domain.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: newRefresh,
+		User:         *user,
+	}, nil
+}
+
 func (u *authUsecase) Logout(ctx context.Context, accessToken string) error {
 	return u.userRepo.Logout(ctx, accessToken)
 }

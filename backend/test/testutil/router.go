@@ -37,6 +37,7 @@ func NewTestAuthRouter(
 	public.POST("/signup", ac.Signup)
 	public.POST("/login", ac.Login)
 	public.POST("/recover", ac.Recover)
+	public.POST("/refresh", ac.Refresh)
 
 	protected := authGroup.Group("")
 	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))

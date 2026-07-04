@@ -34,6 +34,10 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password"`
 }
 
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 type RecoverRequest struct {
 	Email        string `json:"email"`
 	CaptchaToken string `json:"captcha_token"`
@@ -55,6 +59,7 @@ type AuthResponse struct {
 type UserRepository interface {
 	SignupWithEmail(ctx context.Context, email, password, nickname string) (accessToken, refreshToken, userID string, err error)
 	LoginWithEmail(ctx context.Context, email, password string) (accessToken, refreshToken, userID string, err error)
+	RefreshSession(ctx context.Context, refreshToken string) (accessToken, newRefreshToken, userID, email string, err error)
 	Logout(ctx context.Context, accessToken string) error
 	GetProfile(ctx context.Context, userID, email, accessToken string) (*UserResponse, error)
 	ChangePassword(ctx context.Context, accessToken, newPassword string) error
@@ -65,6 +70,7 @@ type UserRepository interface {
 type AuthUsecase interface {
 	Signup(ctx context.Context, req SignupRequest) (*AuthResponse, error)
 	Login(ctx context.Context, req LoginRequest) (*AuthResponse, error)
+	Refresh(ctx context.Context, refreshToken string) (*AuthResponse, error)
 	Logout(ctx context.Context, accessToken string) error
 	Me(ctx context.Context, userID, email, accessToken string) (*UserResponse, error)
 	ChangePassword(ctx context.Context, accessToken, email string, req ChangePasswordRequest) error

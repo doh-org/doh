@@ -20,6 +20,7 @@ type FakeSupabase struct {
 	Server       *httptest.Server
 	SignupError  string // "user_already_exists" 등 error_code; 빈 문자열이면 성공
 	LoginError   bool
+	RefreshError bool // refresh grant 실패 재현
 	SessionValid bool   // GET /auth/v1/user 응답 (true=200, false=401)
 	UserRow      string // PostgREST /rest/v1/users 응답 JSON
 
@@ -77,6 +78,20 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 
 	mux.HandleFunc("/auth/v1/token", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		// grant_type=refresh_token → 세션 재발급 (rotation: 새 토큰 반환)
+		if r.URL.Query().Get("grant_type") == "refresh_token" {
+			if fs.RefreshError {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{
+				"access_token":  "fake-access-token-2",
+				"refresh_token": "fake-refresh-token-2",
+				"user":          map[string]string{"id": "fake-user-id", "email": "test@example.com"},
+			})
+			return
+		}
 		if fs.LoginError {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
