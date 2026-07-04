@@ -116,8 +116,6 @@ DioException _mapError(DioException error) {
       appException = const NotFoundException();
     case 409:
       appException = const ConflictException();
-    case 422:
-      appException = const CaptchaException();
     default:
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.receiveTimeout ||

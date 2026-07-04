@@ -20,7 +20,7 @@ func NewAuthController(au domain.AuthUsecase) *AuthController {
 	return &AuthController{authUsecase: au}
 }
 
-// 요청 본문 상한. Turnstile 토큰(최대 2048자)이 포함돼도 여유 있는 크기.
+// 요청 본문 상한.
 const maxAuthBodyBytes = 4096
 
 // bindJSON은 본문 크기를 제한하고 JSON을 req에 바인딩한다.
@@ -151,8 +151,6 @@ func (ac *AuthController) handleError(c *gin.Context, err error) {
 	switch {
 	case errors.As(err, &ve):
 		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
-	case errors.Is(err, domain.ErrCaptcha):
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "보안 인증에 실패했습니다."})
 	case errors.Is(err, domain.ErrEmailExists):
 		c.JSON(http.StatusConflict, gin.H{"error": "이미 존재하는 이메일입니다."})
 	case errors.Is(err, domain.ErrAuthFailed):

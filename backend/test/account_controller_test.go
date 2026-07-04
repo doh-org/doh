@@ -11,19 +11,12 @@ import (
 	"time"
 
 	"doh/backend/domain"
-	"doh/backend/internal/captcha"
 	"doh/backend/test/testutil"
 )
 
 func setupAccount(t *testing.T) (http.Handler, *testutil.FakeSupabase, *testutil.TestKeys) {
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
-	ft := testutil.NewFakeTurnstile(t)
-
-	old := captcha.Endpoint
-	captcha.Endpoint = ft.URL
-	t.Cleanup(func() { captcha.Endpoint = old })
-
 	keys := testutil.NewTestKeys(t)
 	router := testutil.NewTestAuthRouter(t, fs.Server.URL, keys, fs.Server.Client())
 	return router, fs, keys
@@ -205,8 +198,7 @@ func TestRecover_Success(t *testing.T) {
 	router, _, _ := setupAccount(t)
 
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", map[string]any{
-		"email":         "user@example.com",
-		"captcha_token": "tok",
+		"email": "user@example.com",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
@@ -219,8 +211,7 @@ func TestRecover_AbsorbsBackendError(t *testing.T) {
 	fs.RecoverError = http.StatusInternalServerError
 
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", map[string]any{
-		"email":         "user@example.com",
-		"captcha_token": "tok",
+		"email": "user@example.com",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
@@ -231,21 +222,10 @@ func TestRecover_InvalidEmail(t *testing.T) {
 	router, _, _ := setupAccount(t)
 
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", map[string]any{
-		"email":         "not-an-email",
-		"captcha_token": "tok",
+		"email": "not-an-email",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
 	}
 }
 
-func TestRecover_MissingCaptcha(t *testing.T) {
-	router, _, _ := setupAccount(t)
-
-	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", map[string]any{
-		"email": "user@example.com",
-	})
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
-	}
-}

@@ -23,10 +23,6 @@ class ConflictException extends AppException {
   const ConflictException([super.message = '이미 사용 중인 이메일입니다.']);
 }
 
-class CaptchaException extends AppException {
-  const CaptchaException([super.message = '보안 인증에 실패했습니다.']);
-}
-
 class NotFoundException extends AppException {
   const NotFoundException([super.message = '리소스를 찾을 수 없습니다.']);
 }

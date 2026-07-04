@@ -26,7 +26,7 @@ func NewTestAuthRouter(
 ) http.Handler {
 	t.Helper()
 	ur := repository.NewUserRepository(supabaseURL, "fake-anon-key", "fake-service-key", client)
-	au := usecase.NewAuthUsecase(ur, "fake-key")
+	au := usecase.NewAuthUsecase(ur)
 	ac := controller.NewAuthController(au)
 
 	r := gin.New()

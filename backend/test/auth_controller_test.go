@@ -29,7 +29,7 @@ func assertErrorMsg(t *testing.T, w *httptest.ResponseRecorder, want string) {
 func TestSignup_Success(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터", "captcha_token": "test",
+		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("status=%d want 201, body=%s", w.Code, w.Body)
@@ -46,7 +46,7 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 	router, fs, _ := setupAccount(t)
 	fs.SignupError = "user_already_exists"
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터", "captcha_token": "test",
+		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터",
 	})
 	if w.Code != http.StatusConflict {
 		t.Errorf("status=%d want 409", w.Code)
@@ -58,7 +58,7 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 func TestSignup_WeakPassword(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "test1234", "nickname": "테스터", "captcha_token": "test",
+		"email": "a@b.com", "password": "test1234", "nickname": "테스터",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)
@@ -70,7 +70,7 @@ func TestSignup_WeakPassword(t *testing.T) {
 func TestSignup_PasswordTooShort(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "Ab1", "nickname": "테스터", "captcha_token": "test",
+		"email": "a@b.com", "password": "Ab1", "nickname": "테스터",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)
@@ -78,23 +78,12 @@ func TestSignup_PasswordTooShort(t *testing.T) {
 	assertErrorMsg(t, w, "비밀번호는 8자 이상이어야 합니다.")
 }
 
-// captcha_token 누락 → 400
-func TestSignup_MissingCaptcha(t *testing.T) {
-	router, _, _ := setupAccount(t)
-	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "Test1234!", "nickname": "테스터",
-	})
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status=%d want 400", w.Code)
-	}
-	assertErrorMsg(t, w, "보안 인증 토큰이 필요합니다.")
-}
 
 // 51자 닉네임 → 400
 func TestSignup_NicknameTooLong(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "Test1234!", "nickname": strings.Repeat("가", 51), "captcha_token": "test",
+		"email": "a@b.com", "password": "Test1234!", "nickname": strings.Repeat("가", 51),
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)
@@ -107,7 +96,7 @@ func TestSignup_NicknameTooLong(t *testing.T) {
 func TestLogin_Success(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!", "captcha_token": "test",
+		"email": "test@example.com", "password": "Test1234!",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
@@ -124,7 +113,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 	router, fs, _ := setupAccount(t)
 	fs.LoginError = true
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
-		"email": "test@example.com", "password": "Wrong1234!", "captcha_token": "test",
+		"email": "test@example.com", "password": "Wrong1234!",
 	})
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status=%d want 401", w.Code)
@@ -137,7 +126,7 @@ func TestLogin_UnknownEmail(t *testing.T) {
 	router, fs, _ := setupAccount(t)
 	fs.LoginError = true
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
-		"email": "nobody@example.com", "password": "Test1234!", "captcha_token": "test",
+		"email": "nobody@example.com", "password": "Test1234!",
 	})
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("status=%d want 401", w.Code)
@@ -145,15 +134,6 @@ func TestLogin_UnknownEmail(t *testing.T) {
 	assertErrorMsg(t, w, "이메일 또는 비밀번호를 확인해주세요.")
 }
 
-func TestLogin_MissingCaptcha(t *testing.T) {
-	router, _, _ := setupAccount(t)
-	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!",
-	})
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status=%d want 400", w.Code)
-	}
-}
 
 // ── Me ────────────────────────────────────────────────────────────────────
 
@@ -228,7 +208,7 @@ func TestLogout_NoToken(t *testing.T) {
 // 본문 상한(4KB) 초과 → 413
 func TestRequestBodyTooLarge(t *testing.T) {
 	router, _, _ := setupAccount(t)
-	payload := fmt.Sprintf(`{"email":"a@b.com","password":"Test1234!","nickname":"%s","captcha_token":"test"}`,
+	payload := fmt.Sprintf(`{"email":"a@b.com","password":"Test1234!","nickname":"%s"}`,
 		strings.Repeat("x", 5000))
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/signup", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
