@@ -69,6 +69,22 @@ func (ac *AuthController) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// Refresh는 만료된 access 대신 refresh 토큰으로 새 세션을 발급한다.
+// access 만료 상태로 호출되므로 Auth 미들웨어 없이(public) 동작한다.
+func (ac *AuthController) Refresh(c *gin.Context) {
+	var req domain.RefreshRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	resp, err := ac.authUsecase.Refresh(c.Request.Context(), req.RefreshToken)
+	if err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (ac *AuthController) Logout(c *gin.Context) {
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	if err := ac.authUsecase.Logout(c.Request.Context(), token); err != nil {

@@ -21,7 +21,8 @@ type supabaseSession struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	User         struct {
-		ID string `json:"id"`
+		ID    string `json:"id"`
+		Email string `json:"email"` // refresh 시 프로필 재조회에 필요
 	} `json:"user"`
 }
 
@@ -67,6 +68,17 @@ func (r *userRepository) LoginWithEmail(ctx context.Context, email, password str
 		return "", "", "", err
 	}
 	return session.AccessToken, session.RefreshToken, session.User.ID, nil
+}
+
+// RefreshSession은 refresh 토큰으로 새 세션을 발급받는다.
+// Supabase refresh는 일회용(rotation) — 응답의 새 refresh를 반환하고 저장은 프론트 책임.
+func (r *userRepository) RefreshSession(ctx context.Context, refreshToken string) (string, string, string, string, error) {
+	body := map[string]any{"refresh_token": refreshToken}
+	session, err := r.callAuth(ctx, http.MethodPost, "/auth/v1/token?grant_type=refresh_token", body, "")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	return session.AccessToken, session.RefreshToken, session.User.ID, session.User.Email, nil
 }
 
 func (r *userRepository) Logout(ctx context.Context, accessToken string) error {

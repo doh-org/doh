@@ -22,6 +22,7 @@ func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *
 	public.POST("/signup", ac.Signup)
 	public.POST("/login", ac.Login)
 	public.POST("/recover", ac.Recover)
+	public.POST("/refresh", ac.Refresh)
 
 	protected := group.Group("")
 	protected.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
