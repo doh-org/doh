@@ -27,6 +27,7 @@ func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *
 	protected.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
 	protected.POST("/logout", ac.Logout)
 	protected.GET("/me", ac.Me)
-	protected.PUT("/password", ac.ChangePassword)
+	// 재인증(현재 비번 확인)이 로그인 API를 타므로 브루트포스 방지 rate limit 적용
+	protected.PUT("/password", middleware.RateLimit(), ac.ChangePassword)
 	protected.DELETE("/me", ac.DeleteMe)
 }

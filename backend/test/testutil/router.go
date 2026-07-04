@@ -42,7 +42,7 @@ func NewTestAuthRouter(
 	protected.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	protected.POST("/logout", ac.Logout)
 	protected.GET("/me", ac.Me)
-	protected.PUT("/password", ac.ChangePassword)
+	protected.PUT("/password", middleware.RateLimit(), ac.ChangePassword) // 재인증 브루트포스 방지
 	protected.DELETE("/me", ac.DeleteMe)
 
 	return r
