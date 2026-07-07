@@ -6,7 +6,7 @@ part of 'marker_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$markerEntitiesHash() => r'b931d59b706ac999c8195ea3596a040f2417ba1e';
+String _$markerEntitiesHash() => r'3fddbae91201dfffd20b8349d8d3b77aa77f6602';
 
 /// Copied from Dart SDK
 class _SystemHash {
