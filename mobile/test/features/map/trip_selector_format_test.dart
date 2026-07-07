@@ -45,16 +45,17 @@ void main() {
   });
 
   group('tripCoverColor', () {
-    test('"#FE8505" → 불투명 주황', () {
+    // 커버 팔레트와 동일한 50% 알파(0x80)로 통일 (회귀 방지)
+    test('"#FE8505" → 50% 알파 주황', () {
       expect(tripCoverColor(_trip(coverColor: '#FE8505')),
-          const Color(0xFFFE8505));
+          const Color(0x80FE8505));
     });
-    test('null → 기본 회색', () {
-      expect(tripCoverColor(_trip()), const Color(0xFFD5D5D5));
+    test('null → 기본 회색(50% 알파)', () {
+      expect(tripCoverColor(_trip()), const Color(0x80D5D5D5));
     });
-    test('잘못된 hex → 기본 회색', () {
+    test('잘못된 hex → 기본 회색(50% 알파)', () {
       expect(tripCoverColor(_trip(coverColor: 'not-a-color')),
-          const Color(0xFFD5D5D5));
+          const Color(0x80D5D5D5));
     });
   });
 }

@@ -277,8 +277,8 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+      // 높이 고정 금지: 글꼴 배율 커지면 오버플로우 → 내용이 높이를 결정
       child: Container(
-        height: 50,
         decoration: BoxDecoration(
           color: const Color(0x80FEC181),
           borderRadius: BorderRadius.circular(17),
