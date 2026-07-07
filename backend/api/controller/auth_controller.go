@@ -135,6 +135,21 @@ func (ac *AuthController) Recover(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "재설정 메일을 보냈습니다."})
 }
 
+// VerifyRecovery는 메일의 6자리 코드 검증 + 새 비밀번호 설정을 한 번에 처리한다.
+// recovery 세션은 usecase 내부에서만 쓰이고 응답으로 내려가지 않는다.
+func (ac *AuthController) VerifyRecovery(c *gin.Context) {
+	var req domain.VerifyRecoveryRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	if err := ac.authUsecase.VerifyRecovery(c.Request.Context(), req); err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (ac *AuthController) DeleteMe(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
 
@@ -153,6 +168,9 @@ func (ac *AuthController) handleError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
 	case errors.Is(err, domain.ErrEmailExists):
 		c.JSON(http.StatusConflict, gin.H{"error": "이미 존재하는 이메일입니다."})
+	case errors.Is(err, domain.ErrInvalidCode):
+		// 불일치·만료 구분 없이 동일 메시지 (코드 추측 힌트 차단)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "인증코드가 올바르지 않거나 만료되었습니다."})
 	case errors.Is(err, domain.ErrAuthFailed):
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "이메일 또는 비밀번호를 확인해주세요."})
 	default:

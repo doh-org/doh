@@ -138,6 +138,39 @@ func (u *authUsecase) Recover(ctx context.Context, req domain.RecoverRequest) er
 	return nil
 }
 
+// VerifyRecovery는 메일의 6자리 코드로 비밀번호를 재설정한다.
+// 코드 검증 → recovery 세션 발급 → 그 세션으로 비밀번호 변경 → 세션 폐기.
+func (u *authUsecase) VerifyRecovery(ctx context.Context, req domain.VerifyRecoveryRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Code = strings.TrimSpace(req.Code)
+
+	if err := validateEmail(req.Email); err != nil {
+		return err
+	}
+	if err := validateRecoveryCode(req.Code); err != nil {
+		return err
+	}
+	if err := validatePassword(req.NewPassword); err != nil {
+		return err
+	}
+
+	accessToken, err := u.userRepo.VerifyRecovery(ctx, req.Email, req.Code)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidCode) {
+			return domain.ErrInvalidCode
+		}
+		return err
+	}
+	if err := u.userRepo.ChangePassword(ctx, accessToken, req.NewPassword); err != nil {
+		return err
+	}
+	// recovery 세션은 재설정 후 쓸모 없음 → 폐기 (실패해도 무시: 곧 만료됨)
+	if err := u.userRepo.Logout(ctx, accessToken); err != nil {
+		slog.Warn("recovery session logout failed", "err", err)
+	}
+	return nil
+}
+
 // DeleteAccount는 DB 함수(delete_user_account) 단일 트랜잭션으로
 // 소유 trip과 auth.users를 함께 삭제한다 → 부분실패 불가.
 func (u *authUsecase) DeleteAccount(ctx context.Context, userID string) error {
@@ -182,6 +215,19 @@ func validatePassword(password string) error {
 	}
 	if !hasDigit {
 		return &domain.ValidationError{Message: "비밀번호에 숫자가 포함되어야 합니다."}
+	}
+	return nil
+}
+
+// 인증코드 형식: 숫자 6자리.
+func validateRecoveryCode(code string) error {
+	if len(code) != 6 {
+		return &domain.ValidationError{Message: "인증코드는 6자리입니다."}
+	}
+	for _, r := range code {
+		if !unicode.IsDigit(r) {
+			return &domain.ValidationError{Message: "인증코드는 숫자만 입력해주세요."}
+		}
 	}
 	return nil
 }

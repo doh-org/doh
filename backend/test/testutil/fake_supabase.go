@@ -35,6 +35,8 @@ type FakeSupabase struct {
 	RecoverError       int      // 0이면 성공, 그 외 HTTP status
 	ChangePwError      int      // 0이면 성공, 그 외 HTTP status
 	DeletedUserIDs     []string // 탈퇴 RPC 호출된 user_id 기록
+	VerifyError        int      // OTP 검증: 0이면 성공, 그 외 HTTP status
+	VerifyCalls        int      // /auth/v1/verify 호출 횟수 (코드 소모 여부 검증용)
 
 	// Markers
 	Markers    []domain.Marker
@@ -131,6 +133,22 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]string{"id": "fake-user-id"})
+	})
+
+	// OTP(재설정 코드) 검증 → recovery 세션 발급
+	mux.HandleFunc("/auth/v1/verify", func(w http.ResponseWriter, _ *http.Request) {
+		fs.VerifyCalls++ // 성공·실패 무관 기록 (실제 Supabase도 시도마다 코드 소모 가능)
+		w.Header().Set("Content-Type", "application/json")
+		if fs.VerifyError != 0 {
+			w.WriteHeader(fs.VerifyError)
+			json.NewEncoder(w).Encode(map[string]string{"error_code": "otp_expired"})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "fake-recovery-token",
+			"refresh_token": "fake-recovery-refresh",
+			"user":          map[string]string{"id": "fake-user-id", "email": "test@example.com"},
+		})
 	})
 
 	mux.HandleFunc("/auth/v1/recover", func(w http.ResponseWriter, _ *http.Request) {

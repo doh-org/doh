@@ -229,3 +229,115 @@ func TestRecover_InvalidEmail(t *testing.T) {
 	}
 }
 
+// ── POST /api/v1/auth/verify-recovery (코드 검증 + 새 비번 설정) ────────────────
+
+func TestVerifyRecovery_Success(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "user@example.com",
+		"code":         "123456",
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want 204, body=%s", w.Code, w.Body)
+	}
+	if fs.VerifyCalls != 1 {
+		t.Errorf("VerifyCalls=%d want 1", fs.VerifyCalls)
+	}
+}
+
+// 코드 불일치·만료(Supabase 4xx) → 400
+func TestVerifyRecovery_InvalidCode(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.VerifyError = http.StatusForbidden
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "user@example.com",
+		"code":         "000000",
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 약한 비밀번호는 코드 검증 전에 걸러진다 — 1회용 코드가 소모되면 안 됨(회귀 방지).
+func TestVerifyRecovery_WeakPassword_CodeNotConsumed(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "user@example.com",
+		"code":         "123456",
+		"new_password": "weak",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+	if fs.VerifyCalls != 0 {
+		t.Errorf("VerifyCalls=%d want 0 (코드가 소모되면 안 됨)", fs.VerifyCalls)
+	}
+}
+
+// 코드 형식 오류(6자리 숫자 아님) → 400, Supabase 호출 없음
+func TestVerifyRecovery_BadCodeFormat(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+
+	for _, code := range []string{"", "12345", "1234567", "12345a"} {
+		w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+			"email":        "user@example.com",
+			"code":         code,
+			"new_password": "NewPass123",
+		})
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("code=%q: status=%d want 400, body=%s", code, w.Code, w.Body)
+		}
+	}
+	if fs.VerifyCalls != 0 {
+		t.Errorf("VerifyCalls=%d want 0", fs.VerifyCalls)
+	}
+}
+
+func TestVerifyRecovery_InvalidEmail(t *testing.T) {
+	router, _, _ := setupAccount(t)
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "not-an-email",
+		"code":         "123456",
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// Supabase 5xx(verify 단계) → 500
+func TestVerifyRecovery_SupabaseServerError(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.VerifyError = http.StatusInternalServerError
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "user@example.com",
+		"code":         "123456",
+		"new_password": "NewPass123",
+	})
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d want 500, body=%s", w.Code, w.Body)
+	}
+}
+
+// 코드는 맞았지만 Supabase가 새 비밀번호 거부(422: 이전과 동일 등) → 400
+func TestVerifyRecovery_SupabaseRejectsNewPassword(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.ChangePwError = http.StatusUnprocessableEntity
+
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-recovery", "", map[string]any{
+		"email":        "user@example.com",
+		"code":         "123456",
+		"new_password": "SamePass123",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
