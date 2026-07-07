@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../markers/domain/entities/marker.dart';
 
+/// 출발지/목적지 교환. null(현위치)도 값 그대로 반대편에 넘긴다.
+/// (이전엔 출발지가 현위치일 때 목적지에 마커 id를 되채워 넣는 버그가 있었다)
+({String? departureId, String? destinationId}) swapRoutePoints({
+  required String? departureId,
+  required String? destinationId,
+}) =>
+    (departureId: destinationId, destinationId: departureId);
+
 // 출발지/목적지 섹션. 타일 탭 → Day별 마커 picker 시트.
 class RouteSection extends StatelessWidget {
   const RouteSection({
@@ -16,9 +24,9 @@ class RouteSection extends StatelessWidget {
 
   final List<TripMarker> allMarkers;
   final String? departureId; // null = 현위치
-  final String destinationId;
+  final String? destinationId; // null = 현위치 (스왑으로만 도달)
   final ValueChanged<String?> onDepartureChanged;
-  final ValueChanged<String> onDestinationChanged;
+  final ValueChanged<String?> onDestinationChanged;
   final VoidCallback onSwap;
 
   String _name(String? id) {
@@ -192,7 +200,7 @@ class _RoutePickerSheet extends StatelessWidget {
   final List<TripMarker> allMarkers;
   final bool isDeparture;
   final ValueChanged<String?> onDepartureChanged;
-  final ValueChanged<String> onDestinationChanged;
+  final ValueChanged<String?> onDestinationChanged;
 
   @override
   Widget build(BuildContext context) {
