@@ -66,6 +66,32 @@ class AuthRemoteDatasource {
     );
   }
 
+  // 비밀번호 재설정 코드 메일 발송 요청.
+  // 사용자 열거 방지로 이메일 존재 여부와 무관하게 항상 200이 온다.
+  Future<void> recover(String email) async {
+    await _dio.post(
+      '/api/v1/auth/recover',
+      data: {'email': email},
+    );
+  }
+
+  // 메일의 6자리 코드 검증 + 새 비밀번호 설정 (비밀번호 분실 플로우 전용).
+  // 성공 시 204, 코드 불일치·만료·정책 위반은 400으로 온다.
+  Future<void> verifyRecovery(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
+    await _dio.post(
+      '/api/v1/auth/verify-recovery',
+      data: {
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      },
+    );
+  }
+
   Future<UserResponseModel> getMe() async {
     final response = await _dio.get('/api/v1/auth/me');
     return UserResponseModel.fromJson(response.data as Map<String, dynamic>);

@@ -118,13 +118,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 padding: const EdgeInsets.only(left: 8),
                 child: Row(
                 children: [
-                  const Text(
-                    '비밀번호 찾기',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.gray,
+                  GestureDetector(
+                    onTap: () => context.push('/password-reset'),
+                    child: const Text(
+                      '비밀번호 찾기',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.gray,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 5),
