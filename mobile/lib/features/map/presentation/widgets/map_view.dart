@@ -20,6 +20,7 @@ class MapView extends ConsumerStatefulWidget {
     this.onLongTap,
     this.onSymbolTap,
     this.onCameraIdle,
+    this.onCameraGesture,
     this.onSearchMarkerTap,
     this.onMapTap,
     this.bottomPeekFraction = 0.0,
@@ -38,6 +39,8 @@ class MapView extends ConsumerStatefulWidget {
   final void Function(NLatLng)? onLongTap;
   final void Function(String name, NLatLng coord)? onSymbolTap;
   final void Function(NLatLng)? onCameraIdle;
+  // 사용자 제스처(드래그·줌 등)로 카메라가 움직이기 시작할 때 호출
+  final VoidCallback? onCameraGesture;
   final void Function(NaverPlace)? onSearchMarkerTap;
   final VoidCallback? onMapTap;
   final double bottomPeekFraction;
@@ -232,6 +235,12 @@ class _MapViewState extends ConsumerState<MapView> {
           _updateOverlays(_lastMarkers, _lastCategories);
         }
         widget.onMapTap?.call();
+      },
+      onCameraChange: (NCameraUpdateReason reason, bool animated) {
+        // 제스처 → 사용자가 지도를 직접 조작 중 (코드로 옮긴 카메라는 제외)
+        if (reason == NCameraUpdateReason.gesture) {
+          widget.onCameraGesture?.call();
+        }
       },
       onCameraIdle: () async {
         if (widget.onCameraIdle == null) return;
