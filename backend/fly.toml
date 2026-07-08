@@ -1,0 +1,26 @@
+# fly.toml app configuration file generated for memotrip-api on 2026-07-07T20:31:16+09:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'memotrip-api'
+primary_region = 'nrt'
+
+[build]
+
+# 비밀 아닌 환경변수는 여기서 주입 (비밀값은 flyctl secrets)
+[env]
+  ENV = 'production'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
