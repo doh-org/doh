@@ -43,6 +43,7 @@ flutter:
   assets:
     - assets/fonts/
     - assets/marker/
+    - assets/memotrip_logo.png
 
   fonts:
     - family: Pretendard
