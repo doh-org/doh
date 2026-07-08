@@ -1,0 +1,34 @@
+name: fly-deploy
+
+# Git Flow: release 브랜치에 push될 때마다 fly.io에 배포
+# (hotfix는 main으로 직행하므로 여기도 포함해야 prod 반영 누락이 없다)
+on:
+  push:
+    branches: ['release/**', 'hotfix/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.8'
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - run: go test ./...
+
+  deploy:
+    needs: test # 테스트 통과한 커밋만 배포
+    runs-on: ubuntu-latest
+    concurrency: fly-deploy # 연속 push 시 배포가 겹치지 않게 직렬화
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only # 빌드는 fly 원격 빌더에서 수행
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
