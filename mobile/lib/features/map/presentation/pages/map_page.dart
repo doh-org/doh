@@ -75,6 +75,11 @@ class _MapPageState extends ConsumerState<MapPage> {
     return trip!.endDate!.difference(trip.startDate!).inDays + 1;
   }
 
+  // 새 마커의 방문일 초기값: 시트에서 선택 중인 Day 탭을 물려준다
+  // (미정 탭(0)이면 비워서 기존처럼 '미정'으로 시작)
+  List<int> get _initialVisitDays =>
+      _selectedDay == 0 ? const <int>[] : <int>[_selectedDay];
+
   // 바텀 시트를 지정 높이로 애니메이션 (미부착이면 무시)
   void _animateSheetTo(double size) {
     if (_sheetController.isAttached) {
@@ -84,6 +89,14 @@ class _MapPageState extends ConsumerState<MapPage> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  // 지도 제스처 시작 → 시트가 올라와 있으면 최소 높이로 접기
+  void _collapseSheetOnMapGesture() {
+    if (!_sheetController.isAttached) return;
+    // 이미 최소 높이면 무시 (드래그 중 반복 호출되므로 불필요한 애니메이션 방지)
+    if (_sheetController.size <= _sheetMin + 0.01) return;
+    _animateSheetTo(_sheetMin);
   }
 
   void _showTripSelector(List<Trip> trips) {
@@ -187,6 +200,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       address: place.address,
       source: MarkerSource.search,
       detail: place.toDetail(),
+      visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
     await _openTempMarkerSheet(
@@ -227,6 +241,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       address: address,
       source: MarkerSource.longpress,
       detail: const {},
+      visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
     await _openTempMarkerSheet(
@@ -264,6 +279,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       address: address,
       source: MarkerSource.search,
       detail: const {},
+      visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
     await _openTempMarkerSheet(
@@ -397,6 +413,7 @@ class _MapPageState extends ConsumerState<MapPage> {
               onCameraIdle: (center) {
                 _cameraCenter = center;
               },
+              onCameraGesture: _collapseSheetOnMapGesture,
               bottomPeekFraction: _sheetInitial,
               selectedMarkerId: _selectedMarkerId,
               focusTarget: _focusTarget,
