@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/trip_repository_impl.dart';
+import '../../domain/entities/trip.dart';
 import '../providers/trip_provider.dart';
 
 class TripCreatePage extends ConsumerStatefulWidget {
@@ -79,17 +80,20 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
           endDate: effectiveEnd,
           coverColor: colorHex,
         );
+        ref.invalidate(tripsProvider);
+        // 수정 → 목록으로 복귀
+        if (mounted) context.go('/trips');
       } else {
-        await repo.createTrip(
+        final Trip trip = await repo.createTrip(
           title: _titleCtrl.text.trim(),
           startDate: _startDate,
           endDate: effectiveEnd,
           coverColor: colorHex,
         );
+        ref.invalidate(tripsProvider);
+        // 생성 → 새 여행의 지도로 바로 진입 (지도 뒤로가기가 /trips로 복귀)
+        if (mounted) context.go('/trips/${trip.id}/map');
       }
-      ref.invalidate(tripsProvider);
-      // TODO: 지도 화면으로 이동해야 함. 지도 구현 완료 후 변경 필요.
-      if (mounted) context.go('/trips');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -147,32 +151,26 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
               ),
             ),
             const SizedBox(height: 10),
-            // ⑰⑱ 색상 팔레트: 오른쪽 정렬, gap 7px, 갤러리 아이콘
+            // ⑰ 색상 팔레트: 오른쪽 정렬, gap 7px
+            // (갤러리 선택은 미구현이라 아이콘 제거 — 구현 시 복구)
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ...List.generate(
-                  AppColors.coverColors.length,
-                  (i) => GestureDetector(
-                    onTap: () => setState(() => _colorIndex = i),
-                    child: Container(
-                      width: 15,
-                      height: 15,
-                      margin: const EdgeInsets.only(right: 7),
-                      decoration: BoxDecoration(
-                        color: AppColors.coverColors[i],
-                        shape: BoxShape.circle,
-                      ),
+              children: List.generate(
+                AppColors.coverColors.length,
+                (i) => GestureDetector(
+                  onTap: () => setState(() => _colorIndex = i),
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    // 왼쪽 마진으로 간격 → 마지막 원이 오른쪽 끝에 붙음
+                    margin: const EdgeInsets.only(left: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.coverColors[i],
+                      shape: BoxShape.circle,
                     ),
                   ),
                 ),
-                // ⑱ 갤러리 아이콘 (v0: 비활성)
-                const Icon(
-                  Icons.photo_library_outlined,
-                  size: 15,
-                  color: AppColors.gray,
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 24),
             // 여행 이름

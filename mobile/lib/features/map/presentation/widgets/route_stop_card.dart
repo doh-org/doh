@@ -270,15 +270,20 @@ class _RouteStopCardState extends State<RouteStopCard>
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: widget.onNavigate,
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
-              Icons.directions,
-              size: 25,
-              color:
-                  widget.onNavigate == null ? const Color(0xFFB2B2B2) : _orange,
+          const Spacer(), // 길안내 아이콘을 행 오른쪽 끝으로
+          Padding(
+            // 위 마커 카드의 좌우 패딩(14)과 맞춰 카테고리 칩과 수직선 정렬
+            padding: const EdgeInsets.only(right: 14),
+            child: GestureDetector(
+              onTap: widget.onNavigate,
+              behavior: HitTestBehavior.opaque,
+              child: Icon(
+                Icons.directions,
+                size: 25,
+                color: widget.onNavigate == null
+                    ? const Color(0xFFB2B2B2)
+                    : _orange,
+              ),
             ),
           ),
         ],

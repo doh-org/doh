@@ -206,6 +206,45 @@ func (r *userRepository) RequestRecovery(ctx context.Context, email string) erro
 	return nil
 }
 
+// VerifyRecovery는 메일로 받은 6자리 코드를 검증하고 recovery 세션 토큰을 받는다.
+// POST /auth/v1/verify (type=recovery). 이 토큰으로 ChangePassword를 이어서 호출한다.
+func (r *userRepository) VerifyRecovery(ctx context.Context, email, code string) (string, error) {
+	body := map[string]any{
+		"type":  "recovery",
+		"email": email,
+		"token": code, // Supabase는 메일의 6자리 코드를 token 필드로 받는다
+	}
+	req, err := r.jsonReq(ctx, http.MethodPost, "/auth/v1/verify", body, "")
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
+	if err != nil {
+		return "", err
+	}
+	switch {
+	// 4xx → 코드 불일치·만료 (Supabase: 403 otp_expired 등)
+	case resp.StatusCode >= 400 && resp.StatusCode < 500:
+		slog.Warn("verifyRecovery rejected", "status", resp.StatusCode)
+		return "", domain.ErrInvalidCode
+	case resp.StatusCode >= 500:
+		return "", fmt.Errorf("verifyRecovery: status %d", resp.StatusCode)
+	}
+
+	var session supabaseSession
+	if err := json.Unmarshal(respBody, &session); err != nil {
+		return "", err
+	}
+	return session.AccessToken, nil
+}
+
 // DeleteAccount는 DB 함수 delete_user_account를 RPC로 호출한다.
 // 함수가 소유 trip + auth.users를 한 트랜잭션으로 지우므로 부분실패가 없다.
 // service_role 전용 함수라 여기서만 service key를 사용한다.

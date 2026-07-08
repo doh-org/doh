@@ -69,12 +69,12 @@ class PlaceCard extends StatelessWidget {
               ),
             ),
 
-            // 카테고리 배지 (left-74 top-13 h-15 w-40)
+            // 카테고리 배지 (left-74 top-13 h-16 w-40)
             Positioned(
               left: 74,
               top: 13,
               child: Container(
-                height: 15,
+                height: 16,
                 width: 40,
                 decoration: BoxDecoration(
                   color: categoryColor,
@@ -88,6 +88,7 @@ class PlaceCard extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
+                    height: 1.0, // 기본 줄높이가 박스보다 커서 중앙이 어긋나는 것 보정
                   ),
                 ),
               ),

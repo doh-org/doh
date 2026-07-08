@@ -44,13 +44,5 @@ jobs:
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
-  deploy-backend:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
-        working-directory: backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  # fly.io 배포는 release/hotfix 브랜치 기준 → fly-deploy.yml로 이동
+  # (release → main 머지 시 같은 코드가 두 번 배포되는 걸 막기 위해 여기선 제거)

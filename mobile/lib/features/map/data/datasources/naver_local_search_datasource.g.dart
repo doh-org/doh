@@ -7,7 +7,7 @@ part of 'naver_local_search_datasource.dart';
 // **************************************************************************
 
 String _$naverLocalSearchDatasourceHash() =>
-    r'ea6c9cb2443ec0daca7b1b55adb8b46789471de4';
+    r'2903b05bf62bfd4d734ccdad8395c02e3d4c3632';
 
 /// See also [naverLocalSearchDatasource].
 @ProviderFor(naverLocalSearchDatasource)

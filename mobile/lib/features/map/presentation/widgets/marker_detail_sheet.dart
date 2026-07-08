@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cursor.dart';
@@ -11,6 +12,7 @@ import '../../../routes/domain/entities/route_stop.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
+import '../../data/repositories/map_repository_impl.dart';
 import '../utils/map_navigation.dart';
 import 'marker_delete_dialog.dart';
 import 'marker_edit_chips_sheet.dart';
@@ -40,8 +42,8 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
 
 class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   int _transportIndex = 0;
-  String? _departureId;
-  late String _destinationId;
+  String? _departureId; // null = 현위치
+  String? _destinationId; // null = 현위치 (스왑으로만 도달)
   late TripMarker _marker;
   late final TextEditingController _nameCtrl;
   bool _editingName = false;
@@ -186,21 +188,32 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   ];
 
   Future<void> _openNavigation() async {
-    final TripMarker? dest = widget.allMarkers
-        .where((m) => m.id == _destinationId)
-        .firstOrNull;
+    final NavPoint destination;
+    if (_destinationId == null) {
+      // 목적지가 현위치(스왑 결과) → 기기 좌표 조회 (권한 거부 시 기본 좌표 폴백)
+      final NLatLng pos =
+          await ref.read(mapRepositoryProvider).getCurrentLocation();
+      destination =
+          NavPoint(name: '현위치', lat: pos.latitude, lng: pos.longitude);
+    } else {
+      final TripMarker? dest = widget.allMarkers
+          .where((m) => m.id == _destinationId)
+          .firstOrNull;
+      destination = NavPoint(
+        name: dest?.name ?? _marker.name,
+        lat: dest?.latitude ?? _marker.latitude,
+        lng: dest?.longitude ?? _marker.longitude,
+      );
+    }
     final TripMarker? dep = _departureId == null
         ? null
         : widget.allMarkers.where((m) => m.id == _departureId).firstOrNull;
 
+    if (!mounted) return; // 위치 조회 await 동안 시트가 닫혔을 수 있음
     await launchNavigation(
       context: context,
       mode: _transportModes[_transportIndex],
-      destination: NavPoint(
-        name: dest?.name ?? _marker.name,
-        lat: dest?.latitude ?? _marker.latitude,
-        lng: dest?.longitude ?? _marker.longitude,
-      ),
+      destination: destination,
       departure: dep == null
           ? null
           : NavPoint(name: dep.name, lat: dep.latitude, lng: dep.longitude),
@@ -394,12 +407,22 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               allMarkers: widget.allMarkers,
               departureId: _departureId,
               destinationId: _destinationId,
-              onDepartureChanged: (id) => setState(() => _departureId = id),
+              onDepartureChanged: (id) => setState(() {
+                _departureId = id;
+                // 둘 다 현위치가 되면 안내가 무의미 → 목적지를 이 마커로 되돌림
+                if (id == null && _destinationId == null) {
+                  _destinationId = widget.marker.id;
+                }
+              }),
               onDestinationChanged: (id) => setState(() => _destinationId = id),
               onSwap: () => setState(() {
-                final tmp = _departureId;
-                _departureId = _destinationId;
-                _destinationId = tmp ?? widget.marker.id;
+                // 현위치(null)도 그대로 목적지로 넘어간다
+                final swapped = swapRoutePoints(
+                  departureId: _departureId,
+                  destinationId: _destinationId,
+                );
+                _departureId = swapped.departureId;
+                _destinationId = swapped.destinationId;
               }),
             ),
             const SizedBox(height: 16),

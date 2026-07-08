@@ -91,6 +91,43 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  // 비밀번호 재설정 코드 메일 발송. 로그인 전 플로우라 토큰 저장소는 건드리지 않는다.
+  @override
+  Future<void> requestRecovery(String email) async {
+    try {
+      await _datasource.recover(email);
+    } on DioException catch (e) {
+      final Object? error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
+  // 코드 즉시 검증 → recovery 세션 토큰. 실패 시 서버 메시지(코드 불일치 등) 전달.
+  @override
+  Future<String> verifyRecoveryCode(String email, String code) async {
+    try {
+      return await _datasource.verifyRecoveryCode(email, code);
+    } on DioException catch (e) {
+      final Object? error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
+  // recovery 세션으로 새 비밀번호 설정. 실패 시 서버 메시지(세션 만료·정책 위반 등) 전달.
+  @override
+  Future<void> resetRecoveryPassword(
+      String accessToken, String newPassword) async {
+    try {
+      await _datasource.resetRecoveryPassword(accessToken, newPassword);
+    } on DioException catch (e) {
+      final Object? error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
   @override
   Future<User?> getCurrentUser() => _tokenStorage.getUser();
 

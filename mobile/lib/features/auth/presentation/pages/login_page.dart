@@ -71,8 +71,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 상단 중앙: 앱 로고 자리 (비움)
-              const SizedBox(height: 200),
+              // 상단 중앙: 앱 로고 (기존 200px 빈 공간 그대로 사용)
+              const SizedBox(
+                height: 200,
+                child: Center(
+                  child: Image(
+                    image: AssetImage('assets/memotrip_logo.png'),
+                    width: 220,  // 가로형 로고라 폭 기준으로 크기 지정
+                  ),
+                ),
+              ),
               _fieldLabel('이메일'),
               const SizedBox(height: 4),
               AuthTextField(
@@ -118,13 +126,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 padding: const EdgeInsets.only(left: 8),
                 child: Row(
                 children: [
-                  const Text(
-                    '비밀번호 찾기',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.gray,
+                  GestureDetector(
+                    onTap: () => context.push('/password-reset'),
+                    child: const Text(
+                      '비밀번호 찾기',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.gray,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 5),

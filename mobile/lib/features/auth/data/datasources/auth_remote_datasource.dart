@@ -66,6 +66,42 @@ class AuthRemoteDatasource {
     );
   }
 
+  // 비밀번호 재설정 코드 메일 발송 요청.
+  // 사용자 열거 방지로 이메일 존재 여부와 무관하게 항상 200이 온다.
+  Future<void> recover(String email) async {
+    await _dio.post(
+      '/api/v1/auth/recover',
+      data: {'email': email},
+    );
+  }
+
+  // 메일의 6자리 코드 즉시 검증. 성공 시 recovery 세션 토큰을 받는다.
+  // 코드는 검증 성공 시 소모(1회용), 토큰은 비밀번호 재설정 전용.
+  Future<String> verifyRecoveryCode(String email, String code) async {
+    final response = await _dio.post(
+      '/api/v1/auth/verify-recovery-code',
+      data: {
+        'email': email,
+        'code': code,
+      },
+    );
+    return (response.data as Map<String, dynamic>)['access_token'] as String;
+  }
+
+  // recovery 세션 토큰으로 새 비밀번호 설정. 성공 시 204, 세션은 백엔드가 폐기.
+  Future<void> resetRecoveryPassword(
+    String accessToken,
+    String newPassword,
+  ) async {
+    await _dio.post(
+      '/api/v1/auth/recovery-password',
+      data: {
+        'access_token': accessToken,
+        'new_password': newPassword,
+      },
+    );
+  }
+
   Future<UserResponseModel> getMe() async {
     final response = await _dio.get('/api/v1/auth/me');
     return UserResponseModel.fromJson(response.data as Map<String, dynamic>);

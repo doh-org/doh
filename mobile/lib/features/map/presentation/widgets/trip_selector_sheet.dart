@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../trips/domain/entities/trip.dart';
 
 // ── 날짜 표기 헬퍼 (테스트를 위해 최상위 함수로 공개) ─────────────────────────
@@ -21,12 +22,13 @@ String tripDateRange(Trip t) {
 }
 
 // "#RRGGBB" → Color. 파싱 실패·null이면 기본 회색.
+// 커버 팔레트(AppColors.coverColors)와 동일하게 50% 알파(0x80)로 채운다.
 Color tripCoverColor(Trip t) {
-  if (t.coverColor == null) return const Color(0xFFD5D5D5);
+  if (t.coverColor == null) return AppColors.coverColors[0];
   try {
-    return Color(int.parse(t.coverColor!.replaceFirst('#', '0xFF')));
+    return Color(int.parse(t.coverColor!.replaceFirst('#', '80'), radix: 16));
   } catch (_) {
-    return const Color(0xFFD5D5D5);
+    return AppColors.coverColors[0];
   }
 }
 
@@ -82,88 +84,92 @@ class TripSelectorSheet extends StatelessWidget {
             ],
           ),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (int i = 0; i < trips.length; i++) ...[
-              if (i > 0) const SizedBox(height: 5),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    onSelected(trips[i].id);
-                  },
-                  child: Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: trips[i].id == currentTripId
-                          ? Border.all(color: const Color(0xFFFE8505))
-                          : null,
-                      borderRadius: BorderRadius.circular(17),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0D000000),
-                          blurRadius: 5,
-                          offset: Offset(0, 4),
-                        ),
-                        BoxShadow(
-                          color: Color(0x0D000000),
-                          blurRadius: 5,
-                          offset: Offset(4, 0),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(15),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: tripCoverColor(trips[i]),
-                            borderRadius: BorderRadius.circular(17),
+        // 폴더가 많아 시트 최대 높이를 넘으면 목록만 스크롤 (오버플로우 방지)
+        Flexible(
+          child: ListView(
+            shrinkWrap: true, // 폴더가 적으면 내용 높이만큼만 차지
+            padding: EdgeInsets.zero,
+            children: [
+              for (int i = 0; i < trips.length; i++) ...[
+                if (i > 0) const SizedBox(height: 5),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      onSelected(trips[i].id);
+                    },
+                    child: Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: trips[i].id == currentTripId
+                            ? Border.all(color: const Color(0xFFFE8505))
+                            : null,
+                        borderRadius: BorderRadius.circular(17),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0D000000),
+                            blurRadius: 5,
+                            offset: Offset(0, 4),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                trips[i].title,
-                                style: const TextStyle(
-                                  fontFamily: 'Pretendard',
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF070707),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                tripDateRange(trips[i]),
-                                style: const TextStyle(
-                                  fontFamily: 'Pretendard',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFFB2B2B2),
-                                ),
-                              ),
-                            ],
+                          BoxShadow(
+                            color: Color(0x0D000000),
+                            blurRadius: 5,
+                            offset: Offset(4, 0),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(15),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: tripCoverColor(trips[i]),
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  trips[i].title,
+                                  style: const TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF070707),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  tripDateRange(trips[i]),
+                                  style: const TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFFB2B2B2),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
         const SizedBox(height: 16),
       ],

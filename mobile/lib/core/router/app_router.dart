@@ -5,11 +5,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/account_info_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/password_reset_request_page.dart';
+import '../../features/auth/presentation/pages/password_reset_verify_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/map/presentation/pages/map_page.dart';
-import '../../features/support/presentation/pages/inquiry_page.dart';
 import '../../features/trips/presentation/pages/trip_create_page.dart';
 import '../../features/trips/presentation/pages/trip_list_page.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
@@ -29,14 +30,17 @@ GoRouter appRouter(Ref ref) {
       final authState = ref.read(authNotifierProvider);
       final loc = state.matchedLocation;
 
+      // 비로그인 상태로 접근 가능한 화면 (비밀번호 찾기 포함)
+      final isAuthRoute = loc == '/login' ||
+          loc == '/signup' ||
+          loc.startsWith('/password-reset');
+
       if (authState.isLoading) {
-        final isAuthOrSplash =
-            loc == '/login' || loc == '/signup' || loc == '/splash';
+        final isAuthOrSplash = isAuthRoute || loc == '/splash';
         return isAuthOrSplash ? null : '/splash';
       }
 
       final isAuthenticated = authState.valueOrNull != null;
-      final isAuthRoute = loc == '/login' || loc == '/signup';
 
       if (!isAuthenticated && !isAuthRoute) return '/login';
       if (isAuthenticated && isAuthRoute) return '/trips';
@@ -54,6 +58,20 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/signup',
         builder: (_, __) => const SignupPage(),
+      ),
+      GoRoute(
+        path: '/password-reset',
+        builder: (_, __) => const PasswordResetRequestPage(),
+      ),
+      GoRoute(
+        path: '/password-reset/verify',
+        // extra로 1단계 이메일을 받는다. 없이 직접 진입하면 1단계부터.
+        builder: (_, state) {
+          final String? email = state.extra as String?;
+          return email == null
+              ? const PasswordResetRequestPage()
+              : PasswordResetVerifyPage(email: email);
+        },
       ),
       // 탭바 공유 shell (목록만)
       ShellRoute(
@@ -73,10 +91,6 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/account',
         builder: (_, __) => const AccountInfoPage(),
-      ),
-      GoRoute(
-        path: '/inquiry',
-        builder: (_, __) => const InquiryPage(),
       ),
       GoRoute(
         path: '/trips/create',

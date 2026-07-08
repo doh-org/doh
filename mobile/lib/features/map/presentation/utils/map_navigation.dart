@@ -12,30 +12,20 @@ class NavPoint {
 }
 
 const String _appPackage = 'com.doh.memotrip';
-const String _tmapStore =
-    'https://play.google.com/store/apps/details?id=com.skt.tmap.ku';
 const String _naverStore =
     'https://play.google.com/store/apps/details?id=com.nhn.android.nmap';
 
-/// 구간(출발→도착)을 외부 지도앱으로 안내한다.
-/// 차량=티맵, 그 외=네이버지도. 앱 미설치 등으로 못 열면 웹/설치 모달을 띄운다.
+/// 구간(출발→도착)을 네이버지도 앱으로 안내한다.
+/// 앱 미설치 등으로 못 열면 웹/설치 모달을 띄운다.
 Future<void> launchNavigation({
   required BuildContext context,
   required TransportMode mode,
   required NavPoint destination,
   NavPoint? departure,
 }) async {
-  if (mode == TransportMode.car) {
-    await _launchOrFallback(
-      context,
-      appUri: _tmapUri(departure, destination),
-      webUri: _naverWebUri(departure, destination, 'car'),
-      storeUri: _tmapStore,
-      appLabel: '티맵',
-    );
-    return;
-  }
+  // 이동수단 → (nmap 앱 스킴 타입, 네이버지도 웹 타입) 매핑
   final (String appType, String webType) = switch (mode) {
+    TransportMode.car => ('car', 'car'),
     TransportMode.publictransit => ('public', 'transit'),
     TransportMode.bicycle => ('bicycle', 'bicycle'),
     _ => ('walk', 'walk'), // foot
@@ -76,20 +66,6 @@ Future<void> _launchOrFallback(
       ),
     ),
   );
-}
-
-String _tmapUri(NavPoint? dep, NavPoint dest) {
-  final StringBuffer sb = StringBuffer(
-    'tmap://route?rGoY=${dest.lat}&rGoX=${dest.lng}'
-    '&rGoName=${Uri.encodeQueryComponent(dest.name)}',
-  );
-  if (dep != null) {
-    sb.write(
-      '&rStY=${dep.lat}&rStX=${dep.lng}'
-      '&rStName=${Uri.encodeQueryComponent(dep.name)}',
-    );
-  }
-  return sb.toString();
 }
 
 String _naverAppUri(NavPoint? dep, NavPoint dest, String type) {

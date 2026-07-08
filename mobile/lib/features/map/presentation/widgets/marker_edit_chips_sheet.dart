@@ -5,7 +5,6 @@ import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
-import '../../../markers/presentation/widgets/category_chip.dart';
 
 class MarkerEditChipsSheet extends ConsumerStatefulWidget {
   const MarkerEditChipsSheet({
@@ -134,15 +133,47 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
                     scrollDirection: Axis.horizontal,
                     itemCount: widget.categories.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => CategoryChip(
-                      category: widget.categories[i],
-                      selected: _selectedCategoryId == widget.categories[i].id,
-                      onSelected: (_) => setState(() =>
-                          _selectedCategoryId =
-                              _selectedCategoryId == widget.categories[i].id
-                                  ? null
-                                  : widget.categories[i].id),
-                    ),
+                    itemBuilder: (_, i) {
+                      final Category category = widget.categories[i];
+                      final bool active = _selectedCategoryId == category.id;
+                      return GestureDetector(
+                        // 같은 칩 다시 누르면 선택 해제 (토글)
+                        onTap: () => setState(() => _selectedCategoryId =
+                            active ? null : category.id),
+                        child: Container(
+                          height: 30,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            // 방문 날짜 칩과 동일: 회색 배경, 선택 시 주황
+                            color: active
+                                ? const Color(0xCCFE8505)
+                                : const Color(0xFFF1F2F4),
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: active
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x4D000000),
+                                      blurRadius: 4,
+                                      offset: Offset(1, 1),
+                                    )
+                                  ]
+                                : null,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            category.name,
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: active
+                                  ? Colors.white
+                                  : const Color(0xFF1F2125),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
           if (widget.dayCount > 0) ...[
@@ -222,7 +253,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
           GestureDetector(
             onTap: _saveExplicit,
             child: Container(
-              height: 30,
+              height: 45, // 기존 30의 1.5배
               width: double.infinity,
               decoration: BoxDecoration(
                 color: _hasUnsavedChanges

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$RouteStopModel {
-  @JsonKey(name: 'marker_id')
+  @JsonKey(name: 'id', readValue: _readMarkerId)
   String get markerId;
   String get name;
   double get latitude;
@@ -95,7 +95,7 @@ abstract mixin class $RouteStopModelCopyWith<$Res> {
       _$RouteStopModelCopyWithImpl;
   @useResult
   $Res call(
-      {@JsonKey(name: 'marker_id') String markerId,
+      {@JsonKey(name: 'id', readValue: _readMarkerId) String markerId,
       String name,
       double latitude,
       double longitude,
@@ -270,7 +270,7 @@ extension RouteStopModelPatterns on RouteStopModel {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
     TResult Function(
-            @JsonKey(name: 'marker_id') String markerId,
+            @JsonKey(name: 'id', readValue: _readMarkerId) String markerId,
             String name,
             double latitude,
             double longitude,
@@ -318,7 +318,7 @@ extension RouteStopModelPatterns on RouteStopModel {
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
     TResult Function(
-            @JsonKey(name: 'marker_id') String markerId,
+            @JsonKey(name: 'id', readValue: _readMarkerId) String markerId,
             String name,
             double latitude,
             double longitude,
@@ -364,7 +364,7 @@ extension RouteStopModelPatterns on RouteStopModel {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
     TResult? Function(
-            @JsonKey(name: 'marker_id') String markerId,
+            @JsonKey(name: 'id', readValue: _readMarkerId) String markerId,
             String name,
             double latitude,
             double longitude,
@@ -400,7 +400,7 @@ extension RouteStopModelPatterns on RouteStopModel {
 @JsonSerializable()
 class _RouteStopModel implements RouteStopModel {
   const _RouteStopModel(
-      {@JsonKey(name: 'marker_id') required this.markerId,
+      {@JsonKey(name: 'id', readValue: _readMarkerId) required this.markerId,
       required this.name,
       required this.latitude,
       required this.longitude,
@@ -414,7 +414,7 @@ class _RouteStopModel implements RouteStopModel {
       _$RouteStopModelFromJson(json);
 
   @override
-  @JsonKey(name: 'marker_id')
+  @JsonKey(name: 'id', readValue: _readMarkerId)
   final String markerId;
   @override
   final String name;
@@ -510,7 +510,7 @@ abstract mixin class _$RouteStopModelCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {@JsonKey(name: 'marker_id') String markerId,
+      {@JsonKey(name: 'id', readValue: _readMarkerId) String markerId,
       String name,
       double latitude,
       double longitude,

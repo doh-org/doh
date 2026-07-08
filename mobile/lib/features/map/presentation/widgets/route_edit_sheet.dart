@@ -76,8 +76,8 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
     _invalidate(_sort);
   }
 
-  // 구간 길안내: origin.transportToNext 기준 외부 지도앱 실행.
-  // 차량=티맵, 그 외=네이버지도. 미설치면 웹/설치 모달.
+  // 구간 길안내: origin.transportToNext 기준 네이버지도 실행.
+  // 미설치면 웹/설치 모달.
   Future<void> _navigate(RouteStop origin, RouteStop dest) async {
     final TransportMode? mode = origin.transportToNext;
     if (mode == null) return;
@@ -307,7 +307,8 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.schedule, size: 18, color: _orange),
+              // 길찾기 출발/목적지 스위치와 같은 아이콘, 색만 주황
+              const Icon(Icons.swap_vert, size: 18, color: _orange),
               const SizedBox(width: 5),
               Text(
                 _sorting ? '정렬 중…' : '시간순 정렬',

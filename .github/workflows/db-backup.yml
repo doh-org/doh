@@ -1,0 +1,29 @@
+name: db-backup
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 매일 03:00 KST (UTC 18:00)
+  workflow_dispatch: # 수동 실행용
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # 역할/스키마/데이터를 나눠 덤프 — 공식 백업·복원 가이드 방식
+      - name: Dump prod DB
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }} # session pooler(5432) URL — 러너가 IPv4 전용이라 direct host 불가
+        run: |
+          STAMP=$(date -u +%Y%m%d)
+          mkdir -p backup
+          supabase db dump --db-url "$DB_URL" -f "backup/roles_$STAMP.sql" --role-only
+          supabase db dump --db-url "$DB_URL" -f "backup/schema_$STAMP.sql"
+          supabase db dump --db-url "$DB_URL" -f "backup/data_$STAMP.sql" --use-copy --data-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 30

@@ -19,6 +19,10 @@ class AppTheme {
       elevation: 0,
       centerTitle: true,
     ),
+    // 색 지정 없는 로딩 인디케이터의 기본색. 버튼 위 흰색 스피너는 각자 명시라 영향 없음.
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.folderOrange,
+    ),
     textSelectionTheme: const TextSelectionThemeData(
       cursorColor: AppColors.folderOrange,
       selectionHandleColor: AppColors.folderOrange,
