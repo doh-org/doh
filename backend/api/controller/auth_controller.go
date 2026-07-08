@@ -135,15 +135,31 @@ func (ac *AuthController) Recover(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "재설정 메일을 보냈습니다."})
 }
 
-// VerifyRecovery는 메일의 6자리 코드 검증 + 새 비밀번호 설정을 한 번에 처리한다.
-// recovery 세션은 usecase 내부에서만 쓰이고 응답으로 내려가지 않는다.
-func (ac *AuthController) VerifyRecovery(c *gin.Context) {
-	var req domain.VerifyRecoveryRequest
+// VerifyRecoveryCode는 메일의 6자리 코드를 즉시 검증하고 recovery 세션 토큰을 응답한다.
+// 토큰은 /auth/recovery-password 전용 — 코드는 검증 성공 시 소모된다(1회용).
+func (ac *AuthController) VerifyRecoveryCode(c *gin.Context) {
+	var req domain.VerifyRecoveryCodeRequest
 	if !bindJSON(c, &req) {
 		return
 	}
 
-	if err := ac.authUsecase.VerifyRecovery(c.Request.Context(), req); err != nil {
+	resp, err := ac.authUsecase.VerifyRecoveryCode(c.Request.Context(), req)
+	if err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// RecoveryPassword는 recovery 세션 토큰으로 새 비밀번호를 설정한다.
+// 세션은 usecase가 설정 후 폐기한다.
+func (ac *AuthController) RecoveryPassword(c *gin.Context) {
+	var req domain.RecoveryPasswordRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	if err := ac.authUsecase.ResetRecoveryPassword(c.Request.Context(), req); err != nil {
 		ac.handleError(c, err)
 		return
 	}

@@ -40,10 +40,21 @@ type RecoverRequest struct {
 	Email string `json:"email"`
 }
 
-// VerifyRecoveryRequest는 메일로 받은 6자리 코드로 비밀번호를 재설정한다.
-type VerifyRecoveryRequest struct {
-	Email       string `json:"email"`
-	Code        string `json:"code"`
+// VerifyRecoveryCodeRequest는 메일로 받은 6자리 코드를 즉시 검증한다.
+type VerifyRecoveryCodeRequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// RecoverySessionResponse는 코드 검증 성공 시 발급되는 recovery 세션 토큰.
+// /auth/recovery-password 전용 — 다른 API 인증에 쓰지 않는다.
+type RecoverySessionResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+// RecoveryPasswordRequest는 recovery 세션으로 새 비밀번호를 설정한다.
+type RecoveryPasswordRequest struct {
+	AccessToken string `json:"access_token"`
 	NewPassword string `json:"new_password"`
 }
 
@@ -80,6 +91,7 @@ type AuthUsecase interface {
 	Me(ctx context.Context, userID, email, accessToken string) (*UserResponse, error)
 	ChangePassword(ctx context.Context, accessToken, email string, req ChangePasswordRequest) error
 	Recover(ctx context.Context, req RecoverRequest) error
-	VerifyRecovery(ctx context.Context, req VerifyRecoveryRequest) error
+	VerifyRecoveryCode(ctx context.Context, req VerifyRecoveryCodeRequest) (*RecoverySessionResponse, error)
+	ResetRecoveryPassword(ctx context.Context, req RecoveryPasswordRequest) error
 	DeleteAccount(ctx context.Context, userID string) error
 }

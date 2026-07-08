@@ -138,34 +138,47 @@ func (u *authUsecase) Recover(ctx context.Context, req domain.RecoverRequest) er
 	return nil
 }
 
-// VerifyRecovery는 메일의 6자리 코드로 비밀번호를 재설정한다.
-// 코드 검증 → recovery 세션 발급 → 그 세션으로 비밀번호 변경 → 세션 폐기.
-func (u *authUsecase) VerifyRecovery(ctx context.Context, req domain.VerifyRecoveryRequest) error {
+// VerifyRecoveryCode는 메일의 6자리 코드를 즉시 검증하고 recovery 세션을 발급한다.
+// 코드는 검증 성공 시 소모된다(1회용) — 이후 비밀번호 설정은 세션 토큰으로만 진행.
+func (u *authUsecase) VerifyRecoveryCode(ctx context.Context, req domain.VerifyRecoveryCodeRequest) (*domain.RecoverySessionResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Code = strings.TrimSpace(req.Code)
 
 	if err := validateEmail(req.Email); err != nil {
-		return err
+		return nil, err
 	}
 	if err := validateRecoveryCode(req.Code); err != nil {
-		return err
-	}
-	if err := validatePassword(req.NewPassword); err != nil {
-		return err
+		return nil, err
 	}
 
 	accessToken, err := u.userRepo.VerifyRecovery(ctx, req.Email, req.Code)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCode) {
-			return domain.ErrInvalidCode
+			return nil, domain.ErrInvalidCode
+		}
+		return nil, err
+	}
+	return &domain.RecoverySessionResponse{AccessToken: accessToken}, nil
+}
+
+// ResetRecoveryPassword는 recovery 세션으로 비밀번호를 변경하고 세션을 폐기한다.
+func (u *authUsecase) ResetRecoveryPassword(ctx context.Context, req domain.RecoveryPasswordRequest) error {
+	if strings.TrimSpace(req.AccessToken) == "" {
+		return &domain.ValidationError{Message: "인증코드 확인을 먼저 진행해주세요."}
+	}
+	if err := validatePassword(req.NewPassword); err != nil {
+		return err
+	}
+
+	if err := u.userRepo.ChangePassword(ctx, req.AccessToken, req.NewPassword); err != nil {
+		// 세션 만료·무효(401)는 코드부터 다시 받게 안내 → 401 아닌 400
+		if errors.Is(err, domain.ErrAuthFailed) {
+			return &domain.ValidationError{Message: "인증이 만료되었습니다. 코드를 다시 받아주세요."}
 		}
 		return err
 	}
-	if err := u.userRepo.ChangePassword(ctx, accessToken, req.NewPassword); err != nil {
-		return err
-	}
 	// recovery 세션은 재설정 후 쓸모 없음 → 폐기 (실패해도 무시: 곧 만료됨)
-	if err := u.userRepo.Logout(ctx, accessToken); err != nil {
+	if err := u.userRepo.Logout(ctx, req.AccessToken); err != nil {
 		slog.Warn("recovery session logout failed", "err", err)
 	}
 	return nil
