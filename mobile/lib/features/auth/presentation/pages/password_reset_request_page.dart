@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -66,7 +67,15 @@ class _PasswordResetRequestPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
+              // 다른 페이지(계정 정보)와 같은 52px 헤더 높이에 공용 뒤로가기 버튼
+              SizedBox(
+                height: 52,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppBackButton(onTap: () => context.pop()),
+                ),
+              ),
+              const SizedBox(height: 28),
               const Text(
                 '비밀번호 찾기',
                 style: TextStyle(

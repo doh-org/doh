@@ -75,18 +75,28 @@ class AuthRemoteDatasource {
     );
   }
 
-  // 메일의 6자리 코드 검증 + 새 비밀번호 설정 (비밀번호 분실 플로우 전용).
-  // 성공 시 204, 코드 불일치·만료·정책 위반은 400으로 온다.
-  Future<void> verifyRecovery(
-    String email,
-    String code,
-    String newPassword,
-  ) async {
-    await _dio.post(
-      '/api/v1/auth/verify-recovery',
+  // 메일의 6자리 코드 즉시 검증. 성공 시 recovery 세션 토큰을 받는다.
+  // 코드는 검증 성공 시 소모(1회용), 토큰은 비밀번호 재설정 전용.
+  Future<String> verifyRecoveryCode(String email, String code) async {
+    final response = await _dio.post(
+      '/api/v1/auth/verify-recovery-code',
       data: {
         'email': email,
         'code': code,
+      },
+    );
+    return (response.data as Map<String, dynamic>)['access_token'] as String;
+  }
+
+  // recovery 세션 토큰으로 새 비밀번호 설정. 성공 시 204, 세션은 백엔드가 폐기.
+  Future<void> resetRecoveryPassword(
+    String accessToken,
+    String newPassword,
+  ) async {
+    await _dio.post(
+      '/api/v1/auth/recovery-password',
+      data: {
+        'access_token': accessToken,
         'new_password': newPassword,
       },
     );

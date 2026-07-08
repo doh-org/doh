@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -29,8 +30,15 @@ class _PasswordResetVerifyPageState
   final TextEditingController _pwCtrl = TextEditingController();
   final TextEditingController _confirmCtrl = TextEditingController();
   String? _errorMessage;
-  bool _submitting = false; // 요청 중 중복 탭 방지
+  bool _submitting = false; // 재설정 요청 중 중복 탭 방지
+  bool _verifying = false; // 코드 확인 요청 중 중복 탭 방지
   bool _obscurePw = true;
+
+  // 코드 확인 성공 시 받는 recovery 세션 토큰. 비밀번호 재설정에만 쓴다.
+  // null = 아직 미확인. 코드는 1회용이라 확인 후 입력칸을 잠근다.
+  String? _recoveryToken;
+
+  bool get _codeVerified => _recoveryToken != null;
 
   @override
   void dispose() {
@@ -47,13 +55,39 @@ class _PasswordResetVerifyPageState
       pw.contains(RegExp(r'[a-z]')) &&
       pw.contains(RegExp(r'[0-9]'));
 
-  Future<void> _onSubmit() async {
-    if (_submitting) return;
+  // 코드 즉시 확인. 성공하면 recovery 세션 토큰을 받아 보관하고 코드칸을 잠근다.
+  Future<void> _onVerifyCode() async {
+    if (_verifying || _codeVerified) return;
     final String code = _codeCtrl.text.trim();
-    final String pw = _pwCtrl.text;
-    // 로컬 검증: 형식 오류는 서버까지 안 가고 즉시 안내
+    // 로컬 검증: 형식 오류는 서버까지 안 가고 즉시 안내 (1회용 코드 소모 방지)
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
       setState(() => _errorMessage = '6자리 숫자 코드를 입력해주세요.');
+      return;
+    }
+    setState(() {
+      _errorMessage = null;
+      _verifying = true;
+    });
+    try {
+      final String token = await ref
+          .read(authRepositoryProvider)
+          .verifyRecoveryCode(widget.email, code);
+      if (mounted) setState(() => _recoveryToken = token);
+    } on AppException catch (e) {
+      // 코드 불일치·만료 등 → 서버 메시지 그대로 안내
+      if (mounted) setState(() => _errorMessage = e.message);
+    } finally {
+      if (mounted) setState(() => _verifying = false);
+    }
+  }
+
+  Future<void> _onSubmit() async {
+    if (_submitting) return;
+    final String? token = _recoveryToken;
+    final String pw = _pwCtrl.text;
+    // 로컬 검증: 형식 오류는 서버까지 안 가고 즉시 안내
+    if (token == null) {
+      setState(() => _errorMessage = '인증코드 확인을 먼저 진행해주세요.');
       return;
     }
     if (!_isValidPassword(pw)) {
@@ -71,7 +105,7 @@ class _PasswordResetVerifyPageState
     try {
       await ref
           .read(authRepositoryProvider)
-          .verifyRecovery(widget.email, code, pw);
+          .resetRecoveryPassword(token, pw);
       if (!mounted) return;
       await showGeneralDialog<void>(
         context: context,
@@ -83,7 +117,7 @@ class _PasswordResetVerifyPageState
       // 재설정 완료 → 새 비밀번호로 재로그인하도록 로그인 화면으로
       if (mounted) context.go('/login');
     } on AppException catch (e) {
-      // 코드 불일치·만료, 정책 위반 등 → 서버 메시지 그대로 안내
+      // 세션 만료·정책 위반 등 → 서버 메시지 그대로 안내
       if (mounted) setState(() => _errorMessage = e.message);
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -92,11 +126,16 @@ class _PasswordResetVerifyPageState
 
   // 코드 재전송. 성공 여부와 무관하게 서버가 200을 주므로 안내만 띄운다.
   Future<void> _resend() async {
-    if (_submitting) return;
+    if (_submitting || _verifying) return;
     try {
       await ref.read(authRepositoryProvider).requestRecovery(widget.email);
       if (!mounted) return;
-      setState(() => _errorMessage = null);
+      setState(() {
+        _errorMessage = null;
+        // 새 코드가 발송되면 기존 확인 상태는 무효 → 처음부터 다시
+        _recoveryToken = null;
+        _codeCtrl.clear();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('인증 코드를 다시 보냈습니다.')),
       );
@@ -115,7 +154,15 @@ class _PasswordResetVerifyPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
+              // 다른 페이지(계정 정보)와 같은 52px 헤더 높이에 공용 뒤로가기 버튼
+              SizedBox(
+                height: 52,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppBackButton(onTap: () => context.pop()),
+                ),
+              ),
+              const SizedBox(height: 28),
               const Text(
                 '비밀번호 재설정',
                 style: TextStyle(
@@ -137,14 +184,49 @@ class _PasswordResetVerifyPageState
               ),
               const SizedBox(height: 28),
               _fieldLabel('인증 코드'),
-              AuthTextField(
-                controller: _codeCtrl,
-                hintText: '123456',
-                keyboardType: TextInputType.number,
-                fillColor: AppColors.background,
-                focusFillColor: _focusFill,
-                borderRadius: 17,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    // 확인 완료 후엔 코드가 소모된 상태라 수정 불가로 잠근다
+                    child: AbsorbPointer(
+                      absorbing: _codeVerified,
+                      child: Opacity(
+                        opacity: _codeVerified ? 0.5 : 1,
+                        child: AuthTextField(
+                          controller: _codeCtrl,
+                          hintText: '123456',
+                          keyboardType: TextInputType.number,
+                          fillColor: AppColors.background,
+                          focusFillColor: _focusFill,
+                          borderRadius: 17,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _VerifyCodeButton(
+                    verified: _codeVerified,
+                    verifying: _verifying,
+                    onTap: _onVerifyCode,
+                  ),
+                ],
               ),
+              if (_codeVerified) ...[
+                const SizedBox(height: 6),
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Text(
+                    '인증코드가 확인되었습니다.',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.green,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 15),
               _fieldLabel('새 비밀번호'),
               AuthTextField(
@@ -282,6 +364,57 @@ class _PasswordResetVerifyPageState
           fontWeight: FontWeight.w500,
           color: AppColors.dark,
         ),
+      ),
+    );
+  }
+}
+
+// 인증코드 옆 "확인" 버튼. 확인 중 스피너, 완료 후 체크로 바뀌고 비활성화.
+class _VerifyCodeButton extends StatelessWidget {
+  const _VerifyCodeButton({
+    required this.verified,
+    required this.verifying,
+    required this.onTap,
+  });
+
+  final bool verified;
+  final bool verifying;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: (verified || verifying) ? null : onTap,
+      child: Container(
+        width: 72,
+        height: 50, // AuthTextField 높이와 맞춤
+        decoration: BoxDecoration(
+          color: verified
+              ? AppColors.background
+              : AppColors.folderOrange.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(17),
+        ),
+        alignment: Alignment.center,
+        child: verifying
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  color: AppColors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : verified
+                ? const Icon(Icons.check, size: 22, color: AppColors.green)
+                : const Text(
+                    '확인',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  ),
       ),
     );
   }

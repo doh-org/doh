@@ -8,7 +8,8 @@ abstract interface class AuthRepository {
   Future<void> deleteAccount();
   Future<void> changePassword(String currentPassword, String newPassword);
   Future<void> requestRecovery(String email);
-  Future<void> verifyRecovery(String email, String code, String newPassword);
+  Future<String> verifyRecoveryCode(String email, String code);
+  Future<void> resetRecoveryPassword(String accessToken, String newPassword);
   Future<User?> getCurrentUser();
   Future<User> getMe();
 }
