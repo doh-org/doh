@@ -39,6 +39,45 @@ Future<void> launchNavigation({
   );
 }
 
+/// 장소(주소) 검색어를 네이버지도 검색 화면으로 연다.
+/// 앱 미설치 등으로 못 열면 웹/설치 모달을 띄운다.
+Future<void> launchPlaceSearch({
+  required BuildContext context,
+  required String query,
+}) async {
+  await _launchOrFallback(
+    context,
+    appUri: naverSearchAppUri(query),
+    webUri: naverSearchWebUri(query),
+    storeUri: _naverStore,
+    appLabel: '네이버 지도',
+  );
+}
+
+/// 네이버지도 검색어 결정.
+/// 기본은 장소명 우선(실제 장소 상세가 뜨도록), 비면 주소 폴백.
+/// preferAddress(롱프레스 마커)는 이름이 '새 장소' 같은 임의값일 수 있어
+/// 주소 우선, 비면 이름 폴백. 둘 다 없으면 빈 문자열(호출부에서 스킵).
+String resolveNaverSearchQuery({
+  required bool preferAddress,
+  required String name,
+  String? address,
+}) {
+  final String n = name.trim();
+  final String a = (address ?? '').trim();
+  if (preferAddress) return a.isNotEmpty ? a : n;
+  return n.isNotEmpty ? n : a;
+}
+
+// nmap 검색 스킴: nmap://search?query={검색어}&appname={호출 앱}
+String naverSearchAppUri(String query) =>
+    'nmap://search?query=${Uri.encodeQueryComponent(query)}'
+    '&appname=$_appPackage';
+
+// 웹 폴백: 네이버지도 v5 검색 URL
+String naverSearchWebUri(String query) =>
+    'https://map.naver.com/v5/search/${Uri.encodeComponent(query)}';
+
 Future<void> _launchOrFallback(
   BuildContext context, {
   required String appUri,

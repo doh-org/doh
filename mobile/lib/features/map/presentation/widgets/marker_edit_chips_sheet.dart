@@ -77,7 +77,8 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
       } catch (_) {}
       ref.invalidate(markerEntitiesProvider(widget.tripId));
     }
-    if (mounted) Navigator.pop(context);
+    // true = 저장 탭으로 닫힘 (그냥 내려서 닫으면 null) → 부모가 저장 모달 표시
+    if (mounted) Navigator.pop(context, true);
   }
 
   @override
