@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_cursor.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
@@ -45,8 +44,6 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   String? _departureId; // null = 현위치
   String? _destinationId; // null = 현위치 (스왑으로만 도달)
   late TripMarker _marker;
-  late final TextEditingController _nameCtrl;
-  bool _editingName = false;
   bool _saved = true;
   bool _bookmarkLoading = false;
   // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
@@ -65,74 +62,64 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     super.initState();
     _marker = widget.marker;
     _destinationId = widget.marker.id;
-    _nameCtrl = TextEditingController(text: widget.marker.name);
     // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
     // _isLiked = widget.isLiked;
     _saved = widget.allMarkers.any((m) => m.id == widget.marker.id);
   }
 
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveName() async {
-    final String name = _nameCtrl.text.trim();
-    if (name.isEmpty || name == _marker.name) return;
-    if (!_saved) {
-      setState(() => _marker = _marker.copyWith(name: name));
-      return;
-    }
+  // 미저장 마커를 서버에 생성. 성공 여부 반환 (실패 시 에러 모달 표시)
+  Future<bool> _createMarker() async {
+    setState(() => _bookmarkLoading = true);
     try {
-      final TripMarker updated = await ref.read(markerRepositoryProvider).updateMarker(
-            widget.tripId, _marker.id, name: name,
+      final TripMarker created = await ref.read(markerRepositoryProvider).createMarker(
+            tripId: widget.tripId,
+            name: _marker.name,
+            latitude: _marker.latitude,
+            longitude: _marker.longitude,
+            categoryId: _marker.categoryId,
+            address: _marker.address,
+            detail: _marker.detail,
+            source: _marker.source,
+            visitDays: _marker.visitDays,
           );
-      setState(() => _marker = updated);
+      if (!mounted) return false;
+      setState(() {
+        _marker = created;
+        _saved = true;
+      });
       ref.invalidate(markerEntitiesProvider(widget.tripId));
-    } catch (_) {}
+      widget.onMarkerSaved?.call();
+      return true;
+    } catch (_) {
+      if (mounted) showUpdateErrorDialog(context, '저장에 실패했습니다.');
+      return false;
+    } finally {
+      if (mounted) setState(() => _bookmarkLoading = false);
+    }
   }
 
-  Future<void> _toggleBookmark() async {
-    if (!_saved) {
-      setState(() => _bookmarkLoading = true);
-      try {
-        final TripMarker created = await ref.read(markerRepositoryProvider).createMarker(
-              tripId: widget.tripId,
-              name: _marker.name,
-              latitude: _marker.latitude,
-              longitude: _marker.longitude,
-              categoryId: _marker.categoryId,
-              address: _marker.address,
-              detail: _marker.detail,
-              source: _marker.source,
-              visitDays: _marker.visitDays,
-            );
-        if (mounted) {
-          setState(() {
-            _marker = created;
-            _saved = true;
-          });
-          ref.invalidate(markerEntitiesProvider(widget.tripId));
-          widget.onMarkerSaved?.call();
-          await showGeneralDialog<void>(
-            context: context,
-            barrierDismissible: true,
-            barrierLabel: '닫기',
-            barrierColor: Colors.black26,
-            pageBuilder: (ctx, _, __) => const Align(
-              alignment: Alignment.center,
-              child: BookmarkSavedDialog(),
-            ),
-          );
-        }
-      } catch (_) {
-        if (mounted) showUpdateErrorDialog(context, '저장에 실패했습니다.');
-      } finally {
-        if (mounted) setState(() => _bookmarkLoading = false);
-      }
-      return;
-    }
+  // 저장 완료 안내 모달 (1.5초 후 자동 닫힘)
+  Future<void> _showSavedDialog() {
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: Colors.black26,
+      pageBuilder: (ctx, _, __) => const Align(
+        alignment: Alignment.center,
+        child: BookmarkSavedDialog(),
+      ),
+    );
+  }
+
+  // 미저장 마커: 북마크 탭만으로 바로 저장 (임시 마커의 유일한 저장 경로)
+  Future<void> _saveViaBookmark() async {
+    final bool ok = await _createMarker();
+    if (ok && mounted) await _showSavedDialog();
+  }
+
+  // 쓰레기통 탭 → 삭제 확인 모달 → 확인 시 삭제 후 시트 닫기
+  Future<void> _confirmDelete() async {
     final bool? ok = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -150,18 +137,32 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     }
   }
 
+  // 스위치 아이콘 탭 → 네이버지도 앱에서 이 장소를 검색
+  Future<void> _openNaverSearch() async {
+    // 검색·심볼 마커 → 장소명(역 이름 등)으로 검색해야 장소 상세가 뜸
+    // 롱프레스 마커 → 이름이 '새 장소'일 수 있어 주소로 검색
+    final String query = resolveNaverSearchQuery(
+      preferAddress: _marker.source == MarkerSource.longpress,
+      name: _marker.name,
+      address: _detail('naver_address') ?? _marker.address,
+    );
+    if (query.isEmpty) return; // 검색어 없으면 딥링크 무의미
+    await launchPlaceSearch(context: context, query: query);
+  }
+
   String? _detail(String key) {
     final v = _marker.detail[key];
     if (v == null || v.toString().isEmpty) return null;
     return v.toString();
   }
 
-  void _showEditSheet(
+  Future<void> _showEditSheet(
     BuildContext context,
     List<Category> categories,
     int dayCount,
-  ) {
-    showModalBottomSheet<void>(
+  ) async {
+    // true = 저장 탭으로 닫힘, null = 그냥 내려서 닫힘
+    final bool? savedTap = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -177,6 +178,15 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         },
       ),
     );
+    if (savedTap != true || !mounted) return;
+    if (!_saved) {
+      // 미저장 마커 → 카테고리·날짜 저장이 곧 장소 저장(북마크와 동일)
+      final bool ok = await _createMarker();
+      if (ok && mounted) await _showSavedDialog();
+    } else {
+      // 저장된 마커 → 칩 시트가 이미 서버 반영, 완료 모달만 표시
+      await _showSavedDialog();
+    }
   }
 
   // 이동수단 탭 인덱스 → TransportMode. 0=차량,1=대중교통,2=자전거,3=도보.
@@ -306,65 +316,61 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
             ),
             const SizedBox(height: 8),
 
-            // 장소명 + 북마크/좋아요
+            // 장소명 + 삭제(쓰레기통)/네이버지도 전환(스위치)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 장소명은 편집 불가 — 원본 장소명이 네이버지도 검색 키가 되므로 고정
                   Expanded(
-                    child: _editingName
-                        ? TextField(
-                            controller: _nameCtrl,
-                            autofocus: true,
-                            cursorColor: appCursorColor(),
-                            onSubmitted: (_) {
-                              setState(() => _editingName = false);
-                              _saveName();
-                            },
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF070707),
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          )
-                        : GestureDetector(
-                            onTap: () => setState(() => _editingName = true),
-                            child: Text(
-                              _nameCtrl.text,
-                              style: const TextStyle(
-                                fontFamily: 'Pretendard',
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF070707),
-                              ),
-                            ),
-                          ),
+                    child: Text(
+                      _marker.name,
+                      style: const TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF070707),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _bookmarkLoading ? null : _toggleBookmark,
-                    child: _bookmarkLoading
-                        ? const SizedBox.square(
-                            dimension: 25,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFFFE8505),
+                  // 미저장 → 북마크(저장) / 저장됨 → 쓰레기통(삭제 모달)
+                  if (!_saved)
+                    GestureDetector(
+                      onTap: _bookmarkLoading ? null : _saveViaBookmark,
+                      child: _bookmarkLoading
+                          ? const SizedBox.square(
+                              dimension: 25,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFFE8505),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.bookmark_border,
+                              size: 25,
+                              color: Color(0xFFD5D5D5),
                             ),
-                          )
-                        : Icon(
-                            _saved ? Icons.bookmark : Icons.bookmark_border,
-                            size: 25,
-                            color: _saved
-                                ? const Color(0xFFFE8505)
-                                : const Color(0xFFD5D5D5),
-                          ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: _confirmDelete,
+                      child: const Icon(
+                        Icons.delete_outline,
+                        size: 25,
+                        color: Color(0xFFB2B2B2),
+                      ),
+                    ),
+                  const SizedBox(width: 10),
+                  // 네이버지도로 전환 — 이 장소 주소로 검색 딥링크
+                  GestureDetector(
+                    onTap: _openNaverSearch,
+                    child: const Icon(
+                      Icons.swap_horiz,
+                      size: 25,
+                      color: Color(0xFFFE8505),
+                    ),
                   ),
                   // v0 제외: 마커 좋아요(찜) 버튼 — 하트 토글. 추후 복구
                   // const SizedBox(width: 10),
