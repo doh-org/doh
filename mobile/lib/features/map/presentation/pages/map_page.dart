@@ -3,6 +3,7 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
@@ -337,14 +338,17 @@ class _MapPageState extends ConsumerState<MapPage> {
       ),
     );
     if (ok == true) {
-      await ref.read(markerRepositoryProvider).deleteMarker(m.tripId, m.id);
-      ref.invalidate(markerEntitiesProvider(_tripId));
+      try {
+        await ref.read(markerRepositoryProvider).deleteMarker(m.tripId, m.id);
+        ref.invalidate(markerEntitiesProvider(_tripId));
+      } catch (_) {
+        if (mounted) showUpdateErrorDialog(context, '삭제에 실패했습니다.');
+      }
     }
   }
 
   // "현위치에서 검색": 지도 중심 좌표 기준으로 검색어 재검색 → 오버레이 표시
   Future<void> _searchHere() async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() => _searchingOverlay = true);
     try {
       final List<NaverPlace> results =
@@ -355,9 +359,7 @@ class _MapPageState extends ConsumerState<MapPage> {
               );
       if (mounted) setState(() => _searchOverlays = results);
     } catch (_) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('검색에 실패했습니다.')),
-      );
+      if (mounted) showUpdateErrorDialog(context, '검색에 실패했습니다.');
     } finally {
       if (mounted) setState(() => _searchingOverlay = false);
     }

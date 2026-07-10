@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
+import '../../../../shared/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/folder_more_menu.dart';
@@ -148,7 +149,10 @@ class _TripListPageState extends ConsumerState<TripListPage> {
             Expanded(
               child: tripsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('$e')),
+                error: (e, _) => ErrorView(
+                  message: '여행 목록을 불러오지 못했어요.',
+                  onRetry: () => ref.invalidate(tripsProvider),
+                ),
                 data: (trips) {
                   final filtered = _query.isEmpty
                       ? trips

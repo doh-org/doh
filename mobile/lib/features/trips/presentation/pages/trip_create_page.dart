@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
+import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../map/presentation/widgets/marker_delete_dialog.dart';
 import '../../data/repositories/trip_repository_impl.dart';
 import '../../domain/entities/trip.dart';
@@ -96,6 +97,12 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
         // 생성 → 새 여행의 지도로 바로 진입 (지도 뒤로가기가 /trips로 복귀)
         if (mounted) context.go('/trips/${trip.id}/map');
       }
+    } catch (_) {
+      // 저장 실패 → 통일 모달 (스피너는 finally에서 즉시 해제, 모달은 그 위에 표시)
+      if (mounted) {
+        showUpdateErrorDialog(
+          context, _isEdit ? '여행을 수정하지 못했어요.' : '여행을 생성하지 못했어요.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -119,6 +126,8 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
       await ref.read(tripRepositoryProvider).deleteTrip(widget.tripId!);
       ref.invalidate(tripsProvider);
       if (mounted) context.go('/trips');
+    } catch (_) {
+      if (mounted) showUpdateErrorDialog(context, '여행을 삭제하지 못했어요.');
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
