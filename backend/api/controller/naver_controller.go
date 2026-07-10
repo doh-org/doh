@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -66,6 +68,48 @@ func (nc *NaverController) ReverseGeocode(c *gin.Context) {
 		return
 	}
 	c.Data(http.StatusOK, "application/json", body)
+}
+
+// ResolvePlace는 네이버 공유 링크를 장소 검색 결과로 변환한다.
+// GET /places/resolve?url= — 링크 → og:title 장소명 → 지역 검색 순서.
+func (nc *NaverController) ResolvePlace(c *gin.Context) {
+	rawURL := strings.TrimSpace(c.Query("url"))
+	if rawURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "링크를 입력해주세요."})
+		return
+	}
+
+	title, err := nc.client.ResolveShareTitle(c.Request.Context(), rawURL)
+	if err != nil {
+		// allowlist 밖 호스트 → 사용자 입력 문제(400), 나머지는 업스트림 문제(502)
+		if errors.Is(err, naver.ErrShareHostNotAllowed) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "지원하지 않는 링크입니다."})
+			return
+		}
+		slog.Error("naver share resolve failed", "err", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "링크 해석에 실패했습니다."})
+		return
+	}
+
+	body, err := nc.client.SearchLocal(c.Request.Context(), title, "")
+	if err != nil {
+		slog.Error("naver search after resolve failed", "err", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "장소 검색에 실패했습니다."})
+		return
+	}
+
+	// 검색 결과에 장소명(query)을 얹어 반환 — 클라이언트가 첫 항목을 사용
+	var parsed map[string]any
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		slog.Error("naver search response parse failed", "err", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "장소 검색에 실패했습니다."})
+		return
+	}
+	items, _ := parsed["items"].([]any) // 형식이 다르면 nil → 빈 배열로
+	if items == nil {
+		items = []any{}
+	}
+	c.JSON(http.StatusOK, gin.H{"query": title, "items": items})
 }
 
 // isValidOrders는 NCP orders 파라미터를 허용 목록으로 검증한다(임의 값 전달 차단).

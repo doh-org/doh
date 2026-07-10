@@ -138,6 +138,7 @@ func NewTestNaverRouter(
 	g.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
 	g.Use(middleware.RateLimit())
 	g.GET("/places/search", nc.SearchPlaces)
+	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소
 	g.GET("/geocode/reverse", nc.ReverseGeocode)
 
 	return r

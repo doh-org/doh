@@ -6,11 +6,12 @@ import (
 	"testing"
 )
 
-// FakeNaver는 검색·역지오코딩 업스트림을 재현한다.
+// FakeNaver는 검색·역지오코딩·공유 페이지 업스트림을 재현한다.
 type FakeNaver struct {
 	Server      *httptest.Server
 	SearchError int // 0이면 성공, 그 외 HTTP status
 	GeoError    int
+	ShareError  int
 	LastQuery   string // 전달된 검색어 기록 (프록시 파라미터 검증용)
 }
 
@@ -46,6 +47,23 @@ func NewFakeNaver(t *testing.T) *FakeNaver {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"results":[{"name":"roadaddr","region":{"area1":{"name":"서울특별시"}}}]}`))
+	})
+
+	// 공유 단축링크 재현: /share/redirect → 302 → /share/place (og:title 페이지)
+	mux.HandleFunc("/share/redirect", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/share/place", http.StatusFound)
+	})
+	mux.HandleFunc("/share/place", func(w http.ResponseWriter, r *http.Request) {
+		if fn.ShareError != 0 {
+			w.WriteHeader(fn.ShareError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`<html><head><meta property="og:title" content="카페테스트 : 네이버"/></head><body></body></html>`))
+	})
+	// allowlist 밖 호스트로 리다이렉트하는 악성 링크 재현
+	mux.HandleFunc("/share/evil", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://169.254.169.254/latest/meta-data", http.StatusFound)
 	})
 
 	fn.Server = httptest.NewServer(mux)

@@ -24,5 +24,6 @@ func NewNaverRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, v1 *gi
 	g.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
 	g.Use(middleware.RateLimit())
 	g.GET("/places/search", nc.SearchPlaces)
+	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소
 	g.GET("/geocode/reverse", nc.ReverseGeocode)
 }

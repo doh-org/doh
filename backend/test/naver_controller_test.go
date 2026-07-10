@@ -3,6 +3,7 @@ package test
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"doh/backend/internal/naver"
@@ -19,9 +20,13 @@ func setupNaver(t *testing.T) (http.Handler, *testutil.FakeNaver, *testutil.Fake
 	oldSearch, oldGeo := naver.SearchBaseURL, naver.GeocodeBaseURL
 	naver.SearchBaseURL = fn.Server.URL
 	naver.GeocodeBaseURL = fn.Server.URL
+	// 공유 링크 리졸버가 fake 서버(127.0.0.1)로 요청할 수 있게 allowlist에 추가
+	fakeHost := mustHostname(t, fn.Server.URL)
+	naver.ShareHosts[fakeHost] = true
 	t.Cleanup(func() {
 		naver.SearchBaseURL = oldSearch
 		naver.GeocodeBaseURL = oldGeo
+		delete(naver.ShareHosts, fakeHost)
 	})
 
 	keys := testutil.NewTestKeys(t)
@@ -78,6 +83,98 @@ func TestSearchPlaces_UpstreamError(t *testing.T) {
 	w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?q=x", tok, nil)
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("status=%d want 502, body=%s", w.Code, w.Body)
+	}
+}
+
+// ── GET /api/v1/places/resolve ────────────────────────────────────────────
+
+// mustHostname은 URL에서 호스트명(포트 제외)을 꺼낸다.
+func mustHostname(t *testing.T, rawURL string) string {
+	t.Helper()
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatalf("parse url %q: %v", rawURL, err)
+	}
+	return u.Hostname()
+}
+
+// 성공 경로: 단축링크 리다이렉트 → og:title 추출 → 그 이름으로 검색
+func TestResolvePlace_Success(t *testing.T) {
+	router, fn, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	shareURL := url.QueryEscape(fn.Server.URL + "/share/redirect")
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url="+shareURL, tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	// og:title의 " : 네이버" 꼬리가 제거된 장소명인지
+	if resp["query"] != "카페테스트" {
+		t.Errorf("query=%q want 카페테스트", resp["query"])
+	}
+	if resp["items"] == nil {
+		t.Error("expected items in response")
+	}
+	// 추출한 장소명이 검색 쿼리로 쓰였는지
+	if fn.LastQuery != "카페테스트" {
+		t.Errorf("search query=%q want 카페테스트", fn.LastQuery)
+	}
+}
+
+func TestResolvePlace_MissingURL(t *testing.T) {
+	router, _, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve", tok, nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400", w.Code)
+	}
+}
+
+// allowlist 밖 호스트 → 400 (SSRF 차단)
+func TestResolvePlace_DisallowedHost(t *testing.T) {
+	router, _, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	shareURL := url.QueryEscape("https://evil.example.com/place")
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url="+shareURL, tok, nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 리다이렉트가 allowlist 밖으로 향하면 차단 → 502가 아닌 400
+func TestResolvePlace_DisallowedRedirect(t *testing.T) {
+	router, fn, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	shareURL := url.QueryEscape(fn.Server.URL + "/share/evil")
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url="+shareURL, tok, nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+func TestResolvePlace_UpstreamError(t *testing.T) {
+	router, fn, fs, keys := setupNaver(t)
+	fn.ShareError = http.StatusInternalServerError
+	tok := accountToken(t, keys, fs)
+
+	shareURL := url.QueryEscape(fn.Server.URL + "/share/place")
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url="+shareURL, tok, nil)
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d want 502, body=%s", w.Code, w.Body)
+	}
+}
+
+func TestResolvePlace_Unauthorized(t *testing.T) {
+	router, _, _, _ := setupNaver(t)
+
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url=https://naver.me/x", "", nil)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want 401", w.Code)
 	}
 }
 
