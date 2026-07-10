@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cursor.dart';
+import '../../../../shared/widgets/error_view.dart';
+import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../data/repositories/member_repository_impl.dart';
 import '../providers/member_provider.dart';
 import '../widgets/member_tile.dart';
@@ -26,7 +28,10 @@ class MemberListPage extends ConsumerWidget {
       ),
       body: membersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => ErrorView(
+          message: '멤버 목록을 불러오지 못했어요.',
+          onRetry: () => ref.invalidate(membersProvider(tripId)),
+        ),
         data: (members) => ListView.builder(
           itemCount: members.length,
           itemBuilder: (context, i) => MemberTile(member: members[i]),
@@ -55,10 +60,17 @@ class MemberListPage extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () async {
-              await ref
-                  .read(memberRepositoryProvider)
-                  .inviteMember(tripId, emailController.text.trim());
-              if (context.mounted) Navigator.pop(context);
+              // 초대 실패(중복·네트워크 등)도 통일 모달로 안내
+              try {
+                await ref
+                    .read(memberRepositoryProvider)
+                    .inviteMember(tripId, emailController.text.trim());
+                if (context.mounted) Navigator.pop(context);
+              } catch (_) {
+                if (context.mounted) {
+                  await showUpdateErrorDialog(context, '초대에 실패했습니다.');
+                }
+              }
             },
             child: const Text('초대'),
           ),
