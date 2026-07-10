@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/app_back_button.dart';
+import '../../../map/presentation/widgets/marker_delete_dialog.dart';
 import '../../data/repositories/trip_repository_impl.dart';
 import '../../domain/entities/trip.dart';
 import '../providers/trip_provider.dart';
@@ -24,6 +25,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   DateTime? _startDate;
   DateTime? _endDate;
   bool _loading = false;
+  bool _deleting = false; // 삭제 진행 중 (수정 버튼과 별도 스피너 표시용)
 
   bool get _isEdit => widget.tripId != null;
 
@@ -96,6 +98,29 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // 폴더 삭제: 마커와 같은 확인 모달 → 확인 시 삭제 후 목록으로 복귀
+  Future<void> _confirmDelete() async {
+    final bool? ok = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: Colors.black26,
+      pageBuilder: (ctx, _, __) => Align(
+        alignment: const Alignment(0, 0.5),
+        child: MarkerDeleteDialog(name: _titleCtrl.text),
+      ),
+    );
+    if (ok != true || !mounted) return; // 취소·바깥 탭 → 아무것도 안 함
+    setState(() => _deleting = true);
+    try {
+      await ref.read(tripRepositoryProvider).deleteTrip(widget.tripId!);
+      ref.invalidate(tripsProvider);
+      if (mounted) context.go('/trips');
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
@@ -463,7 +488,8 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
+                // 삭제 진행 중엔 수정도 막는다 (동시 요청 방지)
+                onPressed: (_loading || _deleting) ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xCC2A6FDB),
                   elevation: 0,
@@ -490,6 +516,51 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                       ),
               ),
             ),
+            // 수정 모드에서만: 폴더 삭제 버튼 (삭제 모달 확인 버튼과 같은 빨강)
+            if (_isEdit) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(17),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4D000000),
+                      offset: Offset(1, 1),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: (_loading || _deleting) ? null : _confirmDelete,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xCCEC2113),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                  ),
+                  child: _deleting
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          '폴더 삭제',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFFDFDFD),
+                          ),
+                        ),
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
           ],
         ),
