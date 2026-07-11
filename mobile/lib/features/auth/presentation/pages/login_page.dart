@@ -19,6 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   String? _errorMessage;
+  bool _pwVisible = false; // 비밀번호 보기 토글 (기본은 가림)
 
   @override
   void dispose() {
@@ -97,10 +98,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               AuthTextField(
                 controller: _pwCtrl,
                 hintText: '비밀번호',
-                obscureText: true,
+                obscureText: !_pwVisible, // 토글이 켜지면 평문 표시
                 fillColor: AppColors.background,
                 focusFillColor: _focusFill,
                 borderRadius: 17,
+                suffixIcon: IconButton(
+                  // 눈 아이콘: 현재 상태의 반대 동작을 안내
+                  icon: Icon(
+                    _pwVisible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: AppColors.gray,
+                    size: 22,
+                  ),
+                  onPressed: () => setState(() => _pwVisible = !_pwVisible),
+                ),
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 8),
