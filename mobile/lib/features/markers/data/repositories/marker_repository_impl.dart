@@ -1,18 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/auth/guest_mode_provider.dart';
+import '../../../../core/storage/guest_store.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/marker.dart';
 import '../../domain/repositories/marker_repository.dart';
 import '../datasources/marker_remote_datasource.dart';
 import '../models/category_model.dart';
 import '../models/marker_model.dart';
+import 'marker_local_repository.dart';
 
 part 'marker_repository_impl.g.dart';
 
+// 게스트면 로컬 저장소, 아니면 기존 원격 구현.
 @riverpod
-MarkerRepository markerRepository(Ref ref) =>
-    MarkerRepositoryImpl(ref.watch(markerRemoteDatasourceProvider));
+MarkerRepository markerRepository(Ref ref) => ref.watch(guestModeProvider)
+    ? MarkerLocalRepository(ref.watch(guestStoreProvider))
+    : MarkerRepositoryImpl(ref.watch(markerRemoteDatasourceProvider));
 
 class MarkerRepositoryImpl implements MarkerRepository {
   const MarkerRepositoryImpl(this._datasource);

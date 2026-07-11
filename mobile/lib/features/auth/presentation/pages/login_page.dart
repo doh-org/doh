@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../../core/auth/guest_mode_provider.dart';
 import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../domain/entities/user.dart';
@@ -54,6 +55,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.read(authNotifierProvider.notifier).loginWithEmail(email, pw);
   }
 
+  // "로그인 없이" — 게스트 모드로 진입(로컬 저장). 라우터가 canEnter로 통과시킴.
+  Future<void> _onGuest() async {
+    await ref.read(guestModeProvider.notifier).enter();
+    if (mounted) context.go('/trips');
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<User?>>(authNotifierProvider, (_, next) {
@@ -72,16 +79,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 상단 중앙: 앱 로고 (기존 200px 빈 공간 그대로 사용)
-              const SizedBox(
-                height: 200,
-                child: Center(
-                  child: Image(
-                    image: AssetImage('assets/memotrip_logo.png'),
-                    width: 220,  // 가로형 로고라 폭 기준으로 크기 지정
-                  ),
+              const SizedBox(height: 80),
+              // 회원가입 화면과 동일한 서식의 페이지 제목
+              const Text(
+                '로그인',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 30,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.folderOrange,
                 ),
               ),
+              const SizedBox(height: 28),
               _fieldLabel('이메일'),
               const SizedBox(height: 4),
               AuthTextField(
@@ -180,7 +189,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               _PrimaryButton(
                 label: '로그인 없이',
                 color: AppColors.blue.withValues(alpha: 0.8),
-                onPressed: null,
+                onPressed: isLoading ? null : _onGuest,
               ),
               const SizedBox(height: 32),
             ],

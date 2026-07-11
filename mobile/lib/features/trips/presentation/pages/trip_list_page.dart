@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/guest_mode_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
 import '../../../../shared/widgets/error_view.dart';
@@ -43,7 +44,11 @@ class _TripListPageState extends ConsumerState<TripListPage> {
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripsProvider);
-    final nickname = ref.watch(authNotifierProvider).valueOrNull?.nickname ?? '';
+    // 게스트는 서버 유저가 없으니 로컬 닉네임을 인사말에 사용
+    final bool isGuest = ref.watch(guestModeProvider);
+    final String nickname = isGuest
+        ? ref.watch(guestNicknameProvider).valueOrNull ?? '나'
+        : ref.watch(authNotifierProvider).valueOrNull?.nickname ?? '';
 
     return Scaffold(
       backgroundColor: Colors.white,

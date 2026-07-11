@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/guest_mode_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -56,8 +58,16 @@ class _MoreMenu extends ConsumerWidget {
     await ref.read(authNotifierProvider.notifier).logout();
   }
 
+  // 게스트 플래그는 그대로 두고 로그인 화면으로만 이동
+  void _goLogin(BuildContext context) {
+    Navigator.of(context).pop();
+    context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bool isGuest = ref.watch(guestModeProvider);
+
     return Stack(
       children: [
         Positioned(
@@ -85,10 +95,17 @@ class _MoreMenu extends ConsumerWidget {
                   _MenuItem(
                       label: '약관 정보', onTap: () => Navigator.pop(context)),
                   const _MenuDivider(),
-                  _MenuItem(
-                    label: '로그아웃',
-                    onTap: () => _logout(context, ref),
-                  ),
+                  // 게스트: 로그아웃할 세션이 없음 → 로그인 진입으로 대체
+                  if (isGuest)
+                    _MenuItem(
+                      label: '로그인',
+                      onTap: () => _goLogin(context),
+                    )
+                  else
+                    _MenuItem(
+                      label: '로그아웃',
+                      onTap: () => _logout(context, ref),
+                    ),
                 ],
               ),
             ),
