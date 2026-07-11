@@ -49,6 +49,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // authNotifier.build의 "스플래시 최소 1초" 타이머를 소진시킨다
+    // (안 하면 테스트 종료 시 pending timer로 실패)
+    await tester.pump(const Duration(seconds: 1));
 
     _expectNoRawException(tester);
   });
