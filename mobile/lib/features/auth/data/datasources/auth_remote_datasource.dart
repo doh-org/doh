@@ -30,20 +30,49 @@ class AuthRemoteDatasource {
     return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<AuthResponseModel> signUp(
-    String email,
+  // 1단계: 이메일로 확인 코드 발송 요청. 세션은 아직 없다.
+  Future<void> requestSignupCode(String email) async {
+    await _dio.post(
+      '/api/v1/auth/signup',
+      data: {'email': email},
+    );
+  }
+
+  // 2단계: 확인 코드 검증. 성공 시 가입 세션 토큰(access_token)을 받는다.
+  Future<String> verifySignup(String email, String code) async {
+    final Response<dynamic> response = await _dio.post(
+      '/api/v1/auth/verify-signup',
+      data: {
+        'email': email,
+        'code': code,
+      },
+    );
+    return (response.data as Map<String, dynamic>)['access_token'] as String;
+  }
+
+  // 3단계: 가입 세션 토큰으로 비번·닉네임 설정. 성공 시 정식 세션이 발급된다(자동 로그인).
+  Future<AuthResponseModel> completeSignup(
+    String accessToken,
     String password,
     String nickname,
   ) async {
-    final response = await _dio.post(
-      '/api/v1/auth/signup',
+    final Response<dynamic> response = await _dio.post(
+      '/api/v1/auth/complete-signup',
       data: {
-        'email': email,
+        'access_token': accessToken,
         'password': password,
         'nickname': nickname,
       },
     );
     return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  // 확인 코드 재발송. 성공/실패 무관 서버가 200을 준다.
+  Future<void> resendSignup(String email) async {
+    await _dio.post(
+      '/api/v1/auth/resend-signup',
+      data: {'email': email},
+    );
   }
 
   Future<void> logout() async {

@@ -43,13 +43,52 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  // 1단계: 확인 코드 발송 요청. 로그인 전 플로우라 토큰 저장소는 건드리지 않는다.
   @override
-  Future<User> signUp(String email, String password, String nickname) async {
+  Future<void> requestSignupCode(String email) async {
     try {
-      final response = await _datasource.signUp(email, password, nickname);
+      await _datasource.requestSignupCode(email);
+    } on DioException catch (e) {
+      final error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
+  // 2단계: 코드 검증 → 가입 세션 토큰 반환(메모리 보관, 저장 안 함).
+  @override
+  Future<String> verifySignup(String email, String code) async {
+    try {
+      return await _datasource.verifySignup(email, code);
+    } on DioException catch (e) {
+      final error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
+  // 3단계: 비번·닉네임 설정 → 세션 저장 후 로그인된 User 반환(로그인과 동일 처리).
+  @override
+  Future<User> completeSignup(
+      String accessToken, String password, String nickname) async {
+    try {
+      final response =
+          await _datasource.completeSignup(accessToken, password, nickname);
       final user = response.user.toEntity();
       await _tokenStorage.save(response.accessToken, response.refreshToken, user);
       return user;
+    } on DioException catch (e) {
+      final error = e.error;
+      if (error is AppException) throw error;
+      throw const NetworkException();
+    }
+  }
+
+  // 확인 코드 재발송. 로그인 전 플로우.
+  @override
+  Future<void> resendSignup(String email) async {
+    try {
+      await _datasource.resendSignup(email);
     } on DioException catch (e) {
       final error = e.error;
       if (error is AppException) throw error;
