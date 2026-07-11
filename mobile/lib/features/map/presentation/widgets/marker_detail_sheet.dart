@@ -42,7 +42,7 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
 class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   int _transportIndex = 0;
   String? _departureId; // null = 현위치
-  String? _destinationId; // null = 현위치 (스왑으로만 도달)
+  String? _destinationId; // null = 현위치
   late TripMarker _marker;
   bool _saved = true;
   bool _bookmarkLoading = false;
@@ -426,10 +426,16 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 _departureId = id;
                 // 둘 다 현위치가 되면 안내가 무의미 → 목적지를 이 마커로 되돌림
                 if (id == null && _destinationId == null) {
-                  _destinationId = widget.marker.id;
+                  _destinationId = _marker.id;
                 }
               }),
-              onDestinationChanged: (id) => setState(() => _destinationId = id),
+              onDestinationChanged: (id) => setState(() {
+                _destinationId = id;
+                // 둘 다 현위치가 되면 안내가 무의미 → 출발지를 이 마커로 되돌림
+                if (id == null && _departureId == null) {
+                  _departureId = _marker.id;
+                }
+              }),
               onSwap: () => setState(() {
                 // 현위치(null)도 그대로 목적지로 넘어간다
                 final swapped = swapRoutePoints(

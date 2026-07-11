@@ -43,7 +43,7 @@ class RouteSection extends StatelessWidget {
   final TripMarker currentMarker; // 이 상세 시트가 열린 마커 (미저장일 수 있음)
   final List<TripMarker> allMarkers;
   final String? departureId; // null = 현위치
-  final String? destinationId; // null = 현위치 (스왑으로만 도달)
+  final String? destinationId; // null = 현위치
   final ValueChanged<String?> onDepartureChanged;
   final ValueChanged<String?> onDestinationChanged;
   final VoidCallback onSwap;
@@ -271,15 +271,35 @@ class _RoutePickerSheet extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isDeparture)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                        child: _PickerItem(
-                          name: '현위치',
-                          onTap: () {
-                            Navigator.pop(context);
+                    // 현위치는 출발지·목적지 양쪽에서 선택 가능
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                      child: _PickerItem(
+                        name: '현위치',
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (isDeparture) {
                             onDepartureChanged(null);
-                          },
+                          } else {
+                            onDestinationChanged(null);
+                          }
+                        },
+                      ),
+                    ),
+                    // 저장된 마커가 하나도 없으면 안내 문구 (비밀번호 제약 안내와 동일 서식)
+                    if (allMarkers.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(15, 15, 15, 5),
+                        child: Center(
+                          child: Text(
+                            '저장된 장소가 없습니다.',
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFFFE8505), // AppColors.folderOrange
+                            ),
+                          ),
                         ),
                       ),
                     for (final int day in days) ...[
