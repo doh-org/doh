@@ -9,6 +9,7 @@ import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../routes/domain/entities/route_stop.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
+import '../../../../core/storage/map_app_store.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../data/repositories/map_repository_impl.dart';
@@ -141,17 +142,19 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     }
   }
 
-  // 스위치 아이콘 탭 → 네이버지도 앱에서 이 장소를 검색
-  Future<void> _openNaverSearch() async {
+  // 스위치 아이콘 탭 → 고정된(또는 선택한) 지도 앱에서 이 장소를 검색
+  Future<void> _openMapSearch() async {
     // 검색·심볼 마커 → 장소명(역 이름 등)으로 검색해야 장소 상세가 뜸
     // 롱프레스 마커 → 이름이 '새 장소'일 수 있어 주소로 검색
-    final String query = resolveNaverSearchQuery(
+    final String query = resolveMapSearchQuery(
       preferAddress: _marker.source == MarkerSource.longpress,
       name: _marker.name,
       address: _detail('naver_address') ?? _marker.address,
     );
     if (query.isEmpty) return; // 검색어 없으면 딥링크 무의미
-    await launchPlaceSearch(context: context, query: query);
+    final MapApp? app = await ref.read(preferredMapAppProvider.future);
+    if (!mounted) return;
+    await launchPlaceSearch(context: context, query: query, preferredApp: app);
   }
 
   String? _detail(String key) {
@@ -227,11 +230,13 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     final TripMarker? dep =
         _departureId == null ? null : _findMarker(_departureId!);
 
-    if (!mounted) return; // 위치 조회 await 동안 시트가 닫혔을 수 있음
+    final MapApp? app = await ref.read(preferredMapAppProvider.future);
+    if (!mounted) return; // 위치·설정 조회 await 동안 시트가 닫혔을 수 있음
     await launchNavigation(
       context: context,
       mode: _transportModes[_transportIndex],
       destination: destination,
+      preferredApp: app,
       departure: dep == null
           ? null
           : NavPoint(name: dep.name, lat: dep.latitude, lng: dep.longitude),
@@ -371,9 +376,9 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                       ),
                     ),
                   const SizedBox(width: 10),
-                  // 네이버지도로 전환 — 이 장소 주소로 검색 딥링크
+                  // 지도 앱으로 전환 — 이 장소 검색 딥링크
                   GestureDetector(
-                    onTap: _openNaverSearch,
+                    onTap: _openMapSearch,
                     child: const Icon(
                       Icons.swap_horiz,
                       size: 25,
