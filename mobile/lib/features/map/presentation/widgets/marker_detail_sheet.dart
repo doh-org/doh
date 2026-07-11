@@ -84,6 +84,10 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
           );
       if (!mounted) return false;
       setState(() {
+        // 임시 id로 잡혀 있던 출발지/목적지를 서버가 발급한 새 id로 갱신
+        final String oldId = _marker.id;
+        if (_departureId == oldId) _departureId = created.id;
+        if (_destinationId == oldId) _destinationId = created.id;
         _marker = created;
         _saved = true;
       });
@@ -197,6 +201,12 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     TransportMode.foot,
   ];
 
+  // id로 마커 찾기. 미저장 임시 마커는 allMarkers에 없어서 현재 마커를 먼저 확인
+  TripMarker? _findMarker(String id) {
+    if (id == _marker.id) return _marker;
+    return widget.allMarkers.where((m) => m.id == id).firstOrNull;
+  }
+
   Future<void> _openNavigation() async {
     final NavPoint destination;
     if (_destinationId == null) {
@@ -206,18 +216,16 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
       destination =
           NavPoint(name: '현위치', lat: pos.latitude, lng: pos.longitude);
     } else {
-      final TripMarker? dest = widget.allMarkers
-          .where((m) => m.id == _destinationId)
-          .firstOrNull;
+      final TripMarker? dest = _findMarker(_destinationId!);
       destination = NavPoint(
         name: dest?.name ?? _marker.name,
         lat: dest?.latitude ?? _marker.latitude,
         lng: dest?.longitude ?? _marker.longitude,
       );
     }
-    final TripMarker? dep = _departureId == null
-        ? null
-        : widget.allMarkers.where((m) => m.id == _departureId).firstOrNull;
+    // 스왑으로 출발지가 임시 마커일 수도 있어 같은 조회를 쓴다
+    final TripMarker? dep =
+        _departureId == null ? null : _findMarker(_departureId!);
 
     if (!mounted) return; // 위치 조회 await 동안 시트가 닫혔을 수 있음
     await launchNavigation(
@@ -322,7 +330,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 장소명은 편집 불가 — 원본 장소명이 네이버지도 검색 키가 되므로 고정
+                  // 헤더의 장소명은 표시 전용 — 편집은 칩 시트(카테고리/날짜와 함께)에서
                   Expanded(
                     child: Text(
                       _marker.name,
@@ -410,6 +418,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
 
             // 출발지/목적지
             RouteSection(
+              currentMarker: _marker,
               allMarkers: widget.allMarkers,
               departureId: _departureId,
               destinationId: _destinationId,
