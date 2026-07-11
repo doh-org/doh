@@ -54,6 +54,12 @@ class _MapPageState extends ConsumerState<MapPage> {
   static const double _sheetMin = 0.13;
   static const double _sheetMax = 0.88;
 
+  // 현위치(네이티브) 버튼을 시트 상단에 붙이기 위한 하단 여백 비율(0~1).
+  // 시트가 내려가면 버튼도 같이 내려가고, 초깃값 위로 올릴 땐 여기서 멈춰
+  // 시트에 가려지게 둔다(요구사항). 전체 페이지 대신 지도만 리빌드하려고 Notifier 사용.
+  final ValueNotifier<double> _sheetPeek =
+      ValueNotifier<double>(_sheetInitial);
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +69,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   void dispose() {
     _sheetController.dispose();
+    _sheetPeek.dispose();
     super.dispose();
   }
 
@@ -400,36 +407,48 @@ class _MapPageState extends ConsumerState<MapPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
-      body: Stack(
+      // 시트 드래그(높이 변화) 알림을 받아 현위치 버튼 여백에 반영.
+      // 초깃값 위로는 올리지 않아(clamp) 시트에 가려지게 둔다.
+      body: NotificationListener<DraggableScrollableNotification>(
+        onNotification: (DraggableScrollableNotification n) {
+          _sheetPeek.value =
+              n.extent.clamp(_sheetMin, _sheetInitial).toDouble();
+          return false; // 알림을 소비하지 않고 그대로 흘려보냄
+        },
+        child: Stack(
         children: [
           // 지도
           Positioned.fill(
-            child: MapView(
-              initialLocation: const NLatLng(37.5665, 126.9780),
-              tripId: _tripId,
-              markers: filteredMarkers,
-              onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
-              onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
-              onSymbolTap: (name, coord) =>
-                  _showAddSheetFromSymbol(name, coord, trip, allMarkers),
-              onCameraIdle: (center) {
-                _cameraCenter = center;
-              },
-              onCameraGesture: _collapseSheetOnMapGesture,
-              bottomPeekFraction: _sheetInitial,
-              selectedMarkerId: _selectedMarkerId,
-              focusTarget: _focusTarget,
-              pendingLocation: _pendingLocation,
-              pendingPlace: _pendingPlace,
-              searchOverlays: _searchOverlays,
-              onSearchMarkerTap: (place) =>
-                  _showAddSheetFromSearch(place, trip, allMarkers),
-              onMapTap: () => setState(() {
-                _selectedMarkerId = null;
-                _pendingLocation = null;
-                _pendingPlace = null;
-                _searchOverlays = [];
-              }),
+            // 시트 높이(_sheetPeek)가 바뀔 때 지도만 다시 그려 버튼 여백 갱신
+            child: ValueListenableBuilder<double>(
+              valueListenable: _sheetPeek,
+              builder: (_, double peek, __) => MapView(
+                initialLocation: const NLatLng(37.5665, 126.9780),
+                tripId: _tripId,
+                markers: filteredMarkers,
+                onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+                onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
+                onSymbolTap: (name, coord) =>
+                    _showAddSheetFromSymbol(name, coord, trip, allMarkers),
+                onCameraIdle: (center) {
+                  _cameraCenter = center;
+                },
+                onCameraGesture: _collapseSheetOnMapGesture,
+                bottomPeekFraction: peek,
+                selectedMarkerId: _selectedMarkerId,
+                focusTarget: _focusTarget,
+                pendingLocation: _pendingLocation,
+                pendingPlace: _pendingPlace,
+                searchOverlays: _searchOverlays,
+                onSearchMarkerTap: (place) =>
+                    _showAddSheetFromSearch(place, trip, allMarkers),
+                onMapTap: () => setState(() {
+                  _selectedMarkerId = null;
+                  _pendingLocation = null;
+                  _pendingPlace = null;
+                  _searchOverlays = [];
+                }),
+              ),
             ),
           ),
 
@@ -505,6 +524,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                   ),
           ),
         ],
+        ),
       ),
     );
   }
