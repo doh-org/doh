@@ -36,8 +36,11 @@ func NewTestAuthRouter(
 	public := authGroup.Group("")
 	public.Use(middleware.RateLimit())
 	public.POST("/signup", ac.Signup)
+	public.POST("/verify-signup", ac.VerifySignup) // 코드 브루트포스 방지 rate limit 포함
+	public.POST("/complete-signup", ac.CompleteSignup)
+	public.POST("/resend-signup", middleware.SendCodeRateLimit(), ac.ResendSignup) // 발송 전용 rate limit
 	public.POST("/login", ac.Login)
-	public.POST("/recover", ac.Recover)
+	public.POST("/recover", middleware.SendCodeRateLimit(), ac.Recover) // 발송 전용 rate limit
 	public.POST("/verify-recovery-code", ac.VerifyRecoveryCode) // 코드 브루트포스 방지 rate limit 포함
 	public.POST("/recovery-password", ac.RecoveryPassword)
 	public.POST("/refresh", ac.Refresh)

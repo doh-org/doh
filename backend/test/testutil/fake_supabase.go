@@ -19,10 +19,15 @@ import (
 type FakeSupabase struct {
 	Server       *httptest.Server
 	SignupError  string // "user_already_exists" 등 error_code; 빈 문자열이면 성공
+	SignupCalls  int    // /auth/v1/signup 호출 횟수
 	LoginError   bool
 	RefreshError bool // refresh grant 실패 재현
 	SessionValid bool   // GET /auth/v1/user 응답 (true=200, false=401)
 	UserRow      string // PostgREST /rest/v1/users 응답 JSON
+
+	ProfileRowExists bool     // GET /rest/v1/users?select=id 응답에 행 포함 여부
+	UpsertedProfiles []string // POST /rest/v1/users 로 upsert된 nickname 기록
+	DeletedAuthIDs   []string // DELETE /auth/v1/admin/users/{id} 호출 기록
 
 	// Trips
 	Trips       []domain.Trip
@@ -33,6 +38,7 @@ type FakeSupabase struct {
 	// Account (탈퇴·비번)
 	DeleteAccountError int      // 탈퇴 RPC: 0이면 성공, 그 외 HTTP status
 	RecoverError       int      // 0이면 성공, 그 외 HTTP status
+	ResendError        int      // 확인메일 재발송: 0이면 성공, 그 외 HTTP status
 	ChangePwError      int      // 0이면 성공, 그 외 HTTP status
 	DeletedUserIDs     []string // 탈퇴 RPC 호출된 user_id 기록
 	VerifyError        int      // OTP 검증: 0이면 성공, 그 외 HTTP status
@@ -58,13 +64,15 @@ type FakeMarkerDay struct {
 func NewFakeSupabase(t *testing.T) *FakeSupabase {
 	t.Helper()
 	fs := &FakeSupabase{
-		SessionValid: true,
-		UserRow:      `{"nickname":"테스터","created_at":"2024-01-01T00:00:00Z"}`,
+		SessionValid:     true,
+		UserRow:          `{"nickname":"테스터","created_at":"2024-01-01T00:00:00Z"}`,
+		ProfileRowExists: true,
 	}
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/auth/v1/signup", func(w http.ResponseWriter, r *http.Request) {
+		fs.SignupCalls++
 		w.Header().Set("Content-Type", "application/json")
 		if fs.SignupError != "" {
 			w.WriteHeader(http.StatusUnprocessableEntity)
@@ -123,7 +131,11 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 				w.WriteHeader(fs.ChangePwError)
 				return
 			}
-			json.NewEncoder(w).Encode(map[string]string{"id": "fake-user-id"})
+			// PUT 응답은 유저 객체(세션 아님). CompleteSignup이 id·email을 파싱한다.
+			json.NewEncoder(w).Encode(map[string]string{
+				"id":    "fake-user-id",
+				"email": "test@example.com",
+			})
 			return
 		}
 		// GET = 세션 검증 (미들웨어)
@@ -159,6 +171,41 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// GET /auth/v1/admin/users?filter={email} — 중복 계정이 있는 상태면 그 계정을 돌려준다
+	mux.HandleFunc("/auth/v1/admin/users", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if fs.SignupError != "user_already_exists" {
+			json.NewEncoder(w).Encode(map[string]any{"users": []any{}})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]any{
+			"users": []map[string]string{
+				{"id": "existing-user-id", "email": r.URL.Query().Get("filter")},
+			},
+		})
+	})
+
+	// DELETE /auth/v1/admin/users/{id} — 삭제되면 이후 signup은 성공한다
+	mux.HandleFunc("/auth/v1/admin/users/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		id := strings.TrimPrefix(r.URL.Path, "/auth/v1/admin/users/")
+		fs.DeletedAuthIDs = append(fs.DeletedAuthIDs, id)
+		fs.SignupError = ""
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// 회원가입 확인메일 재발송 (POST /auth/v1/resend)
+	mux.HandleFunc("/auth/v1/resend", func(w http.ResponseWriter, _ *http.Request) {
+		if fs.ResendError != 0 {
+			w.WriteHeader(fs.ResendError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// 탈퇴 RPC: DB 함수처럼 trip 삭제 + 계정 삭제를 한 번에(원자적으로) 처리
 	mux.HandleFunc("/rest/v1/rpc/delete_user_account", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -185,8 +232,27 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	mux.HandleFunc("/rest/v1/users", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/rest/v1/users", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		// POST = 프로필 upsert
+		if r.Method == http.MethodPost {
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			if nickname, ok := body["nickname"].(string); ok {
+				fs.UpsertedProfiles = append(fs.UpsertedProfiles, nickname)
+			}
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+		// GET select=id = 프로필 존재 확인
+		if r.URL.Query().Get("select") == "id" {
+			if fs.ProfileRowExists {
+				w.Write([]byte(`[{"id":"existing-user-id"}]`))
+			} else {
+				w.Write([]byte(`[]`))
+			}
+			return
+		}
 		w.Write([]byte(fs.UserRow))
 	})
 

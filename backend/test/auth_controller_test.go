@@ -25,70 +25,243 @@ func assertErrorMsg(t *testing.T, w *httptest.ResponseRecorder, want string) {
 
 // ── Signup ────────────────────────────────────────────────────────────────
 
-// 유효한 이메일·비밀번호·닉네임·캡차 → 201 + access_token
+// 유효한 이메일 → 200 (확인 코드 발송, 세션은 아직 없음)
 func TestSignup_Success(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터",
+		"email": "test@example.com",
 	})
-	if w.Code != http.StatusCreated {
-		t.Fatalf("status=%d want 201, body=%s", w.Code, w.Body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
+	// 코드 검증 전이라 세션(access_token)은 응답에 없다
 	var resp map[string]any
 	json.NewDecoder(w.Body).Decode(&resp)
-	if resp["access_token"] == nil {
-		t.Error("expected access_token in response")
+	if resp["access_token"] != nil {
+		t.Error("access_token should not be present before code verification")
 	}
 }
 
-// user_already_exists 주입 → 409 Conflict
+// user_already_exists + 프로필 있음(가입 완료된 계정) → 409 Conflict
 func TestSignup_DuplicateEmail(t *testing.T) {
 	router, fs, _ := setupAccount(t)
 	fs.SignupError = "user_already_exists"
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "test@example.com", "password": "Test1234!", "nickname": "테스터",
+		"email": "test@example.com",
 	})
 	if w.Code != http.StatusConflict {
 		t.Errorf("status=%d want 409", w.Code)
 	}
 	assertErrorMsg(t, w, "이미 존재하는 이메일입니다.")
+	if len(fs.DeletedAuthIDs) != 0 {
+		t.Errorf("DeletedAuthIDs=%v want empty", fs.DeletedAuthIDs)
+	}
 }
 
-// 대문자 없는 비밀번호 → 400
-func TestSignup_WeakPassword(t *testing.T) {
+// user_already_exists + 프로필 없음(미완료 가입) → 계정 삭제 후 재가입 성공(200)
+func TestSignup_IncompleteAccountRecreated(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.SignupError = "user_already_exists"
+	fs.ProfileRowExists = false
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	if len(fs.DeletedAuthIDs) != 1 || fs.DeletedAuthIDs[0] != "existing-user-id" {
+		t.Errorf("DeletedAuthIDs=%v want [existing-user-id]", fs.DeletedAuthIDs)
+	}
+	if fs.SignupCalls != 2 {
+		t.Errorf("SignupCalls=%d want 2", fs.SignupCalls)
+	}
+}
+
+// 이메일 형식 오류 → 400 (1단계는 이메일만 검증)
+func TestSignup_InvalidEmail(t *testing.T) {
 	router, _, _ := setupAccount(t)
 	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "test1234", "nickname": "테스터",
+		"email": "not-an-email",
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)
 	}
-	assertErrorMsg(t, w, "비밀번호에 대문자가 포함되어야 합니다.")
 }
 
-// 8자 미만 비밀번호 → 400
-func TestSignup_PasswordTooShort(t *testing.T) {
-	router, _, _ := setupAccount(t)
-	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "Ab1", "nickname": "테스터",
+// ── Verify Signup (확인 코드 검증 → 가입 세션 토큰) ────────────────────────────────
+
+// 유효한 코드 → 200 + access_token (계정 확정·세션 발급)
+func TestVerifySignup_Success(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-signup", "", map[string]string{
+		"email": "test@example.com", "code": "123456",
 	})
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status=%d want 400", w.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
 	}
-	assertErrorMsg(t, w, "비밀번호는 8자 이상이어야 합니다.")
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["access_token"] == nil {
+		t.Error("expected access_token after verification")
+	}
+	if fs.VerifyCalls != 1 {
+		t.Errorf("VerifyCalls=%d want 1", fs.VerifyCalls)
+	}
 }
 
-
-// 51자 닉네임 → 400
-func TestSignup_NicknameTooLong(t *testing.T) {
-	router, _, _ := setupAccount(t)
-	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
-		"email": "a@b.com", "password": "Test1234!", "nickname": strings.Repeat("가", 51),
+// 코드 불일치·만료(Supabase 4xx) → 400
+func TestVerifySignup_InvalidCode(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.VerifyError = http.StatusForbidden
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-signup", "", map[string]string{
+		"email": "test@example.com", "code": "000000",
 	})
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status=%d want 400", w.Code)
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
 	}
-	assertErrorMsg(t, w, "닉네임은 50자 이하여야 합니다.")
+}
+
+// 코드 형식 오류 → 400, Supabase 호출 없음(코드 소모 방지)
+func TestVerifySignup_BadCodeFormat(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	for _, code := range []string{"", "12345", "1234567", "12345a"} {
+		w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-signup", "", map[string]string{
+			"email": "test@example.com", "code": code,
+		})
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("code=%q: status=%d want 400, body=%s", code, w.Code, w.Body)
+		}
+	}
+	if fs.VerifyCalls != 0 {
+		t.Errorf("VerifyCalls=%d want 0", fs.VerifyCalls)
+	}
+}
+
+func TestVerifySignup_InvalidEmail(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/verify-signup", "", map[string]string{
+		"email": "not-an-email", "code": "123456",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// ── Complete Signup (비번·닉네임 설정 → 자동 로그인) ───────────────────────────────
+
+// 가입 세션 + 유효한 비번·닉네임 → 200 + access_token (설정 후 재로그인)
+func TestCompleteSignup_Success(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/complete-signup", "", map[string]string{
+		"access_token": "fake-signup-token", "password": "Test1234", "nickname": "테스터",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["access_token"] == nil {
+		t.Error("expected access_token after completion")
+	}
+	// 프로필은 완료 시점에 upsert된다
+	if len(fs.UpsertedProfiles) != 1 || fs.UpsertedProfiles[0] != "테스터" {
+		t.Errorf("UpsertedProfiles=%v want [테스터]", fs.UpsertedProfiles)
+	}
+}
+
+// 토큰 누락(코드 확인 안 함) → 400
+func TestCompleteSignup_MissingToken(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/complete-signup", "", map[string]string{
+		"password": "Test1234", "nickname": "테스터",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 약한 비밀번호 → 400 (Supabase 호출 전 로컬 검증)
+func TestCompleteSignup_WeakPassword(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/complete-signup", "", map[string]string{
+		"access_token": "fake-signup-token", "password": "weak", "nickname": "테스터",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 닉네임 누락 → 400
+func TestCompleteSignup_MissingNickname(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/complete-signup", "", map[string]string{
+		"access_token": "fake-signup-token", "password": "Test1234", "nickname": "  ",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// 가입 세션 만료·무효(Supabase 401) → 401이 아닌 400으로 재안내
+func TestCompleteSignup_SessionExpired(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.SessionValid = false // PUT /auth/v1/user 가 401을 주도록
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/complete-signup", "", map[string]string{
+		"access_token": "expired-token", "password": "Test1234", "nickname": "테스터",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
+}
+
+// ── Resend Signup (확인 코드 재발송) ─────────────────────────────────────────────
+
+func TestResendSignup_Success(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/resend-signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+}
+
+// Supabase 재발송 실패도 흡수해 200 (곧 재시도 가능)
+func TestResendSignup_AbsorbsBackendError(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.ResendError = http.StatusInternalServerError
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/resend-signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+}
+
+// 발송 전용 rate limit: 같은 IP 연속 3회 후 4번째는 429
+func TestResendSignup_RateLimited(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	body := map[string]string{"email": "test@example.com"}
+	for i := 1; i <= 3; i++ {
+		w := doAccount(t, router, http.MethodPost, "/api/v1/auth/resend-signup", "", body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %d: status=%d want 200, body=%s", i, w.Code, w.Body)
+		}
+	}
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/resend-signup", "", body)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("request 4: status=%d want 429, body=%s", w.Code, w.Body)
+	}
+}
+
+func TestResendSignup_InvalidEmail(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/resend-signup", "", map[string]string{
+		"email": "not-an-email",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400, body=%s", w.Code, w.Body)
+	}
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────

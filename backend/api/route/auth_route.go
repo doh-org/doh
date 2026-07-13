@@ -19,9 +19,13 @@ func NewAuthRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, group *
 
 	public := group.Group("")
 	public.Use(middleware.RateLimit())
-	public.POST("/signup", ac.Signup)
+	public.POST("/signup", ac.Signup)              // 1단계: 확인 코드 발송
+	public.POST("/verify-signup", ac.VerifySignup) // 2단계: 코드 검증(브루트포스 방지 rate limit 포함)
+	public.POST("/complete-signup", ac.CompleteSignup) // 3단계: 비번·닉네임 설정 + 자동 로그인
+	// 코드 (재)발송은 메일 발송 비용·스팸 방지로 더 엄격한 발송 전용 rate limit 추가
+	public.POST("/resend-signup", middleware.SendCodeRateLimit(), ac.ResendSignup) // 확인 코드 재발송
 	public.POST("/login", ac.Login)
-	public.POST("/recover", ac.Recover)
+	public.POST("/recover", middleware.SendCodeRateLimit(), ac.Recover) // 재설정 코드 발송·재발송
 	public.POST("/verify-recovery-code", ac.VerifyRecoveryCode) // 코드 브루트포스 방지 rate limit 포함
 	public.POST("/recovery-password", ac.RecoveryPassword)
 	public.POST("/refresh", ac.Refresh)

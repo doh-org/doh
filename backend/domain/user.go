@@ -16,10 +16,10 @@ type ValidationError struct{ Message string }
 
 func (e *ValidationError) Error() string { return e.Message }
 
+// SignupRequest는 회원가입 1단계 — 이메일로 인증 코드 발송만 요청한다.
+// 비밀번호·닉네임은 코드 검증 후 3단계(CompleteSignup)에서 받는다.
 type SignupRequest struct {
-	Email        string `json:"email"`
-	Password     string `json:"password"`
-	Nickname string `json:"nickname"`
+	Email string `json:"email"`
 }
 
 type LoginRequest struct {
@@ -44,6 +44,26 @@ type RecoverRequest struct {
 type VerifyRecoveryCodeRequest struct {
 	Email string `json:"email"`
 	Code  string `json:"code"`
+}
+
+// VerifySignupRequest는 회원가입 2단계 — 메일의 6자리 코드를 검증한다.
+// 성공하면 짧은 가입 세션 토큰이 발급되고, 3단계에서 이 토큰으로 비번·닉네임을 설정한다.
+type VerifySignupRequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// SignupSessionResponse는 코드 검증 성공 시 발급되는 가입 세션 토큰.
+// /auth/complete-signup 전용 — 앱은 메모리에만 보관한다.
+type SignupSessionResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+// CompleteSignupRequest는 회원가입 3단계 — 가입 세션으로 비번·닉네임을 설정한다.
+type CompleteSignupRequest struct {
+	AccessToken string `json:"access_token"`
+	Password    string `json:"password"`
+	Nickname    string `json:"nickname"`
 }
 
 // RecoverySessionResponse는 코드 검증 성공 시 발급되는 recovery 세션 토큰.
@@ -72,7 +92,24 @@ type AuthResponse struct {
 }
 
 type UserRepository interface {
-	SignupWithEmail(ctx context.Context, email, password, nickname string) (accessToken, refreshToken, userID string, err error)
+	// StartEmailSignup은 이메일로 확인 코드 발송을 트리거한다(1단계).
+	// 임시 비밀번호로 계정을 선생성하며, 실제 비번은 CompleteSignup에서 교체된다.
+	StartEmailSignup(ctx context.Context, email string) error
+	// VerifySignupCode는 확인 코드를 검증하고 계정을 확정한 뒤 가입 세션 토큰을 발급한다(2단계).
+	VerifySignupCode(ctx context.Context, email, code string) (accessToken string, err error)
+	// SetSignupCredentials는 가입 세션으로 비번·닉네임(메타데이터)을 설정한다(3단계).
+	// 확정된 계정의 userID·email을 돌려준다(후속 프로필 갱신·로그인용).
+	SetSignupCredentials(ctx context.Context, accessToken, password, nickname string) (userID, email string, err error)
+	// UpsertProfile은 public.users 프로필을 생성/갱신한다(service key).
+	UpsertProfile(ctx context.Context, userID, nickname string) error
+	// FindAuthUserIDByEmail은 admin API로 이메일의 auth 계정 ID를 찾는다. 없으면 "".
+	FindAuthUserIDByEmail(ctx context.Context, email string) (string, error)
+	// ProfileExists는 public.users에 프로필 행이 있는지 확인한다(service key).
+	ProfileExists(ctx context.Context, userID string) (bool, error)
+	// DeleteAuthUser는 admin API로 auth 계정을 삭제한다(service key).
+	DeleteAuthUser(ctx context.Context, userID string) error
+	// ResendSignup은 확인 코드를 재발송한다.
+	ResendSignup(ctx context.Context, email string) error
 	LoginWithEmail(ctx context.Context, email, password string) (accessToken, refreshToken, userID string, err error)
 	RefreshSession(ctx context.Context, refreshToken string) (accessToken, newRefreshToken, userID, email string, err error)
 	Logout(ctx context.Context, accessToken string) error
@@ -84,7 +121,14 @@ type UserRepository interface {
 }
 
 type AuthUsecase interface {
-	Signup(ctx context.Context, req SignupRequest) (*AuthResponse, error)
+	// Signup은 이메일로 확인 코드를 발송한다(1단계). 세션은 아직 없다.
+	Signup(ctx context.Context, req SignupRequest) error
+	// VerifySignup은 확인 코드를 검증하고 가입 세션 토큰을 발급한다(2단계).
+	VerifySignup(ctx context.Context, req VerifySignupRequest) (*SignupSessionResponse, error)
+	// CompleteSignup은 가입 세션으로 비번·닉네임을 설정하고 자동 로그인 세션을 발급한다(3단계).
+	CompleteSignup(ctx context.Context, req CompleteSignupRequest) (*AuthResponse, error)
+	// ResendSignup은 확인 코드를 재발송한다.
+	ResendSignup(ctx context.Context, email string) error
 	Login(ctx context.Context, req LoginRequest) (*AuthResponse, error)
 	Refresh(ctx context.Context, refreshToken string) (*AuthResponse, error)
 	Logout(ctx context.Context, accessToken string) error
