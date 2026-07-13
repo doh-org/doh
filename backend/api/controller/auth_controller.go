@@ -41,18 +41,63 @@ func bindJSON(c *gin.Context, req any) bool {
 	return true
 }
 
+// Signup은 이메일로 확인 코드를 발송한다(1단계). 세션은 아직 없다.
 func (ac *AuthController) Signup(c *gin.Context) {
 	var req domain.SignupRequest
 	if !bindJSON(c, &req) {
 		return
 	}
 
-	resp, err := ac.authUsecase.Signup(c.Request.Context(), req)
+	if err := ac.authUsecase.Signup(c.Request.Context(), req); err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "인증 코드를 보냈습니다."})
+}
+
+// VerifySignup은 확인 코드를 검증하고 가입 세션 토큰을 응답한다(2단계).
+// 토큰은 /auth/complete-signup 전용 — 코드는 검증 성공 시 소모된다(1회용).
+func (ac *AuthController) VerifySignup(c *gin.Context) {
+	var req domain.VerifySignupRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	resp, err := ac.authUsecase.VerifySignup(c.Request.Context(), req)
 	if err != nil {
 		ac.handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, resp)
+	c.JSON(http.StatusOK, resp)
+}
+
+// CompleteSignup은 가입 세션으로 비번·닉네임을 설정하고 세션을 응답한다(3단계, 자동 로그인).
+func (ac *AuthController) CompleteSignup(c *gin.Context) {
+	var req domain.CompleteSignupRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	resp, err := ac.authUsecase.CompleteSignup(c.Request.Context(), req)
+	if err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// ResendSignup은 확인메일(코드)을 재발송한다.
+func (ac *AuthController) ResendSignup(c *gin.Context) {
+	var req domain.RecoverRequest // {email}만 필요 — Recover 요청 형태 재사용
+	if !bindJSON(c, &req) {
+		return
+	}
+
+	if err := ac.authUsecase.ResendSignup(c.Request.Context(), req.Email); err != nil {
+		ac.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "인증 코드를 다시 보냈습니다."})
 }
 
 func (ac *AuthController) Login(c *gin.Context) {

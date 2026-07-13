@@ -218,6 +218,22 @@ func TestRecover_AbsorbsBackendError(t *testing.T) {
 	}
 }
 
+// 발송 전용 rate limit: 같은 IP 연속 3회 후 4번째는 429
+func TestRecover_RateLimited(t *testing.T) {
+	router, _, _ := setupAccount(t)
+	body := map[string]any{"email": "user@example.com"}
+	for i := 1; i <= 3; i++ {
+		w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", body)
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %d: status=%d want 200, body=%s", i, w.Code, w.Body)
+		}
+	}
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/recover", "", body)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("request 4: status=%d want 429, body=%s", w.Code, w.Body)
+	}
+}
+
 func TestRecover_InvalidEmail(t *testing.T) {
 	router, _, _ := setupAccount(t)
 

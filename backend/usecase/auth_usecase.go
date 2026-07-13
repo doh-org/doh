@@ -18,12 +18,78 @@ func NewAuthUsecase(userRepo domain.UserRepository) domain.AuthUsecase {
 	return &authUsecase{userRepo: userRepo}
 }
 
-func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) (*domain.AuthResponse, error) {
+// Signup은 이메일을 검증하고 확인 코드를 발송한다(1단계).
+// 비번·닉네임은 여기서 받지 않는다 — 코드 검증 후 CompleteSignup에서 설정한다.
+func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) error {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	req.Nickname = strings.TrimSpace(req.Nickname)
+
+	if err := validateEmail(req.Email); err != nil {
+		return err
+	}
+	err := u.userRepo.StartEmailSignup(ctx, req.Email)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, domain.ErrEmailExists) {
+		return domain.ErrAuthFailed
+	}
+	cleaned, cleanErr := u.cleanupIncompleteSignup(ctx, req.Email)
+	if cleanErr != nil || !cleaned {
+		return domain.ErrEmailExists
+	}
+	if err := u.userRepo.StartEmailSignup(ctx, req.Email); err != nil {
+		return domain.ErrAuthFailed
+	}
+	return nil
+}
+
+// cleanupIncompleteSignup은 프로필 없는 확정 계정(미완료 가입)을 삭제한다.
+// 삭제했으면 true — 호출자가 signup을 재시도한다.
+func (u *authUsecase) cleanupIncompleteSignup(ctx context.Context, email string) (bool, error) {
+	userID, err := u.userRepo.FindAuthUserIDByEmail(ctx, email)
+	if err != nil || userID == "" {
+		return false, err
+	}
+	exists, err := u.userRepo.ProfileExists(ctx, userID)
+	if err != nil || exists {
+		return false, err
+	}
+	if err := u.userRepo.DeleteAuthUser(ctx, userID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// VerifySignup은 확인 코드를 검증하고 가입 세션 토큰을 발급한다(2단계).
+// 코드는 검증 성공 시 소모된다(1회용). 이후 비번·닉네임 설정은 세션 토큰으로만 진행.
+func (u *authUsecase) VerifySignup(ctx context.Context, req domain.VerifySignupRequest) (*domain.SignupSessionResponse, error) {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Code = strings.TrimSpace(req.Code)
 
 	if err := validateEmail(req.Email); err != nil {
 		return nil, err
+	}
+	if err := validateRecoveryCode(req.Code); err != nil {
+		return nil, err
+	}
+
+	accessToken, err := u.userRepo.VerifySignupCode(ctx, req.Email, req.Code)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidCode) {
+			return nil, domain.ErrInvalidCode
+		}
+		return nil, err
+	}
+	return &domain.SignupSessionResponse{AccessToken: accessToken}, nil
+}
+
+// CompleteSignup은 가입 세션으로 비번·닉네임을 설정하고 자동 로그인 세션을 발급한다(3단계).
+// public.users 닉네임까지 갱신한 뒤, 설정된 비번으로 재로그인해 깨끗한 세션을 돌려준다.
+func (u *authUsecase) CompleteSignup(ctx context.Context, req domain.CompleteSignupRequest) (*domain.AuthResponse, error) {
+	req.Nickname = strings.TrimSpace(req.Nickname)
+
+	if strings.TrimSpace(req.AccessToken) == "" {
+		return nil, &domain.ValidationError{Message: "인증코드 확인을 먼저 진행해주세요."}
 	}
 	if err := validatePassword(req.Password); err != nil {
 		return nil, err
@@ -31,16 +97,26 @@ func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) (*do
 	if err := validateNickname(req.Nickname); err != nil {
 		return nil, err
 	}
-	// nickname을 raw_user_meta_data에 포함 → 트리거가 public.users에 자동 INSERT
-	accessToken, refreshToken, userID, err := u.userRepo.SignupWithEmail(ctx, req.Email, req.Password, sanitizeNickname(req.Nickname))
+
+	// 비번·닉네임(메타데이터) 설정. 세션 만료면 코드부터 다시 받게 안내(401→400).
+	userID, email, err := u.userRepo.SetSignupCredentials(ctx, req.AccessToken, req.Password, sanitizeNickname(req.Nickname))
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailExists) {
-			return nil, domain.ErrEmailExists
+		if errors.Is(err, domain.ErrAuthFailed) {
+			return nil, &domain.ValidationError{Message: "인증이 만료되었습니다. 코드를 다시 받아주세요."}
 		}
+		return nil, err
+	}
+
+	if err := u.userRepo.UpsertProfile(ctx, userID, sanitizeNickname(req.Nickname)); err != nil {
 		return nil, domain.ErrAuthFailed
 	}
 
-	user, err := u.userRepo.GetProfile(ctx, userID, req.Email, accessToken)
+	// 설정한 비번으로 재로그인 → 자동 로그인용 정식 세션 발급.
+	accessToken, refreshToken, uid, err := u.userRepo.LoginWithEmail(ctx, email, req.Password)
+	if err != nil {
+		return nil, domain.ErrAuthFailed
+	}
+	user, err := u.userRepo.GetProfile(ctx, uid, email, accessToken)
 	if err != nil {
 		return nil, domain.ErrAuthFailed
 	}
@@ -50,6 +126,19 @@ func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) (*do
 		RefreshToken: refreshToken,
 		User:         *user,
 	}, nil
+}
+
+// ResendSignup은 확인 코드를 재발송한다. 계정 존재는 Signup 단계에서 이미 드러나므로
+// 열거 방지 목적은 없지만, 발송 실패는 흡수한다(곧 재시도 가능).
+func (u *authUsecase) ResendSignup(ctx context.Context, email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if err := validateEmail(email); err != nil {
+		return err
+	}
+	if err := u.userRepo.ResendSignup(ctx, email); err != nil {
+		slog.Error("resend signup failed", "err", err) // 흡수: 곧 재시도 가능
+	}
+	return nil
 }
 
 func (u *authUsecase) Login(ctx context.Context, req domain.LoginRequest) (*domain.AuthResponse, error) {
