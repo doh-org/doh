@@ -35,6 +35,8 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
   final TextEditingController _confirmCtrl = TextEditingController();
   final TextEditingController _nicknameCtrl = TextEditingController();
   String? _errorMessage;
+  // 재전송 안내(성공·429 모두)는 "코드 재전송" 링크 바로 아랫줄에 표시
+  String? _resendMessage;
   bool _verifying = false; // 코드 확인 요청 중 중복 탭 방지
   bool _obscurePw = true;
 
@@ -78,6 +80,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
     }
     setState(() {
       _errorMessage = null;
+      _resendMessage = null; // 새 시도 시작 → 이전 재전송 안내 제거
       _verifying = true;
     });
     try {
@@ -120,7 +123,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
         .completeSignup(token, pw, nickname);
   }
 
-  // 코드 재전송. 안내는 기존 인라인 문구 자리(_errorMessage)에 표시,
+  // 코드 재전송. 안내는 "코드 재전송" 링크 아랫줄(_resendMessage)에 표시,
   // 429(재전송 제한 초과)도 같은 자리에 서버 문구 그대로.
   Future<void> _resend() async {
     if (_verifying) return;
@@ -128,13 +131,14 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
       await ref.read(authRepositoryProvider).resendSignup(widget.email);
       if (!mounted) return;
       setState(() {
-        _errorMessage = '인증 코드를 다시 보냈습니다.';
+        _resendMessage = '인증 코드를 다시 보냈습니다.';
+        _errorMessage = null;
         // 새 코드가 발송되면 기존 확인 상태는 무효 → 처음부터 다시
         _signupToken = null;
         _codeCtrl.clear();
       });
     } on AppException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.message);
+      if (mounted) setState(() => _resendMessage = e.message);
     }
   }
 
@@ -225,7 +229,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
                       fontFamily: 'Pretendard',
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.green,
+                      color: AppColors.folderOrange,
                     ),
                   ),
                 ),
@@ -355,6 +359,20 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
                   ),
                 ],
               ),
+              // 재전송 안내는 링크 바로 아랫줄에 가운데 정렬로 표시
+              if (_resendMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _resendMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
             ],
           ),
@@ -413,7 +431,7 @@ class _VerifyCodeButton extends StatelessWidget {
                 ),
               )
             : verified
-                ? const Icon(Icons.check, size: 22, color: AppColors.green)
+                ? const Icon(Icons.check, size: 22, color: AppColors.folderOrange)
                 : const Text(
                     '확인',
                     style: TextStyle(

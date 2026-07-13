@@ -124,21 +124,19 @@ class _PasswordResetVerifyPageState
     }
   }
 
-  // 코드 재전송. 성공 여부와 무관하게 서버가 200을 주므로 안내만 띄운다.
+  // 코드 재전송. 안내는 기존 인라인 문구 자리(_errorMessage)에 표시,
+  // 429(재전송 제한 초과)도 같은 자리에 서버 문구 그대로.
   Future<void> _resend() async {
     if (_submitting || _verifying) return;
     try {
       await ref.read(authRepositoryProvider).requestRecovery(widget.email);
       if (!mounted) return;
       setState(() {
-        _errorMessage = null;
+        _errorMessage = '인증 코드를 다시 보냈습니다.';
         // 새 코드가 발송되면 기존 확인 상태는 무효 → 처음부터 다시
         _recoveryToken = null;
         _codeCtrl.clear();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('인증 코드를 다시 보냈습니다.')),
-      );
     } on AppException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
     }
@@ -222,7 +220,7 @@ class _PasswordResetVerifyPageState
                       fontFamily: 'Pretendard',
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.green,
+                      color: AppColors.folderOrange,
                     ),
                   ),
                 ),
@@ -405,7 +403,7 @@ class _VerifyCodeButton extends StatelessWidget {
                 ),
               )
             : verified
-                ? const Icon(Icons.check, size: 22, color: AppColors.green)
+                ? const Icon(Icons.check, size: 22, color: AppColors.folderOrange)
                 : const Text(
                     '확인',
                     style: TextStyle(
