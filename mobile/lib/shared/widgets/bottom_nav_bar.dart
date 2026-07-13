@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../features/trips/data/repositories/trip_repository_impl.dart';
 import '../../features/trips/domain/entities/trip.dart';
 import '../../features/trips/presentation/providers/trip_provider.dart';
-import 'update_error_dialog.dart';
+import 'create_folder_dialog.dart';
 
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({required this.currentIndex, super.key});
@@ -24,18 +23,8 @@ class BottomNavBar extends ConsumerWidget {
         context.push('/trips/${trips.first.id}/map');
         return;
       }
-      // 없다 → 기본 폴더를 만들어 지도 진입을 막지 않는다
-      try {
-        final Trip created = await ref
-            .read(tripRepositoryProvider)
-            .createTrip(title: '내 여행');
-        ref.invalidate(tripsProvider); // 폴더 목록에도 새 폴더 반영
-        if (context.mounted) context.push('/trips/${created.id}/map');
-      } catch (_) {
-        if (context.mounted) {
-          await showUpdateErrorDialog(context, '지도를 여는 데 실패했습니다.');
-        }
-      }
+      // 없다 → 자동 생성 대신 안내 모달(+ 버튼으로 생성 페이지 이동)
+      await showCreateFolderDialog(context);
     }
 
     return ColoredBox(
