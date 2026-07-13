@@ -77,6 +77,19 @@ func TestSignup_IncompleteAccountRecreated(t *testing.T) {
 	}
 }
 
+// 메일 발송 실패(발송 한도·SMTP 오류 등) → 503 + 재시도 안내
+func TestSignup_EmailSendFailure(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.SignupError = "unexpected_failure"
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want 503, body=%s", w.Code, w.Body)
+	}
+	assertErrorMsg(t, w, "인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.")
+}
+
 // 이메일 형식 오류 → 400 (1단계는 이메일만 검증)
 func TestSignup_InvalidEmail(t *testing.T) {
 	router, _, _ := setupAccount(t)

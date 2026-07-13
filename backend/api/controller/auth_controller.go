@@ -229,6 +229,8 @@ func (ac *AuthController) handleError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
 	case errors.Is(err, domain.ErrEmailExists):
 		c.JSON(http.StatusConflict, gin.H{"error": "이미 존재하는 이메일입니다."})
+	case errors.Is(err, domain.ErrEmailSendFailed):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요."})
 	case errors.Is(err, domain.ErrInvalidCode):
 		// 불일치·만료 구분 없이 동일 메시지 (코드 추측 힌트 차단)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "인증코드가 올바르지 않거나 만료되었습니다."})
