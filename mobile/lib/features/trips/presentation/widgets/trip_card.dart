@@ -126,12 +126,12 @@ class TripCard extends StatelessWidget {
             ),
             Positioned(
               right: 0,
-              top: 153,
+              bottom: 0, // 40px 아이콘이 카드(높이 200) 아래로 잘리지 않게 하단 기준 배치
               child: GestureDetector(
                 onTap: onEditTap,
                 child: const Padding(
                   padding: EdgeInsets.fromLTRB(15, 13, 15, 13),
-                  child: Icon(Icons.edit_outlined, size: 20, color: AppColors.gray),
+                  child: Icon(Icons.edit_outlined, size: 30, color: AppColors.gray),
                 ),
               ),
             ),
