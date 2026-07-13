@@ -514,6 +514,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                     hasError: markersAsync.hasError,
                     canEditRoute: _selectedDay != 0,
                     onEditRoute: () => setState(() => _routeEdit = true),
+                    onSearchTap: () => _openSearchPage(trip),
                     onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
                     // v0 제외: 마커 좋아요(찜) 토글 — 추후 복구
                     // onLikeTap: (id) =>

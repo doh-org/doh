@@ -4,8 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:doh/features/map/presentation/widgets/place_list_sheet.dart';
 import 'package:doh/features/markers/domain/entities/marker.dart';
 
-// 에러 배너가 보이는 상태의 시트 생성 헬퍼
-Widget _sheet(ScrollController controller) => PlaceListSheet(
+// 시트 생성 헬퍼 — 기본은 에러 배너 상태, hasError: false면 빈 목록 상태
+Widget _sheet(
+  ScrollController controller, {
+  bool hasError = true,
+  VoidCallback? onSearchTap,
+}) =>
+    PlaceListSheet(
       scrollController: controller,
       placeCount: 0,
       tripTitle: '테스트 여행',
@@ -14,9 +19,10 @@ Widget _sheet(ScrollController controller) => PlaceListSheet(
       onDaySelected: (int _) {},
       markers: const <TripMarker>[],
       categoryMap: const {},
-      hasError: true,
+      hasError: hasError,
       canEditRoute: false,
       onEditRoute: () {},
+      onSearchTap: onSearchTap ?? () {},
       onMarkerTap: (TripMarker _) {},
       onDelete: (TripMarker _) {},
     );
@@ -50,5 +56,24 @@ void main() {
     ));
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('빈 목록 안내 문구 탭 → onSearchTap 호출', (WidgetTester tester) async {
+    final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
+    bool tapped = false;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: _sheet(
+          controller,
+          hasError: false,
+          onSearchTap: () => tapped = true,
+        ),
+      ),
+    ));
+
+    await tester.tap(find.text('검색 또는 지도를 꾹 눌러 장소를 추가해보세요.'));
+    expect(tapped, isTrue);
   });
 }
