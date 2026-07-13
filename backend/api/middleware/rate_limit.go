@@ -36,7 +36,7 @@ var defaultGroup = &limiterGroup{
 var sendCodeGroup = &limiterGroup{
 	every:   30 * time.Second,
 	burst:   3,
-	message: "인증 코드 요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.",
+	message: "인증 코드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
 }
 
 // 오래 안 본 IP 항목을 주기적으로 비워 메모리 누수를 막는다.

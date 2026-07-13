@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrAuthFailed  = errors.New("auth failed")
-	ErrEmailExists = errors.New("email already exists")
-	ErrInvalidCode = errors.New("invalid recovery code") // 인증코드 불일치·만료
+	ErrAuthFailed      = errors.New("auth failed")
+	ErrEmailExists     = errors.New("email already exists")
+	ErrInvalidCode     = errors.New("invalid recovery code") // 인증코드 불일치·만료
+	ErrEmailSendFailed = errors.New("confirmation email send failed")
 )
 
 type ValidationError struct{ Message string }

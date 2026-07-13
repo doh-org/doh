@@ -31,14 +31,14 @@ func (u *authUsecase) Signup(ctx context.Context, req domain.SignupRequest) erro
 		return nil
 	}
 	if !errors.Is(err, domain.ErrEmailExists) {
-		return domain.ErrAuthFailed
+		return domain.ErrEmailSendFailed
 	}
 	cleaned, cleanErr := u.cleanupIncompleteSignup(ctx, req.Email)
 	if cleanErr != nil || !cleaned {
 		return domain.ErrEmailExists
 	}
 	if err := u.userRepo.StartEmailSignup(ctx, req.Email); err != nil {
-		return domain.ErrAuthFailed
+		return domain.ErrEmailSendFailed
 	}
 	return nil
 }
