@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_cursor.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
@@ -30,6 +31,7 @@ class MarkerEditChipsSheet extends ConsumerStatefulWidget {
 }
 
 class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
+  late final TextEditingController _nameCtrl;
   late String? _selectedCategoryId;
   late Set<int> _selectedDays;
   late TripMarker _savedMarker;
@@ -37,19 +39,28 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
   @override
   void initState() {
     super.initState();
+    _nameCtrl = TextEditingController(text: widget.marker.name);
     _selectedCategoryId = widget.marker.categoryId;
     _selectedDays = widget.marker.visitDays.toSet();
     _savedMarker = widget.marker;
   }
 
+  // 빈 이름은 저장 대상이 아님(이름은 비울 수 없음) → 원래 이름 유지
+  String get _effectiveName {
+    final String trimmed = _nameCtrl.text.trim();
+    return trimmed.isEmpty ? _savedMarker.name : trimmed;
+  }
+
   bool get _hasUnsavedChanges {
     final Set<int> savedDays = _savedMarker.visitDays.toSet();
-    return _selectedCategoryId != _savedMarker.categoryId ||
+    return _effectiveName != _savedMarker.name ||
+        _selectedCategoryId != _savedMarker.categoryId ||
         _selectedDays.length != savedDays.length ||
         !_selectedDays.containsAll(savedDays);
   }
 
   TripMarker get _optimisticMarker => widget.marker.copyWith(
+        name: _effectiveName,
         categoryId: _selectedCategoryId,
         visitDays: _selectedDays.toList()..sort(),
       );
@@ -57,6 +68,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
   @override
   void dispose() {
     if (_hasUnsavedChanges) widget.onSaved(_optimisticMarker);
+    _nameCtrl.dispose();
     super.dispose();
   }
 
@@ -70,6 +82,7 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
         await ref.read(markerRepositoryProvider).updateMarker(
           widget.tripId,
           widget.marker.id,
+          name: optimistic.name,
           categoryId: optimistic.categoryId,
           clearCategoryId: optimistic.categoryId == null,
           visitDays: optimistic.visitDays,
@@ -109,6 +122,59 @@ class _MarkerEditChipsSheetState extends ConsumerState<MarkerEditChipsSheet> {
             ),
           ),
           const SizedBox(height: 20),
+
+          // 장소명 수정 (공유 추가 시트와 동일한 입력 필드)
+          const Text(
+            '장소명',
+            style: TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFB2B2B2),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _nameCtrl,
+            cursorColor: appCursorColor(),
+            // 입력마다 저장 버튼 활성화 상태(_hasUnsavedChanges) 갱신
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: '장소 이름',
+              hintStyle: const TextStyle(
+                fontFamily: 'Pretendard',
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFFB2B2B2),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF1F2F4),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(17),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(17),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(17),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            style: const TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1F2125),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           const Text(
             '카테고리',
             style: TextStyle(

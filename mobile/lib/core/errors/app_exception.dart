@@ -23,6 +23,10 @@ class ConflictException extends AppException {
   const ConflictException([super.message = '이미 사용 중인 이메일입니다.']);
 }
 
+class RateLimitException extends AppException {
+  const RateLimitException([super.message = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.']);
+}
+
 class NotFoundException extends AppException {
   const NotFoundException([super.message = '리소스를 찾을 수 없습니다.']);
 }

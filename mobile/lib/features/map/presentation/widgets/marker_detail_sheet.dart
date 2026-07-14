@@ -9,6 +9,7 @@ import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../routes/domain/entities/route_stop.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
+import '../../../../core/storage/map_app_store.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../data/repositories/map_repository_impl.dart';
@@ -42,7 +43,7 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
 class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
   int _transportIndex = 0;
   String? _departureId; // null = 현위치
-  String? _destinationId; // null = 현위치 (스왑으로만 도달)
+  String? _destinationId; // null = 현위치
   late TripMarker _marker;
   bool _saved = true;
   bool _bookmarkLoading = false;
@@ -84,6 +85,10 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
           );
       if (!mounted) return false;
       setState(() {
+        // 임시 id로 잡혀 있던 출발지/목적지를 서버가 발급한 새 id로 갱신
+        final String oldId = _marker.id;
+        if (_departureId == oldId) _departureId = created.id;
+        if (_destinationId == oldId) _destinationId = created.id;
         _marker = created;
         _saved = true;
       });
@@ -137,17 +142,19 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     }
   }
 
-  // 스위치 아이콘 탭 → 네이버지도 앱에서 이 장소를 검색
-  Future<void> _openNaverSearch() async {
+  // 스위치 아이콘 탭 → 고정된(또는 선택한) 지도 앱에서 이 장소를 검색
+  Future<void> _openMapSearch() async {
     // 검색·심볼 마커 → 장소명(역 이름 등)으로 검색해야 장소 상세가 뜸
     // 롱프레스 마커 → 이름이 '새 장소'일 수 있어 주소로 검색
-    final String query = resolveNaverSearchQuery(
+    final String query = resolveMapSearchQuery(
       preferAddress: _marker.source == MarkerSource.longpress,
       name: _marker.name,
       address: _detail('naver_address') ?? _marker.address,
     );
     if (query.isEmpty) return; // 검색어 없으면 딥링크 무의미
-    await launchPlaceSearch(context: context, query: query);
+    final MapApp? app = await ref.read(preferredMapAppProvider.future);
+    if (!mounted) return;
+    await launchPlaceSearch(context: context, query: query, preferredApp: app);
   }
 
   String? _detail(String key) {
@@ -197,6 +204,12 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     TransportMode.foot,
   ];
 
+  // id로 마커 찾기. 미저장 임시 마커는 allMarkers에 없어서 현재 마커를 먼저 확인
+  TripMarker? _findMarker(String id) {
+    if (id == _marker.id) return _marker;
+    return widget.allMarkers.where((m) => m.id == id).firstOrNull;
+  }
+
   Future<void> _openNavigation() async {
     final NavPoint destination;
     if (_destinationId == null) {
@@ -206,24 +219,24 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
       destination =
           NavPoint(name: '현위치', lat: pos.latitude, lng: pos.longitude);
     } else {
-      final TripMarker? dest = widget.allMarkers
-          .where((m) => m.id == _destinationId)
-          .firstOrNull;
+      final TripMarker? dest = _findMarker(_destinationId!);
       destination = NavPoint(
         name: dest?.name ?? _marker.name,
         lat: dest?.latitude ?? _marker.latitude,
         lng: dest?.longitude ?? _marker.longitude,
       );
     }
-    final TripMarker? dep = _departureId == null
-        ? null
-        : widget.allMarkers.where((m) => m.id == _departureId).firstOrNull;
+    // 스왑으로 출발지가 임시 마커일 수도 있어 같은 조회를 쓴다
+    final TripMarker? dep =
+        _departureId == null ? null : _findMarker(_departureId!);
 
-    if (!mounted) return; // 위치 조회 await 동안 시트가 닫혔을 수 있음
+    final MapApp? app = await ref.read(preferredMapAppProvider.future);
+    if (!mounted) return; // 위치·설정 조회 await 동안 시트가 닫혔을 수 있음
     await launchNavigation(
       context: context,
       mode: _transportModes[_transportIndex],
       destination: destination,
+      preferredApp: app,
       departure: dep == null
           ? null
           : NavPoint(name: dep.name, lat: dep.latitude, lng: dep.longitude),
@@ -322,7 +335,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 장소명은 편집 불가 — 원본 장소명이 네이버지도 검색 키가 되므로 고정
+                  // 헤더의 장소명은 표시 전용 — 편집은 칩 시트(카테고리/날짜와 함께)에서
                   Expanded(
                     child: Text(
                       _marker.name,
@@ -363,9 +376,9 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                       ),
                     ),
                   const SizedBox(width: 10),
-                  // 네이버지도로 전환 — 이 장소 주소로 검색 딥링크
+                  // 지도 앱으로 전환 — 이 장소 검색 딥링크
                   GestureDetector(
-                    onTap: _openNaverSearch,
+                    onTap: _openMapSearch,
                     child: const Icon(
                       Icons.swap_horiz,
                       size: 25,
@@ -410,6 +423,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
 
             // 출발지/목적지
             RouteSection(
+              currentMarker: _marker,
               allMarkers: widget.allMarkers,
               departureId: _departureId,
               destinationId: _destinationId,
@@ -417,10 +431,16 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 _departureId = id;
                 // 둘 다 현위치가 되면 안내가 무의미 → 목적지를 이 마커로 되돌림
                 if (id == null && _destinationId == null) {
-                  _destinationId = widget.marker.id;
+                  _destinationId = _marker.id;
                 }
               }),
-              onDestinationChanged: (id) => setState(() => _destinationId = id),
+              onDestinationChanged: (id) => setState(() {
+                _destinationId = id;
+                // 둘 다 현위치가 되면 안내가 무의미 → 출발지를 이 마커로 되돌림
+                if (id == null && _departureId == null) {
+                  _departureId = _marker.id;
+                }
+              }),
               onSwap: () => setState(() {
                 // 현위치(null)도 그대로 목적지로 넘어간다
                 final swapped = swapRoutePoints(

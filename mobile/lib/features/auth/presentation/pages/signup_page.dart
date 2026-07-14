@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
-import '../../domain/entities/user.dart';
-import '../providers/auth_provider.dart';
+import '../../../../shared/widgets/app_back_button.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 import '../widgets/auth_text_field.dart';
 
 class SignupPage extends ConsumerStatefulWidget {
@@ -17,66 +17,43 @@ class SignupPage extends ConsumerStatefulWidget {
 
 class _SignupPageState extends ConsumerState<SignupPage> {
   final _emailCtrl = TextEditingController();
-  final _pwCtrl = TextEditingController();
-  final _nicknameCtrl = TextEditingController();
   String? _errorMessage;
-  bool _obscurePw = true;
+  bool _sending = false; // 코드 발송 중 중복 탭 방지
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _pwCtrl.dispose();
-    _nicknameCtrl.dispose();
     super.dispose();
   }
 
-  String _messageFromError(Object error) {
-    return switch (error) {
-      ValidationException e => e.message,
-      AuthException e => e.message,
-      ConflictException e => e.message,
-      NetworkException e => e.message,
-      AppException e => e.message,
-      _ => '연결에 실패했습니다. 다시 시도해주세요.',
-    };
-  }
-
-  bool _isValidPassword(String pw) =>
-      pw.length >= 8 &&
-      pw.contains(RegExp(r'[A-Z]')) &&
-      pw.contains(RegExp(r'[a-z]')) &&
-      pw.contains(RegExp(r'[0-9]'));
-
-  void _onSignUp() {
-    final email = _emailCtrl.text.trim();
-    final pw = _pwCtrl.text;
-    final nickname = _nicknameCtrl.text.trim();
+  // 1단계: 이메일 검증 → 확인 코드 발송 요청 → 코드 입력 단계로 이동.
+  // 비번·닉네임은 코드 검증 후 다음 단계에서 받는다.
+  Future<void> _onRequestCode() async {
+    if (_sending) return;
+    final String email = _emailCtrl.text.trim();
     if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
       setState(() => _errorMessage = '올바른 이메일을 입력해주세요.');
       return;
     }
-    if (!_isValidPassword(pw)) {
-      setState(() => _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
-      return;
+    setState(() {
+      _errorMessage = null;
+      _sending = true;
+    });
+    try {
+      await ref.read(authRepositoryProvider).requestSignupCode(email);
+      if (!mounted) return;
+      // 코드 검증 단계로 이메일 전달 (계정 확정·재발송에 사용)
+      context.push('/signup/verify', extra: email);
+    } on AppException catch (e) {
+      // 이미 가입된 이메일 등 → 서버 메시지 그대로 안내
+      if (mounted) setState(() => _errorMessage = e.message);
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
-    if (nickname.isEmpty) {
-      setState(() => _errorMessage = '닉네임을 입력해주세요.');
-      return;
-    }
-    setState(() => _errorMessage = null);
-    ref.read(authNotifierProvider.notifier).signUp(email, pw, nickname);
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<User?>>(authNotifierProvider, (_, next) {
-      if (next.hasError) {
-        setState(() => _errorMessage = _messageFromError(next.error!));
-      }
-    });
-
-    final isLoading = ref.watch(authNotifierProvider).isLoading;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -85,7 +62,15 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
+              // 비번찾기 페이지와 같은 52px 헤더 높이에 공용 뒤로가기 버튼
+              SizedBox(
+                height: 52,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppBackButton(onTap: () => context.pop()),
+                ),
+              ),
+              const SizedBox(height: 28),
               const Text(
                 '회원가입',
                 style: TextStyle(
@@ -95,45 +80,22 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   color: AppColors.folderOrange,
                 ),
               ),
+              const SizedBox(height: 10),
+              const Text(
+                '가입할 이메일로 6자리 인증 코드를 보내드립니다.',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.gray,
+                ),
+              ),
               const SizedBox(height: 28),
               _LabeledField(
                 label: '이메일',
                 controller: _emailCtrl,
                 hintText: '이메일을 입력하세요',
                 keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 15),
-              _LabeledField(
-                label: '비밀번호',
-                controller: _pwCtrl,
-                hintText: '비밀번호를 입력하세요',
-                obscureText: _obscurePw,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePw ? Icons.visibility_off : Icons.visibility,
-                    color: AppColors.gray,
-                  ),
-                  onPressed: () => setState(() => _obscurePw = !_obscurePw),
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함',
-                  style: TextStyle(
-                    fontFamily: 'Pretendard',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.folderOrange,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
-              _LabeledField(
-                label: '닉네임',
-                controller: _nicknameCtrl,
-                hintText: '닉네임을 입력하세요',
               ),
               const SizedBox(height: 8),
               if (_errorMessage != null)
@@ -153,7 +115,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _onSignUp,
+                  onPressed: _sending ? null : _onRequestCode,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xCC2A6FDB),
                     foregroundColor: AppColors.white,
@@ -163,7 +125,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       borderRadius: BorderRadius.circular(17),
                     ),
                   ),
-                  child: isLoading
+                  child: _sending
                       ? const SizedBox(
                           width: 24,
                           height: 24,
@@ -173,7 +135,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                           ),
                         )
                       : const Text(
-                          '회원가입',
+                          '인증 코드 받기',
                           style: TextStyle(
                             fontFamily: 'Pretendard',
                             fontSize: 14,
@@ -226,16 +188,12 @@ class _LabeledField extends StatelessWidget {
     required this.controller,
     required this.hintText,
     this.keyboardType = TextInputType.text,
-    this.obscureText = false,
-    this.suffixIcon,
   });
 
   final String label;
   final TextEditingController controller;
   final String hintText;
   final TextInputType keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -258,8 +216,6 @@ class _LabeledField extends StatelessWidget {
           controller: controller,
           hintText: hintText,
           keyboardType: keyboardType,
-          obscureText: obscureText,
-          suffixIcon: suffixIcon,
           fillColor: AppColors.background,
           focusFillColor: const Color(0xFFFEDFBF),
           borderRadius: 17,

@@ -116,6 +116,12 @@ DioException _mapError(DioException error) {
       appException = const NotFoundException();
     case 409:
       appException = const ConflictException();
+    case 429:
+      // rate limit 초과 → 서버 안내 문구 그대로 (재전송 제한 등)
+      appException = RateLimitException(message ?? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+    case 503:
+      // 일시적 실패(메일 발송 실패 등) → 서버 안내 문구 그대로
+      appException = ServerException(message ?? '서버 오류가 발생했습니다.');
     default:
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.receiveTimeout ||

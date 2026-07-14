@@ -8,9 +8,12 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/password_reset_request_page.dart';
 import '../../features/auth/presentation/pages/password_reset_verify_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
+import '../../features/auth/presentation/pages/signup_verify_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../auth/guest_mode_provider.dart';
 import '../../features/map/presentation/pages/map_page.dart';
+import '../../features/share/presentation/pages/share_place_page.dart';
 import '../../features/trips/presentation/pages/trip_create_page.dart';
 import '../../features/trips/presentation/pages/trip_list_page.dart';
 import '../../shared/widgets/bottom_nav_bar.dart';
@@ -21,18 +24,20 @@ part 'app_router.g.dart';
 GoRouter appRouter(Ref ref) {
   final notifier = ValueNotifier(0);
   ref.listen(authNotifierProvider, (_, __) => notifier.value++);
+  // 게스트 진입/해제도 redirect를 다시 태워야 하므로 함께 구독
+  ref.listen(guestModeProvider, (_, __) => notifier.value++);
   ref.onDispose(notifier.dispose);
 
   final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) {
       final authState = ref.read(authNotifierProvider);
       final loc = state.matchedLocation;
 
-      // 비로그인 상태로 접근 가능한 화면 (비밀번호 찾기 포함)
+      // 비로그인 상태로 접근 가능한 화면 (회원가입 코드 인증·비밀번호 찾기 포함)
       final isAuthRoute = loc == '/login' ||
-          loc == '/signup' ||
+          loc.startsWith('/signup') ||
           loc.startsWith('/password-reset');
 
       if (authState.isLoading) {
@@ -41,8 +46,15 @@ GoRouter appRouter(Ref ref) {
       }
 
       final isAuthenticated = authState.valueOrNull != null;
+      final isGuest = ref.read(guestModeProvider);
+      // 로그인 또는 게스트면 앱 진입 가능
+      final canEnter = isAuthenticated || isGuest;
 
-      if (!isAuthenticated && !isAuthRoute) return '/login';
+      // 온보딩 끝(로딩 완료) → 상태에 맞는 홈으로 스플래시에서 내보낸다.
+      if (loc == '/splash') return canEnter ? '/trips' : '/login';
+
+      if (!canEnter && !isAuthRoute) return '/login';
+      // 로그인 사용자만 auth 화면에서 홈으로 (게스트는 /login 접근 가능해야 함)
       if (isAuthenticated && isAuthRoute) return '/trips';
       return null;
     },
@@ -58,6 +70,16 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/signup',
         builder: (_, __) => const SignupPage(),
+      ),
+      GoRoute(
+        path: '/signup/verify',
+        // extra로 1단계 이메일을 받는다. 없이 직접 진입하면 1단계부터.
+        builder: (_, state) {
+          final String? email = state.extra as String?;
+          return email == null
+              ? const SignupPage()
+              : SignupVerifyPage(email: email);
+        },
       ),
       GoRoute(
         path: '/password-reset',
@@ -91,6 +113,11 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/account',
         builder: (_, __) => const AccountInfoPage(),
+      ),
+      // 외부 앱 공유 수신 → 담을 여행 선택 (비로그인은 redirect가 /login으로)
+      GoRoute(
+        path: '/share',
+        builder: (_, __) => const SharePlacePage(),
       ),
       GoRoute(
         path: '/trips/create',

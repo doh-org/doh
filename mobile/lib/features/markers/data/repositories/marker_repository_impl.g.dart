@@ -6,7 +6,7 @@ part of 'marker_repository_impl.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$markerRepositoryHash() => r'fd39a4a7a25399c655261fdd8308c0122fd3531f';
+String _$markerRepositoryHash() => r'75cf4128c77929c37e8925a62e8d53fe1cda7a4a';
 
 /// See also [markerRepository].
 @ProviderFor(markerRepository)

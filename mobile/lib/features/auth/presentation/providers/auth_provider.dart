@@ -1,12 +1,12 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/auth/guest_mode_provider.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_email_usecase.dart';
 import '../../domain/usecases/login_kakao_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
-import '../../domain/usecases/signup_usecase.dart';
 
 part 'auth_provider.g.dart';
 
@@ -15,9 +15,15 @@ class AuthNotifier extends _$AuthNotifier {
   @override
   Future<User?> build() async {
     final tokenStorage = ref.read(tokenStorageProvider);
+
+    // 온보딩 로고를 최소 1초 노출: 타이머를 먼저 걸어두고
+    // 토큰 복원을 끝낸 뒤 남은 시간만큼 기다린다(둘 중 더 오래 걸리는 쪽).
+    final Future<void> minSplash =
+        Future<void>.delayed(const Duration(seconds: 1));
     final token = await tokenStorage.getAccessToken();
-    if (token == null) return null;
-    return tokenStorage.getUser();
+    final User? user = token == null ? null : await tokenStorage.getUser();
+    await minSplash;
+    return user;
   }
 
   Future<void> loginWithEmail(String email, String password) async {
@@ -25,13 +31,20 @@ class AuthNotifier extends _$AuthNotifier {
     state = await AsyncValue.guard<User?>(
       () => ref.read(loginEmailUsecaseProvider).call(email, password),
     );
+    await _exitGuestOnSuccess();
   }
 
-  Future<void> signUp(String email, String password, String nickname) async {
+  // 회원가입 3단계: 가입 세션으로 비번·닉네임 설정 → 성공 시 자동 로그인(로그인과 동일 흐름).
+  // 1·2단계(코드 발송·검증)는 로그인 전이라 페이지가 repository를 직접 호출한다.
+  Future<void> completeSignup(
+      String accessToken, String password, String nickname) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard<User?>(
-      () => ref.read(signUpUsecaseProvider).call(email, password, nickname),
+      () => ref
+          .read(authRepositoryProvider)
+          .completeSignup(accessToken, password, nickname),
     );
+    await _exitGuestOnSuccess();
   }
 
   Future<void> loginWithKakao() async {
@@ -39,6 +52,15 @@ class AuthNotifier extends _$AuthNotifier {
     state = await AsyncValue.guard<User?>(
       () => ref.read(loginKakaoUsecaseProvider).call(),
     );
+    await _exitGuestOnSuccess();
+  }
+
+  // 로그인·회원가입이 실제로 성공(유저 세팅)했을 때만 게스트 모드를 끈다.
+  // 안 그러면 로그인했는데도 repository가 로컬(게스트) 구현을 계속 써버린다.
+  Future<void> _exitGuestOnSuccess() async {
+    if (state.valueOrNull != null) {
+      await ref.read(guestModeProvider.notifier).exit();
+    }
   }
 
   Future<void> logout() async {

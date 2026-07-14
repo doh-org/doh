@@ -6,7 +6,7 @@ part of 'trip_repository_impl.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$tripRepositoryHash() => r'c679926583050dcf7223216162c8416a2deb6336';
+String _$tripRepositoryHash() => r'd2963c321ab27b77dc8a43b585ef2cecbb0e5718';
 
 /// See also [tripRepository].
 @ProviderFor(tripRepository)

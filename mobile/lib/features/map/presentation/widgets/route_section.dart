@@ -10,9 +10,27 @@ import '../../../markers/domain/entities/marker.dart';
 }) =>
     (departureId: destinationId, destinationId: departureId);
 
+/// 출발지/목적지 타일에 표시할 이름 결정.
+/// 미저장 임시 마커는 allMarkers(저장된 마커 목록)에 없어서
+/// 현재 시트의 마커를 먼저 확인해야 '알 수 없음'으로 빠지지 않는다.
+String resolveRoutePointName({
+  required String? id,
+  required TripMarker currentMarker,
+  required List<TripMarker> allMarkers,
+}) {
+  if (id == null) return '현위치'; // null = 현위치
+  if (id == currentMarker.id) return currentMarker.name; // 임시 마커 포함
+  return allMarkers
+          .where((m) => m.id == id)
+          .map((m) => m.name)
+          .firstOrNull ??
+      '알 수 없음';
+}
+
 // 출발지/목적지 섹션. 타일 탭 → Day별 마커 picker 시트.
 class RouteSection extends StatelessWidget {
   const RouteSection({
+    required this.currentMarker,
     required this.allMarkers,
     required this.departureId,
     required this.destinationId,
@@ -22,21 +40,19 @@ class RouteSection extends StatelessWidget {
     super.key,
   });
 
+  final TripMarker currentMarker; // 이 상세 시트가 열린 마커 (미저장일 수 있음)
   final List<TripMarker> allMarkers;
   final String? departureId; // null = 현위치
-  final String? destinationId; // null = 현위치 (스왑으로만 도달)
+  final String? destinationId; // null = 현위치
   final ValueChanged<String?> onDepartureChanged;
   final ValueChanged<String?> onDestinationChanged;
   final VoidCallback onSwap;
 
-  String _name(String? id) {
-    if (id == null) return '현위치';
-    return allMarkers
-            .where((m) => m.id == id)
-            .map((m) => m.name)
-            .firstOrNull ??
-        '알 수 없음';
-  }
+  String _name(String? id) => resolveRoutePointName(
+        id: id,
+        currentMarker: currentMarker,
+        allMarkers: allMarkers,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -255,15 +271,35 @@ class _RoutePickerSheet extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isDeparture)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                        child: _PickerItem(
-                          name: '현위치',
-                          onTap: () {
-                            Navigator.pop(context);
+                    // 현위치는 출발지·목적지 양쪽에서 선택 가능
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                      child: _PickerItem(
+                        name: '현위치',
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (isDeparture) {
                             onDepartureChanged(null);
-                          },
+                          } else {
+                            onDestinationChanged(null);
+                          }
+                        },
+                      ),
+                    ),
+                    // 저장된 마커가 하나도 없으면 안내 문구 (비밀번호 제약 안내와 동일 서식)
+                    if (allMarkers.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(15, 15, 15, 5),
+                        child: Center(
+                          child: Text(
+                            '저장된 장소가 없습니다.',
+                            style: TextStyle(
+                              fontFamily: 'Pretendard',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFFFE8505), // AppColors.folderOrange
+                            ),
+                          ),
                         ),
                       ),
                     for (final int day in days) ...[

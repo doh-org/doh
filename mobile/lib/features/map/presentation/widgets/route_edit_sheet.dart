@@ -6,6 +6,7 @@ import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../routes/data/repositories/route_repository_impl.dart';
 import '../../../routes/domain/entities/route_stop.dart';
 import '../../../routes/presentation/providers/route_provider.dart';
+import '../../../../core/storage/map_app_store.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../utils/map_navigation.dart';
 import 'day_filter_bar.dart';
@@ -76,14 +77,17 @@ class _RouteEditSheetState extends ConsumerState<RouteEditSheet> {
     _invalidate(_sort);
   }
 
-  // 구간 길안내: origin.transportToNext 기준 네이버지도 실행.
+  // 구간 길안내: origin.transportToNext 기준 고정된(또는 선택한) 지도 앱 실행.
   // 미설치면 웹/설치 모달.
   Future<void> _navigate(RouteStop origin, RouteStop dest) async {
     final TransportMode? mode = origin.transportToNext;
     if (mode == null) return;
+    final MapApp? app = await ref.read(preferredMapAppProvider.future);
+    if (!mounted) return;
     await launchNavigation(
       context: context,
       mode: mode,
+      preferredApp: app,
       departure:
           NavPoint(name: origin.name, lat: origin.latitude, lng: origin.longitude),
       destination:

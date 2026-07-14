@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../features/trips/domain/entities/trip.dart';
 import '../../features/trips/presentation/providers/trip_provider.dart';
+import 'create_folder_dialog.dart';
 
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({required this.currentIndex, super.key});
@@ -13,10 +15,16 @@ class BottomNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    void onMapTap() {
-      final trips = ref.read(tripsProvider).valueOrNull ?? [];
-      if (trips.isEmpty) return;
-      context.push('/trips/${trips.first.id}/map');
+    Future<void> onMapTap() async {
+      final List<Trip>? trips = ref.read(tripsProvider).valueOrNull;
+      if (trips == null) return; // 목록 로딩·에러 중엔 무시(폴더 유무를 모름)
+      // 있다 → 첫 폴더의 지도로 바로 이동
+      if (trips.isNotEmpty) {
+        context.push('/trips/${trips.first.id}/map');
+        return;
+      }
+      // 없다 → 자동 생성 대신 안내 모달(+ 버튼으로 생성 페이지 이동)
+      await showCreateFolderDialog(context);
     }
 
     return ColoredBox(

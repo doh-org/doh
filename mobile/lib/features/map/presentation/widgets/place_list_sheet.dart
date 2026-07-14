@@ -23,6 +23,7 @@ class PlaceListSheet extends StatelessWidget {
     required this.hasError,
     required this.canEditRoute,
     required this.onEditRoute,
+    required this.onSearchTap,
     required this.onMarkerTap,
     // required this.onLikeTap,
     required this.onDelete,
@@ -42,6 +43,7 @@ class PlaceListSheet extends StatelessWidget {
   final bool hasError;
   final bool canEditRoute;
   final VoidCallback onEditRoute;
+  final VoidCallback onSearchTap; // 빈 목록 안내 문구 탭 → 검색 페이지
   final void Function(TripMarker) onMarkerTap;
   // final void Function(String) onLikeTap;
   final void Function(TripMarker) onDelete;
@@ -257,12 +259,12 @@ class PlaceListSheet extends StatelessWidget {
 
           // ── 장소 목록 ──
           if (markers.isEmpty && !hasError)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    const Text(
                       '저장된 장소가 없습니다',
                       style: TextStyle(
                         fontFamily: 'Pretendard',
@@ -271,13 +273,16 @@ class PlaceListSheet extends StatelessWidget {
                         color: Color(0xFFB2B2B2),
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      '검색 또는 지도를 꾹 눌러 장소를 추가해보세요.',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontSize: 13,
-                        color: Color(0xFFFE8505),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: onSearchTap, // 문구 탭 → 검색 페이지로 바로 이동
+                      child: const Text(
+                        '검색 또는 지도를 꾹 눌러 장소를 추가해보세요.',
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 15,
+                          color: Color(0xFFFE8505),
+                        ),
                       ),
                     ),
                   ],
