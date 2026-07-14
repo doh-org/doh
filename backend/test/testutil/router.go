@@ -138,7 +138,7 @@ func NewTestNaverRouter(
 
 	r := gin.New()
 	g := r.Group("/api/v1")
-	g.Use(middleware.Auth(keys.PublicKeys, supabaseURL, "fake-anon-key", client))
+	// 운영과 동일: 공개(무인증) + rate limit
 	g.Use(middleware.RateLimit())
 	g.GET("/places/search", nc.SearchPlaces)
 	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소

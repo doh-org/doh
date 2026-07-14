@@ -12,7 +12,8 @@ import (
 )
 
 // NewNaverRouter는 네이버 API 프록시 라우트를 등록한다.
-// JWT 필수 + rate limit — 시크릿 보호 목적이므로 익명 호출 차단.
+// 공개(무인증) + IP rate limit — 반환값이 공개 장소 데이터뿐이라 인증 불필요,
+// 남용은 rate limit으로 억제.
 func NewNaverRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, v1 *gin.RouterGroup) {
 	client := naver.NewClient(
 		env.NaverSearchClientID, env.NaverSearchSecret,
@@ -21,7 +22,6 @@ func NewNaverRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, v1 *gi
 	nc := controller.NewNaverController(client)
 
 	g := v1.Group("")
-	g.Use(middleware.Auth(keys, env.SupabaseURL, env.SupabaseAnonKey, nil))
 	g.Use(middleware.RateLimit())
 	g.GET("/places/search", nc.SearchPlaces)
 	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소

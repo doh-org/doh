@@ -65,12 +65,13 @@ func TestSearchPlaces_MissingQuery(t *testing.T) {
 	}
 }
 
-func TestSearchPlaces_Unauthorized(t *testing.T) {
+// 공개 프록시 — 무토큰 요청도 200.
+func TestSearchPlaces_NoToken_Public(t *testing.T) {
 	router, _, _, _ := setupNaver(t)
 
 	w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?q=x", "", nil)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d want 401", w.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 (public), body=%s", w.Code, w.Body)
 	}
 }
 
@@ -169,12 +170,14 @@ func TestResolvePlace_UpstreamError(t *testing.T) {
 	}
 }
 
-func TestResolvePlace_Unauthorized(t *testing.T) {
-	router, _, _, _ := setupNaver(t)
+// 공개 프록시 — 무토큰 요청도 200.
+func TestResolvePlace_NoToken_Public(t *testing.T) {
+	router, fn, _, _ := setupNaver(t)
 
-	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url=https://naver.me/x", "", nil)
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d want 401", w.Code)
+	shareURL := url.QueryEscape(fn.Server.URL + "/share/redirect")
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/resolve?url="+shareURL, "", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 (public), body=%s", w.Code, w.Body)
 	}
 }
 
