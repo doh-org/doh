@@ -38,6 +38,7 @@ dev_dependencies:
   json_serializable: ^6.9.5
   riverpod_generator: ^2.6.3
   riverpod_lint: ^2.6.3
+  shared_preferences_platform_interface: ^2.4.1 # 게스트 테스트: 인메모리 prefs 교체용
 
 flutter:
   uses-material-design: true
