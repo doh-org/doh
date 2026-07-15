@@ -180,7 +180,7 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
                           _EditField(
                             label: '새 비밀번호',
                             controller: _newPwCtrl,
-                            helper: '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함',
+                            helper: '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
                             onChanged: () => setState(() {}),
                           ),
                           const SizedBox(height: 20),

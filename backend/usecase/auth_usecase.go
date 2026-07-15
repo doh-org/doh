@@ -295,11 +295,17 @@ func validateEmail(email string) error {
 }
 
 func validatePassword(password string) error {
-	if len(password) < 8 {
+	// 글자 수 기준(rune). byte len은 한글 등 멀티바이트에서 실제 글자 수보다 크게 나옴.
+	if len([]rune(password)) < 8 {
 		return &domain.ValidationError{Message: "비밀번호는 8자 이상이어야 합니다."}
 	}
 	var hasUpper, hasLower, hasDigit bool
 	for _, r := range password {
+		// 허용 문자 화이트리스트: 인쇄 가능한 ASCII(33~126) = 영문·숫자·특수문자.
+		// 한글·공백·제어문자는 여기서 걸러진다.
+		if r < '!' || r > '~' {
+			return &domain.ValidationError{Message: "비밀번호는 영문 대소문자, 숫자, 특수문자만 사용할 수 있습니다."}
+		}
 		switch {
 		case unicode.IsUpper(r):
 			hasUpper = true

@@ -12,6 +12,9 @@ import (
 
 const tripDateLayout = "2006-01-02" // YYYY-MM-DD. Go 레퍼런스 포맷.
 
+// 제목 최대 길이(rune 기준). 프론트 입력 상한(maxLength: 14)과 일치시킨다.
+const tripTitleMaxLen = 14
+
 type tripUsecase struct {
 	tripRepo domain.TripRepository
 }
@@ -25,9 +28,9 @@ func (u *tripUsecase) CreateTrip(ctx context.Context, userID, token string, inpu
 
 	trimmed := strings.TrimSpace(input.Title)
 	r := []rune(trimmed)
-	if len(r) < 1 || len(r) > 50 {
+	if len(r) < 1 || len(r) > tripTitleMaxLen {
 		slog.Warn("[trip] usecase.CreateTrip: title validation failed", "title", trimmed)
-		return nil, &domain.ValidationError{Message: "제목은 1자 이상 50자 이하여야 합니다."}
+		return nil, &domain.ValidationError{Message: "제목은 1자 이상 14자 이하여야 합니다."}
 	}
 	input.Title = trimmed
 
@@ -86,8 +89,8 @@ func (u *tripUsecase) UpdateTrip(ctx context.Context, userID, token, tripID stri
 	if input.Title != nil {
 		trimmed := strings.TrimSpace(*input.Title)
 		r := []rune(trimmed)
-		if len(r) < 1 || len(r) > 50 {
-			return nil, &domain.ValidationError{Message: "제목은 1자 이상 50자 이하여야 합니다."}
+		if len(r) < 1 || len(r) > tripTitleMaxLen {
+			return nil, &domain.ValidationError{Message: "제목은 1자 이상 14자 이하여야 합니다."}
 		}
 		input.Title = &trimmed
 	}

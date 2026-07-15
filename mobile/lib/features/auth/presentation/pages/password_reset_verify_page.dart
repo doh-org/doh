@@ -6,6 +6,7 @@ import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../utils/password_policy.dart';
 import '../widgets/auth_text_field.dart';
 
 // 입력칸 선택(포커스) 시 배경 (로그인 화면과 동일한 peach)
@@ -48,12 +49,6 @@ class _PasswordResetVerifyPageState
     super.dispose();
   }
 
-  // 회원가입과 같은 비밀번호 정책 (8자 이상, 대·소문자·숫자)
-  bool _isValidPassword(String pw) =>
-      pw.length >= 8 &&
-      pw.contains(RegExp(r'[A-Z]')) &&
-      pw.contains(RegExp(r'[a-z]')) &&
-      pw.contains(RegExp(r'[0-9]'));
 
   // 코드 즉시 확인. 성공하면 recovery 세션 토큰을 받아 보관하고 코드칸을 잠근다.
   Future<void> _onVerifyCode() async {
@@ -90,8 +85,8 @@ class _PasswordResetVerifyPageState
       setState(() => _errorMessage = '인증코드 확인을 먼저 진행해주세요.');
       return;
     }
-    if (!_isValidPassword(pw)) {
-      setState(() => _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
+    if (!isValidPassword(pw)) {
+      setState(() => _errorMessage = passwordPolicyMessage);
       return;
     }
     if (pw != _confirmCtrl.text) {
@@ -246,7 +241,7 @@ class _PasswordResetVerifyPageState
               const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Text(
-                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함',
+                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 15,
