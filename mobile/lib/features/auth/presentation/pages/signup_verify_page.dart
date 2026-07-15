@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
+import '../../utils/password_policy.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -55,13 +56,6 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
     super.dispose();
   }
 
-  // 회원가입 비밀번호 정책 (8자 이상, 대·소문자·숫자)
-  bool _isValidPassword(String pw) =>
-      pw.length >= 8 &&
-      pw.contains(RegExp(r'[A-Z]')) &&
-      pw.contains(RegExp(r'[a-z]')) &&
-      pw.contains(RegExp(r'[0-9]'));
-
   String _messageFromError(Object error) {
     return switch (error) {
       AppException e => e.message,
@@ -105,8 +99,8 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
       setState(() => _errorMessage = '인증코드 확인을 먼저 진행해주세요.');
       return;
     }
-    if (!_isValidPassword(pw)) {
-      setState(() => _errorMessage = '비밀번호는 8자 이상, 대·소문자·숫자를 포함해야 합니다.');
+    if (!isValidPassword(pw)) {
+      setState(() => _errorMessage = passwordPolicyMessage);
       return;
     }
     if (pw != _confirmCtrl.text) {
@@ -255,7 +249,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
               const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Text(
-                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함',
+                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 15,
