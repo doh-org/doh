@@ -99,7 +99,7 @@ func TestCreateTrip_TitleTooLong(t *testing.T) {
 	tok := tripToken(t, keys, fs, "user-1")
 
 	w := doTrip(router, http.MethodPost, "/api/v1/trips/add", tok, map[string]any{
-		"title": strings.Repeat("가", 51),
+		"title": strings.Repeat("가", 15),
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)
@@ -334,7 +334,7 @@ func TestUpdateTrip_TitleTooLong(t *testing.T) {
 	json.NewDecoder(cw.Body).Decode(&created)
 
 	w := doTrip(router, http.MethodPatch, fmt.Sprintf("/api/v1/trips/%s", created.ID), tok, map[string]any{
-		"title": strings.Repeat("가", 51),
+		"title": strings.Repeat("가", 15),
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status=%d want 400", w.Code)

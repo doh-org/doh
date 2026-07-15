@@ -45,6 +45,12 @@ func TestValidatePassword(t *testing.T) {
 	}{
 		{"valid", "Test1234!", false, ""},
 		{"too short", "Ab1", true, "비밀번호는 8자 이상이어야 합니다."},
+		// 회귀: byte len 기준이면 한글(3byte/자) 포함 7자가 길이를 통과해버림 → rune 기준 검증
+		{"multibyte 7 runes", "가가가Ab1c", true, "비밀번호는 8자 이상이어야 합니다."},
+		// 화이트리스트: 영문·숫자·특수문자(ASCII 33~126) 외 문자는 거부
+		{"hangul rejected", "가가가Ab1cd", true, "비밀번호는 영문 대소문자, 숫자, 특수문자만 사용할 수 있습니다."},
+		{"space rejected", "Test 1234", true, "비밀번호는 영문 대소문자, 숫자, 특수문자만 사용할 수 있습니다."},
+		{"special chars ok", "Test1234!@#", false, ""},
 		{"no uppercase", "test1234", true, "비밀번호에 대문자가 포함되어야 합니다."},
 		{"no lowercase", "TEST1234", true, "비밀번호에 소문자가 포함되어야 합니다."},
 		{"no digit", "TestPass", true, "비밀번호에 숫자가 포함되어야 합니다."},

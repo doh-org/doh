@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -18,7 +19,8 @@ func NewMarkerUsecase(markerRepo domain.MarkerRepository, tripRepo domain.TripRe
 }
 
 func (u *markerUsecase) CreateMarker(ctx context.Context, token, tripID, userID string, input domain.CreateMarkerInput) (*domain.Marker, error) {
-	if _, err := u.tripRepo.GetTrip(ctx, token, tripID); err != nil {
+	trip, err := u.tripRepo.GetTrip(ctx, token, tripID) // 존재 확인 + visit_days 상한 검사용
+	if err != nil {
 		return nil, err
 	}
 
@@ -40,13 +42,28 @@ func (u *markerUsecase) CreateMarker(ctx context.Context, token, tripID, userID 
 	if input.Longitude < -180 || input.Longitude > 180 {
 		return nil, &domain.ValidationError{Message: "경도는 -180~180 범위여야 합니다."}
 	}
-	for _, d := range input.VisitDays {
-		if d < 1 {
-			return nil, &domain.ValidationError{Message: "day_index는 1 이상이어야 합니다."}
-		}
+	if err := validateVisitDays(input.VisitDays, trip); err != nil {
+		return nil, err
 	}
 
 	return u.markerRepo.CreateMarker(ctx, token, tripID, userID, input)
+}
+
+// validateVisitDays는 day_index 하한(1)과 여행 일수 상한을 검사한다.
+// 여행에 날짜가 없으면 총 일수를 알 수 없음 → 상한 검사는 건너뜀.
+func validateVisitDays(days []int, trip *domain.Trip) error {
+	setTotalDays(trip) // 파생 일수 계산(날짜 둘 다 없으면 nil 유지)
+	for _, d := range days {
+		if d < 1 {
+			return &domain.ValidationError{Message: "day_index는 1 이상이어야 합니다."}
+		}
+		if trip.TotalDays != nil && d > *trip.TotalDays {
+			return &domain.ValidationError{
+				Message: fmt.Sprintf("day_index는 여행 일수(%d) 이하여야 합니다.", *trip.TotalDays),
+			}
+		}
+	}
+	return nil
 }
 
 // GetMarkersByDay는 day 마커 목록을 반환함. day=0=미정, day>=1=그 day. day<0은 400.
@@ -102,10 +119,12 @@ func (u *markerUsecase) UpdateMarker(ctx context.Context, token, tripID, markerI
 		}
 	}
 	if input.VisitDays != nil {
-		for _, d := range *input.VisitDays {
-			if d < 1 {
-				return nil, &domain.ValidationError{Message: "day_index는 1 이상이어야 합니다."}
-			}
+		trip, err := u.tripRepo.GetTrip(ctx, token, tripID) // 상한 검사에 여행 일수 필요
+		if err != nil {
+			return nil, err
+		}
+		if err := validateVisitDays(*input.VisitDays, trip); err != nil {
+			return nil, err
 		}
 	}
 

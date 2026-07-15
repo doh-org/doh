@@ -76,8 +76,8 @@ func TestCreateTrip_TitleValidation(t *testing.T) {
 		{"empty", "", true},
 		{"whitespace_only", "   ", true},
 		{"ok_1char", "여", false},
-		{"ok_50char", strings.Repeat("a", 50), false},
-		{"too_long_51char", strings.Repeat("a", 51), true},
+		{"ok_14char", strings.Repeat("a", 14), false},
+		{"too_long_15char", strings.Repeat("a", 15), true},
 		{"trimmed_ok", "  여행  ", false},
 	}
 
@@ -159,7 +159,7 @@ func TestUsecase_UpdateTrip_TitleValidation(t *testing.T) {
 	uc, repo := newUsecase()
 	repo.trips["trip-1"] = &domain.Trip{ID: "trip-1", OwnerID: "uid", Title: "원본"}
 
-	long := strings.Repeat("가", 51)
+	long := strings.Repeat("가", 15)
 	_, err := uc.UpdateTrip(context.Background(), "uid", "tok", "trip-1", domain.UpdateTripInput{Title: &long})
 	var ve *domain.ValidationError
 	if !errors.As(err, &ve) {

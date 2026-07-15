@@ -218,6 +218,55 @@ func TestCreateMarker_LongitudeValidation(t *testing.T) {
 	}
 }
 
+// ── CreateMarker visit_days 검증 ──────────────────────────────────────────────
+
+// 3일 여행(07-01~07-03) 기준: 1~3 허용, 0 이하·4 이상 거부.
+func TestCreateMarker_VisitDaysValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		days    []int
+		wantErr bool
+	}{
+		{"empty_ok", nil, false},
+		{"zero", []int{0}, true},
+		{"negative", []int{-1}, true},
+		{"min_boundary_1", []int{1}, false},
+		{"max_boundary_3", []int{3}, false},
+		{"over_total_4", []int{4}, true},
+		{"mixed_valid_and_over", []int{1, 4}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			uc, _, tr := newMarkerUsecase()
+			start, end := "2026-07-01", "2026-07-03"
+			tr.trips["trip-1"].StartDate = &start
+			tr.trips["trip-1"].EndDate = &end
+			in := validInput()
+			in.VisitDays = tc.days
+			_, err := uc.CreateMarker(context.Background(), "tok", "trip-1", "user-1", in)
+			var ve *domain.ValidationError
+			if tc.wantErr && !errors.As(err, &ve) {
+				t.Errorf("days=%v: want ValidationError, got %v", tc.days, err)
+			}
+			if !tc.wantErr && errors.As(err, &ve) {
+				t.Errorf("days=%v: unexpected ValidationError: %v", tc.days, ve)
+			}
+		})
+	}
+}
+
+// 여행에 날짜가 없으면 총 일수를 모름 → 상한 검사 없이 통과.
+func TestCreateMarker_VisitDays_NoTripDates(t *testing.T) {
+	uc, _, _ := newMarkerUsecase() // trip-1은 날짜 없음
+	in := validInput()
+	in.VisitDays = []int{100}
+	_, err := uc.CreateMarker(context.Background(), "tok", "trip-1", "user-1", in)
+	var ve *domain.ValidationError
+	if errors.As(err, &ve) {
+		t.Errorf("unexpected ValidationError: %v", ve)
+	}
+}
+
 // ── CreateMarker 논리 검증 ────────────────────────────────────────────────────
 
 func TestCreateMarker_TripNotFound(t *testing.T) {
@@ -333,6 +382,22 @@ func TestUpdateMarker_LongitudeOutOfRange(t *testing.T) {
 				t.Errorf("lng=%v: unexpected ValidationError: %v", tc.lng, ve)
 			}
 		})
+	}
+}
+
+// PATCH도 동일한 상한 검사를 타는지 확인 (3일 여행에 day 4 → 400).
+func TestUpdateMarker_VisitDaysOverTotal(t *testing.T) {
+	uc, mr, tr := newMarkerUsecase()
+	start, end := "2026-07-01", "2026-07-03"
+	tr.trips["trip-1"].StartDate = &start
+	tr.trips["trip-1"].EndDate = &end
+	mr.markers["marker-1"] = &domain.Marker{ID: "marker-1", TripID: "trip-1"}
+
+	days := []int{4}
+	_, err := uc.UpdateMarker(context.Background(), "tok", "trip-1", "marker-1", "user-1", domain.UpdateMarkerInput{VisitDays: &days})
+	var ve *domain.ValidationError
+	if !errors.As(err, &ve) {
+		t.Errorf("want ValidationError, got %v", err)
 	}
 }
 
