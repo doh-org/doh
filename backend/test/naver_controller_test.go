@@ -11,8 +11,8 @@ import (
 	"doh/backend/test/testutil"
 )
 
-// setupNaver는 fake 업스트림으로 프록시 라우터를 구성한다.
-// naver·kakao 패키지 엔드포인트 seam을 fake 서버로 교체하고 테스트 후 복원.
+// setupNaver: fake 업스트림으로 프록시 라우터 구성
+// naver·kakao 패키지 엔드포인트 seam을 fake 서버로 교체하고 테스트 후 복원
 func setupNaver(t *testing.T) (http.Handler, *testutil.FakeNaver, *testutil.FakeKakao, *testutil.FakeSupabase, *testutil.TestKeys) {
 	t.Helper()
 	fs := testutil.NewFakeSupabase(t)
@@ -42,7 +42,7 @@ func setupNaver(t *testing.T) (http.Handler, *testutil.FakeNaver, *testutil.Fake
 
 // ── GET /api/v1/places/resolve ────────────────────────────────────────────
 
-// mustHostname은 URL에서 호스트명(포트 제외)을 꺼낸다.
+// mustHostname: URL에서 호스트명(포트 제외) 추출
 func mustHostname(t *testing.T, rawURL string) string {
 	t.Helper()
 	u, err := url.Parse(rawURL)

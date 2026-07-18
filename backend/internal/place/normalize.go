@@ -1,4 +1,4 @@
-// Package place는 네이버·카카오 장소 검색 결과를 단일 형식으로 정규화·병합한다.
+// Package place는 네이버·카카오 장소 검색 결과를 단일 형식으로 정규화·병합
 package place
 
 import (
@@ -14,7 +14,7 @@ const (
 	ProviderKakao = "kakao"
 )
 
-// 네이버 mapx/mapy는 WGS84 ×1e7 정수 문자열 → 나눠서 도(degree)로 복원
+// 네이버 mapx/mapy는 WGS84 ×1e7 정수 문자열 → 나눠서 degree로 복원
 const naverMapScale = 1e7
 
 // Place는 소스와 무관한 통일 장소 형식. 좌표는 WGS84 number.
@@ -41,7 +41,7 @@ type naverItem struct {
 	Mapy        string `json:"mapy"`
 }
 
-// FromNaver는 네이버 지역검색 원본 JSON을 통일 형식으로 변환한다.
+// FromNaver:ㅣ 네이버 지역검색 원본 JSON을 통일된 형식으로 변환
 func FromNaver(raw []byte) ([]Place, error) {
 	var resp struct {
 		Items []naverItem `json:"items"`
@@ -50,15 +50,17 @@ func FromNaver(raw []byte) ([]Place, error) {
 		return nil, err
 	}
 
-	places := make([]Place, 0, len(resp.Items))
+	places := make([]Place, 0, len(resp.Items)) // make(타입, 길이 0, 용량 항목수)
 	for _, it := range resp.Items {
 		x, errX := strconv.ParseFloat(it.Mapx, 64)
 		y, errY := strconv.ParseFloat(it.Mapy, 64)
-		// 좌표 없이는 지도에 못 찍음 → 해당 항목만 스킵 (전체 실패 아님)
+
+		// 변환 실패시 해당 항목만 검색 결과에서 버림
 		if errX != nil || errY != nil {
 			slog.Warn("naver place skipped: bad coords", "mapx", it.Mapx, "mapy", it.Mapy)
 			continue
 		}
+
 		places = append(places, Place{
 			Provider:    ProviderNaver,
 			Title:       stripBold(it.Title),
@@ -85,7 +87,7 @@ type kakaoDocument struct {
 	Y               string `json:"y"` // 위도, 소수 문자열
 }
 
-// FromKakao는 카카오 키워드 검색 원본 JSON을 통일 형식으로 변환한다.
+// FromKakao는 카카오 키워드 검색 원본 JSON을 통일 형식으로 변환
 func FromKakao(raw []byte) ([]Place, error) {
 	var resp struct {
 		Documents []kakaoDocument `json:"documents"`
@@ -117,7 +119,7 @@ func FromKakao(raw []byte) ([]Place, error) {
 	return places, nil
 }
 
-// stripBold는 네이버 title의 검색어 강조 태그(<b>)를 제거한다.
+// stripBold: 네이버 title의 검색어 강조 태그(<b>)를 제거
 func stripBold(s string) string {
 	s = strings.ReplaceAll(s, "<b>", "")
 	return strings.ReplaceAll(s, "</b>", "")

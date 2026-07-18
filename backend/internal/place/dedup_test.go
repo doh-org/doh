@@ -3,7 +3,7 @@ package place
 import "testing"
 
 // 기준 장소 쌍: 같은 가게가 네이버(전체 시/도명·건물명 붙음)와
-// 카카오(축약 시/도명)에 다르게 표기된 상황을 재현한다.
+// 카카오(축약 시/도명)에 다르게 표기된 상황을 재현
 func naverBurger() Place {
 	return Place{
 		Provider:    ProviderNaver,

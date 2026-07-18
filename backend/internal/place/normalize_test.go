@@ -63,7 +63,7 @@ func TestFromKakao(t *testing.T) {
 	}
 }
 
-// 좌표 파싱 실패 항목은 스킵, 나머지는 살아남는다
+// 좌표 파싱 실패 항목만 스팁
 func TestFromNaver_BadCoordsSkipped(t *testing.T) {
 	raw := []byte(`{"items":[
 		{"title":"좌표없음","mapx":"","mapy":""},
@@ -95,7 +95,7 @@ func TestFromKakao_BadCoordsSkipped(t *testing.T) {
 	}
 }
 
-// 원본이 JSON이 아니면 에러 (호출자가 소스 실패로 처리)
+// 원본이 JSON이 아니면 에러
 func TestFromNaver_InvalidJSON(t *testing.T) {
 	if _, err := FromNaver([]byte("not json")); err == nil {
 		t.Fatal("want error")

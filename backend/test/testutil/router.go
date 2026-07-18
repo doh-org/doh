@@ -18,8 +18,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// NewTestAuthRouter는 운영 배선(NewAuthRouter)과 동일한
-// controller→usecase→repository 경로로 auth 전체 엔드포인트를 구성한다.
+// NewTestAuthRouter: controller → usecase → repository 경로로 auth 전체 엔드포인트를 구성
 func NewTestAuthRouter(
 	t *testing.T,
 	supabaseURL string,
@@ -125,7 +124,6 @@ func NewTestTripRouter(
 	return r
 }
 
-// NewTestNaverRouter는 네이버 프록시 라우트를 운영 배선과 동일하게 구성한다.
 func NewTestNaverRouter(
 	t *testing.T,
 	supabaseURL string,

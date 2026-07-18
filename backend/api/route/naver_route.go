@@ -12,9 +12,9 @@ import (
 	"doh/backend/internal/naver"
 )
 
-// NewNaverRouter는 네이버 API 프록시 라우트를 등록한다.
+// NewNaverRouter: 네이버 API 프록시 라우트를 등록
 // 공개(무인증) + IP rate limit — 반환값이 공개 장소 데이터뿐이라 인증 불필요,
-// 남용은 rate limit으로 억제.
+// 남용은 rate limit으로 차단
 func NewNaverRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, v1 *gin.RouterGroup) {
 	client := naver.NewClient(
 		env.NaverSearchClientID, env.NaverSearchSecret,

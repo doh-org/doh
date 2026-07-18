@@ -17,7 +17,7 @@ import (
 // 카카오 반경 검색 기본값(미터). 네이버는 coordinate 기준 정렬만 지원해 미적용.
 const defaultRadiusMeters = 5000
 
-// PlaceController는 네이버+카카오 장소 검색을 병렬 호출해 통일 형식으로 응답한다.
+// PlaceController: 네이버+카카오 장소 검색을 병렬 호출해 통일 형식으로 응답
 type PlaceController struct {
 	naver *naver.Client
 	kakao *kakao.LocalClient
@@ -27,7 +27,7 @@ func NewPlaceController(n *naver.Client, k *kakao.LocalClient) *PlaceController 
 	return &PlaceController{naver: n, kakao: k}
 }
 
-// SearchPlaces는 통합 장소 검색. GET /places/search?q=&x=&y=
+// SearchPlaces: 통합 장소 검색. GET /places/search?q=&x=&y=
 // x=경도, y=위도 — 쌍으로만 허용되는 선택 파라미터.
 func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 	query := strings.TrimSpace(c.Query("q"))
@@ -56,12 +56,13 @@ func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 		slog.Warn("kakao search failed, naver only", "err", kakaoErr)
 	}
 
-	// 병합 순서: naver 먼저, kakao 뒤 — 중복은 kakao 쪽을 남긴다
+	// 병합 순서: naver 먼저, kakao 뒤
+	// 중복일 경우 kakao 쪽을 살림
 	merged := place.Dedup(append(naverPlaces, kakaoPlaces...))
 	c.JSON(http.StatusOK, gin.H{"places": merged})
 }
 
-// searchBoth는 두 소스를 병렬 호출하고 정규화까지 마친 결과를 돌려준다.
+// searchBoth: 두 소스를 병렬 호출하고 정규화까지 마친 결과 리턴
 func (pc *PlaceController) searchBoth(c *gin.Context, query, x, y string) (np []place.Place, ne error, kp []place.Place, ke error) {
 	ctx := c.Request.Context()
 	coordinate := ""

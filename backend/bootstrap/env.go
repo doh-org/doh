@@ -17,7 +17,7 @@ type Env struct {
 	NaverSearchSecret      string
 	NcpMapClientID         string // NCP API Gateway (역지오코딩)
 	NcpMapSecret           string
-	KakaoRestAPIKey        string // 카카오 로컬 API (장소 키워드 검색)
+	KakaoRestAPIKey        string // 카카오 로컬 API
 }
 
 func NewEnv() (*Env, error) {
