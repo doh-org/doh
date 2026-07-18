@@ -63,7 +63,7 @@ func TestFromKakao(t *testing.T) {
 	}
 }
 
-// 좌표 파싱 실패 항목만 스팁
+// 좌표 파싱 실패 항목만 스킵
 func TestFromNaver_BadCoordsSkipped(t *testing.T) {
 	raw := []byte(`{"items":[
 		{"title":"좌표없음","mapx":"","mapy":""},

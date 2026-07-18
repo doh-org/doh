@@ -15,7 +15,7 @@ import (
 )
 
 // 카카오 반경 검색 기본값(미터). 네이버는 coordinate 기준 정렬만 지원해 미적용.
-const defaultRadiusMeters = 5000
+const defaultRadiusMeters = 20000
 
 // PlaceController: 네이버+카카오 장소 검색을 병렬 호출해 통일 형식으로 응답
 type PlaceController struct {

@@ -41,7 +41,7 @@ type naverItem struct {
 	Mapy        string `json:"mapy"`
 }
 
-// FromNaver:ㅣ 네이버 지역검색 원본 JSON을 통일된 형식으로 변환
+// FromNaver: 네이버 지역검색 원본 JSON을 통일된 형식으로 변환
 func FromNaver(raw []byte) ([]Place, error) {
 	var resp struct {
 		Items []naverItem `json:"items"`
