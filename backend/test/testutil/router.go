@@ -8,6 +8,7 @@ import (
 
 	"doh/backend/api/controller"
 	"doh/backend/api/middleware"
+	"doh/backend/internal/kakao"
 	"doh/backend/internal/naver"
 	"doh/backend/repository"
 	"doh/backend/usecase"
@@ -132,15 +133,15 @@ func NewTestNaverRouter(
 	client *http.Client,
 ) http.Handler {
 	t.Helper()
-	nc := controller.NewNaverController(
-		naver.NewClient("fake-search-id", "fake-search-secret", "fake-ncp-id", "fake-ncp-secret", client),
-	)
+	naverClient := naver.NewClient("fake-search-id", "fake-search-secret", "fake-ncp-id", "fake-ncp-secret", client)
+	nc := controller.NewNaverController(naverClient)
+	pc := controller.NewPlaceController(naverClient, kakao.NewLocalClient("fake-rest-key", client))
 
 	r := gin.New()
 	g := r.Group("/api/v1")
 	// 운영과 동일: 공개(무인증) + rate limit
 	g.Use(middleware.RateLimit())
-	g.GET("/places/search", nc.SearchPlaces)
+	g.GET("/places/search", pc.SearchPlaces)
 	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소
 	g.GET("/geocode/reverse", nc.ReverseGeocode)
 

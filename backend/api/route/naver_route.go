@@ -8,6 +8,7 @@ import (
 	"doh/backend/api/controller"
 	"doh/backend/api/middleware"
 	"doh/backend/bootstrap"
+	"doh/backend/internal/kakao"
 	"doh/backend/internal/naver"
 )
 
@@ -20,10 +21,12 @@ func NewNaverRouter(env *bootstrap.Env, keys map[string]*ecdsa.PublicKey, v1 *gi
 		env.NcpMapClientID, env.NcpMapSecret, nil,
 	)
 	nc := controller.NewNaverController(client)
+	// 통합 장소 검색: 네이버+카카오 병렬 호출 후 정규화·병합
+	pc := controller.NewPlaceController(client, kakao.NewLocalClient(env.KakaoRestAPIKey, nil))
 
 	g := v1.Group("")
 	g.Use(middleware.RateLimit())
-	g.GET("/places/search", nc.SearchPlaces)
+	g.GET("/places/search", pc.SearchPlaces)
 	g.GET("/places/resolve", nc.ResolvePlace) // 공유 링크 → 장소
 	g.GET("/geocode/reverse", nc.ReverseGeocode)
 }

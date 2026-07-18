@@ -22,28 +22,8 @@ func NewNaverController(client *naver.Client) *NaverController {
 	return &NaverController{client: client}
 }
 
-// SearchPlaces는 장소 검색 프록시. GET /places/search?q=&coordinate=
-func (nc *NaverController) SearchPlaces(c *gin.Context) {
-	query := strings.TrimSpace(c.Query("q"))
-	if query == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "검색어를 입력해주세요."})
-		return
-	}
-	// coordinate는 "경도,위도" 선택 파라미터 — 형식만 느슨히 확인
-	coordinate := strings.TrimSpace(c.Query("coordinate"))
-	if coordinate != "" && strings.Count(coordinate, ",") != 1 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 좌표 형식입니다."})
-		return
-	}
-
-	body, err := nc.client.SearchLocal(c.Request.Context(), query, coordinate)
-	if err != nil {
-		slog.Error("naver search proxy failed", "err", err)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "장소 검색에 실패했습니다."})
-		return
-	}
-	c.Data(http.StatusOK, "application/json", body) // 네이버 응답 패스스루
-}
+// 장소 검색은 place_controller.go(PlaceController.SearchPlaces)로 이동 —
+// 네이버+카카오 통합 검색으로 대체됨.
 
 // ReverseGeocode는 좌표→주소 변환 프록시. GET /geocode/reverse?lat=&lng=&orders=
 func (nc *NaverController) ReverseGeocode(c *gin.Context) {
