@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../domain/entities/place.dart';
 import '../providers/map_provider.dart';
 
 class MapView extends ConsumerStatefulWidget {
@@ -38,17 +38,18 @@ class MapView extends ConsumerStatefulWidget {
   final void Function(TripMarker)? onMarkerTap;
   final void Function(NLatLng)? onLongTap;
   final void Function(String name, NLatLng coord)? onSymbolTap;
-  final void Function(NLatLng)? onCameraIdle;
+  // 카메라 정지 시 중심 좌표와 줌을 함께 전달 (줌은 검색 티어 결정에 사용)
+  final void Function(NLatLng center, double zoom)? onCameraIdle;
   // 사용자 제스처(드래그·줌 등)로 카메라가 움직이기 시작할 때 호출
   final VoidCallback? onCameraGesture;
-  final void Function(NaverPlace)? onSearchMarkerTap;
+  final void Function(Place)? onSearchMarkerTap;
   final VoidCallback? onMapTap;
   final double bottomPeekFraction;
   final String? selectedMarkerId;
   final NLatLng? focusTarget;
   final NLatLng? pendingLocation;
-  final NaverPlace? pendingPlace;
-  final List<NaverPlace> searchOverlays;
+  final Place? pendingPlace;
+  final List<Place> searchOverlays;
 
   @override
   ConsumerState<MapView> createState() => _MapViewState();
@@ -172,7 +173,7 @@ class _MapViewState extends ConsumerState<MapView> {
         }
         await ctrl.addOverlay(pending);
       }(),
-    ...widget.searchOverlays.asMap().entries.map((MapEntry<int, NaverPlace> e) async {
+    ...widget.searchOverlays.asMap().entries.map((MapEntry<int, Place> e) async {
       const String redAsset = 'assets/marker/red-marker.png';
       final Size natural = await _assetSize(redAsset);
       const double targetH = 40;
@@ -245,7 +246,7 @@ class _MapViewState extends ConsumerState<MapView> {
       onCameraIdle: () async {
         if (widget.onCameraIdle == null) return;
         final NCameraPosition? pos = await _controller?.getCameraPosition();
-        if (pos != null) widget.onCameraIdle?.call(pos.target);
+        if (pos != null) widget.onCameraIdle?.call(pos.target, pos.zoom);
       },
     );
   }

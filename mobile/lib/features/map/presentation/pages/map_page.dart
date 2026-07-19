@@ -9,9 +9,9 @@ import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/data/repositories/marker_repository_impl.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../trips/domain/entities/trip.dart';
-import '../../data/datasources/naver_local_search_datasource.dart';
+import '../../data/datasources/place_search_datasource.dart';
 import '../../data/datasources/naver_reverse_geocode_datasource.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../domain/entities/place.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../utils/geo_distance.dart';
 import '../widgets/map_chip_bar.dart';
@@ -38,10 +38,11 @@ class _MapPageState extends ConsumerState<MapPage> {
   String? _selectedMarkerId;
   NLatLng? _focusTarget;
   NLatLng? _pendingLocation;
-  NaverPlace? _pendingPlace;
+  Place? _pendingPlace;
   String? _searchedPlaceName;
   NLatLng _cameraCenter = const NLatLng(37.5665, 126.9780);
-  List<NaverPlace> _searchOverlays = [];
+  double _cameraZoom = 11; // map_view 초기 카메라 줌과 동일
+  List<Place> _searchOverlays = [];
   bool _searchingOverlay = false;
   // v0 제외: 마커 좋아요(찜) 기능 — 좋아요한 마커 id 보관. 추후 복구
   // final Set<String> _likedMarkerIds = {};
@@ -186,7 +187,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   Future<void> _showAddSheetFromSearch(
-    NaverPlace place,
+    Place place,
     Trip? trip,
     List<TripMarker> allMarkers,
   ) async {
@@ -303,11 +304,12 @@ class _MapPageState extends ConsumerState<MapPage> {
   Future<String?> _nearbyPlaceName(NLatLng coord, String? area) async {
     if (area == null) return null;
     try {
-      final List<NaverPlace> results = await ref
-          .read(naverLocalSearchDatasourceProvider)
-          .search(area, coordinate: '${coord.longitude},${coord.latitude}');
+      final List<Place> results = await ref
+          .read(placeSearchDatasourceProvider)
+          .search(area,
+              x: coord.longitude.toString(), y: coord.latitude.toString());
       if (results.isEmpty) return null;
-      final NaverPlace nearest = results.first;
+      final Place nearest = results.first;
       final double dist = haversineMeters(
         coord.latitude,
         coord.longitude,
@@ -326,7 +328,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       final List<TripMarker> latest =
           ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
       _showDetailSheet(result, latest);
-    } else if (result is NaverPlace) {
+    } else if (result is Place) {
       final List<TripMarker> latest =
           ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
       await _showAddSheetFromSearch(result, trip, latest);
@@ -358,11 +360,12 @@ class _MapPageState extends ConsumerState<MapPage> {
   Future<void> _searchHere() async {
     setState(() => _searchingOverlay = true);
     try {
-      final List<NaverPlace> results =
-          await ref.read(naverLocalSearchDatasourceProvider).search(
+      final List<Place> results =
+          await ref.read(placeSearchDatasourceProvider).search(
                 _searchedPlaceName!,
-                coordinate:
-                    '${_cameraCenter.longitude},${_cameraCenter.latitude}',
+                x: _cameraCenter.longitude.toString(),
+                y: _cameraCenter.latitude.toString(),
+                zoom: _cameraZoom,
               );
       if (mounted) setState(() => _searchOverlays = results);
     } catch (_) {
@@ -380,6 +383,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           tripId: _tripId,
           trip: trip,
           center: _cameraCenter,
+          zoom: _cameraZoom,
           initialQuery: _searchedPlaceName,
         ),
       ),
@@ -430,8 +434,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                 onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
                 onSymbolTap: (name, coord) =>
                     _showAddSheetFromSymbol(name, coord, trip, allMarkers),
-                onCameraIdle: (center) {
+                onCameraIdle: (NLatLng center, double zoom) {
                   _cameraCenter = center;
+                  _cameraZoom = zoom;
                 },
                 onCameraGesture: _collapseSheetOnMapGesture,
                 bottomPeekFraction: peek,

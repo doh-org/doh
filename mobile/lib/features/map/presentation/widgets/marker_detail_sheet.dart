@@ -149,7 +149,8 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     final String query = resolveMapSearchQuery(
       preferAddress: _marker.source == MarkerSource.longpress,
       name: _marker.name,
-      address: _detail('naver_address') ?? _marker.address,
+      // 신 키(address) 우선, 구버전 저장분은 naver_ 접두 키로 fallback
+      address: _detail('address') ?? _detail('naver_address') ?? _marker.address,
     );
     if (query.isEmpty) return; // 검색어 없으면 딥링크 무의미
     final MapApp? app = await ref.read(preferredMapAppProvider.future);
@@ -258,9 +259,12 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         ? trip!.endDate!.difference(trip.startDate!).inDays + 1
         : 0;
 
-    final address =
-        _detail('naver_address') ?? _marker.address ?? '정보 없음';
-    final phone = _detail('naver_phone');
+    // 신 키(address·phone) 우선, 구버전 저장분은 naver_ 접두 키로 fallback
+    final String address = _detail('address') ??
+        _detail('naver_address') ??
+        _marker.address ??
+        '정보 없음';
+    final String? phone = _detail('phone') ?? _detail('naver_phone');
 
     return Container(
       decoration: const BoxDecoration(

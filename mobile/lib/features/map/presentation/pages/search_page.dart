@@ -8,11 +8,11 @@ import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../trips/domain/entities/trip.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../domain/entities/place.dart';
 import '../providers/search_provider.dart';
 
-// naver 카테고리 경로 → DB 카테고리명
-String _naverToDbCategory(String path) {
+// 카테고리 경로(네이버·카카오 공통 ">" 구분) → DB 카테고리명
+String _toDbCategory(String path) {
   final String c = path.toLowerCase();
   if (c.contains('카페') || c.contains('디저트')) return '카페';
   if (c.contains('숙박') || c.contains('호텔') || c.contains('펜션')) return '숙소';
@@ -26,12 +26,14 @@ class SearchPage extends ConsumerStatefulWidget {
     required this.tripId,
     required this.trip,
     this.center,
+    this.zoom,
     this.initialQuery,
     super.key,
   });
   final String tripId;
   final Trip? trip;
   final NLatLng? center;
+  final double? zoom; // 지도 카메라 줌 — 검색 티어 결정에 전달
   final String? initialQuery;
 
   @override
@@ -69,13 +71,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
     if (v.trim().isNotEmpty) {
       final NLatLng? c = widget.center;
-      final String? coordinate =
-          c != null ? '${c.longitude},${c.latitude}' : null;
-      ref
-          .read(naverSearchNotifierProvider.notifier)
-          .search(v.trim(), coordinate: coordinate);
+      ref.read(placeSearchNotifierProvider.notifier).search(
+            v.trim(),
+            x: c?.longitude.toString(),
+            y: c?.latitude.toString(),
+            zoom: widget.zoom,
+          );
     } else {
-      ref.read(naverSearchNotifierProvider.notifier).clear();
+      ref.read(placeSearchNotifierProvider.notifier).clear();
     }
   }
 
@@ -115,8 +118,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget build(BuildContext context) {
     final AsyncValue<List<TripMarker>> markersAsync =
         ref.watch(markerEntitiesProvider(widget.tripId));
-    final AsyncValue<List<NaverPlace>> naverAsync =
-        ref.watch(naverSearchNotifierProvider);
+    final AsyncValue<List<Place>> placeAsync =
+        ref.watch(placeSearchNotifierProvider);
     final Map<String, Category> categoryMap = {
       for (final Category c
           in ref.watch(categoriesProvider(widget.tripId)).valueOrNull ?? [])
@@ -124,10 +127,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     };
     final List<TripMarker> localAll = markersAsync.valueOrNull ?? [];
     final List<TripMarker> localFiltered = _filterLocal(localAll);
-    final List<NaverPlace> naverResults = naverAsync.valueOrNull ?? [];
+    final List<Place> placeResults = placeAsync.valueOrNull ?? [];
     final List<TripMarker> localShown =
         _localExpanded ? localFiltered : localFiltered.take(5).toList();
-    final int totalCount = localFiltered.length + naverResults.length;
+    final int totalCount = localFiltered.length + placeResults.length;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -185,14 +188,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       localShown: localShown,
                       localTotal: localFiltered.length,
                       localExpanded: _localExpanded,
-                      naverResults: naverResults,
-                      naverLoading: naverAsync.isLoading,
+                      placeResults: placeResults,
+                      placeLoading: placeAsync.isLoading,
                       totalCount: totalCount,
                       categoryMap: categoryMap,
                       categoryColor: _categoryColor,
                       categoryIcon: _categoryIcon,
                       onLocalTap: _selectLocalMarker,
-                      onNaverTap: (p) => Navigator.pop(context, p),
+                      onPlaceTap: (Place p) => Navigator.pop(context, p),
                       onExpand: () => setState(() => _localExpanded = true),
                     ),
             ),
@@ -337,28 +340,28 @@ class _ResultList extends StatelessWidget {
     required this.localShown,
     required this.localTotal,
     required this.localExpanded,
-    required this.naverResults,
-    required this.naverLoading,
+    required this.placeResults,
+    required this.placeLoading,
     required this.totalCount,
     required this.categoryMap,
     required this.categoryColor,
     required this.categoryIcon,
     required this.onLocalTap,
-    required this.onNaverTap,
+    required this.onPlaceTap,
     required this.onExpand,
   });
 
   final List<TripMarker> localShown;
   final int localTotal;
   final bool localExpanded;
-  final List<NaverPlace> naverResults;
-  final bool naverLoading;
+  final List<Place> placeResults;
+  final bool placeLoading;
   final int totalCount;
   final Map<String, Category> categoryMap;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
   final void Function(TripMarker) onLocalTap;
-  final void Function(NaverPlace) onNaverTap;
+  final void Function(Place) onPlaceTap;
   final VoidCallback onExpand;
 
   @override
@@ -445,8 +448,8 @@ class _ResultList extends StatelessWidget {
             ),
           ),
 
-        // 네이버 검색 결과 (+ 버튼 없음, 탭 → PlaceAddSheet)
-        if (naverLoading)
+        // 통합 검색 결과 (+ 버튼 없음, 탭 → PlaceAddSheet)
+        if (placeLoading)
           const SliverToBoxAdapter(
             child: Center(
               child: Padding(
@@ -458,13 +461,13 @@ class _ResultList extends StatelessWidget {
         else
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (_, i) => _NaverItem(
-                place: naverResults[i],
+              (_, i) => _PlaceItem(
+                place: placeResults[i],
                 categoryColor: categoryColor,
                 categoryIcon: categoryIcon,
-                onTap: () => onNaverTap(naverResults[i]),
+                onTap: () => onPlaceTap(placeResults[i]),
               ),
-              childCount: naverResults.length,
+              childCount: placeResults.length,
             ),
           ),
 
@@ -576,22 +579,22 @@ class _LocalItem extends StatelessWidget {
   }
 }
 
-// ── 네이버 장소 아이템 ───────────────────────────────────────────────────────
-class _NaverItem extends StatelessWidget {
-  const _NaverItem({
+// ── 검색 장소 아이템 ─────────────────────────────────────────────────────────
+class _PlaceItem extends StatelessWidget {
+  const _PlaceItem({
     required this.place,
     required this.categoryColor,
     required this.categoryIcon,
     required this.onTap,
   });
-  final NaverPlace place;
+  final Place place;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final String dbCat = _naverToDbCategory(
+    final String dbCat = _toDbCategory(
         place.categoryPath.isNotEmpty ? place.categoryPath : place.category);
     final Color color = categoryColor(dbCat);
     final IconData icon = categoryIcon(dbCat);

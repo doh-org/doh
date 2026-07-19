@@ -1,33 +1,38 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../data/datasources/naver_local_search_datasource.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../data/datasources/place_search_datasource.dart';
+import '../../domain/entities/place.dart';
 
 part 'search_provider.g.dart';
 
 @riverpod
-class NaverSearchNotifier extends _$NaverSearchNotifier {
-  final _cache = <String, List<NaverPlace>>{};
+class PlaceSearchNotifier extends _$PlaceSearchNotifier {
+  final Map<String, List<Place>> _cache = <String, List<Place>>{};
 
   @override
-  AsyncValue<List<NaverPlace>> build() => const AsyncData([]);
+  AsyncValue<List<Place>> build() => const AsyncData([]);
 
-  Future<void> search(String query, {String? coordinate}) async {
-    final q = query.trim();
+  Future<void> search(
+    String query, {
+    String? x,
+    String? y,
+    double? zoom,
+  }) async {
+    final String q = query.trim();
     if (q.isEmpty) {
       state = const AsyncData([]);
       return;
     }
-    final String cacheKey = coordinate != null ? '$q|$coordinate' : q;
+    final String cacheKey = x != null ? '$q|$x,$y' : q;
     if (_cache.containsKey(cacheKey)) {
       state = AsyncData(_cache[cacheKey]!);
       return;
     }
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final results = await ref
-          .read(naverLocalSearchDatasourceProvider)
-          .search(q, coordinate: coordinate);
+      final List<Place> results = await ref
+          .read(placeSearchDatasourceProvider)
+          .search(q, x: x, y: y, zoom: zoom);
       _cache[cacheKey] = results;
       return results;
     });
