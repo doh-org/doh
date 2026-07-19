@@ -17,6 +17,7 @@ type Env struct {
 	NaverSearchSecret      string
 	NcpMapClientID         string // NCP API Gateway (역지오코딩)
 	NcpMapSecret           string
+	KakaoRestAPIKey        string // 카카오 로컬 API
 }
 
 func NewEnv() (*Env, error) {
@@ -32,6 +33,7 @@ func NewEnv() (*Env, error) {
 		NaverSearchSecret:      os.Getenv("NAVER_SEARCH_CLIENT_SECRET"),
 		NcpMapClientID:         os.Getenv("NAVER_MAP_CLIENT_ID"),
 		NcpMapSecret:           os.Getenv("NAVER_MAP_CLIENT_SECRET"),
+		KakaoRestAPIKey:        os.Getenv("KAKAO_REST_API_KEY"),
 	}
 
 	if env.SupabaseURL == "" {
@@ -45,6 +47,9 @@ func NewEnv() (*Env, error) {
 	}
 	if env.NcpMapClientID == "" || env.NcpMapSecret == "" {
 		return nil, fmt.Errorf("NAVER_MAP_CLIENT_ID/SECRET is required")
+	}
+	if env.KakaoRestAPIKey == "" {
+		return nil, fmt.Errorf("KAKAO_REST_API_KEY is required")
 	}
 
 	return env, nil

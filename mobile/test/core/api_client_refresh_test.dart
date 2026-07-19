@@ -70,8 +70,7 @@ class _FakeApi {
 }
 
 void main() {
-  // 주의: TestWidgetsFlutterBinding을 초기화하면 모든 HTTP가 400으로 목킹돼
-  // 로컬 fake 서버 테스트가 불가능하다. 이 파일은 바인딩 없이 실행한다.
+  // 주의: TestWidgetsFlutterBinding을 초기화하면 모든 HTTP가 400으로 mocking -> 로컬 fake 서버 테스트가 불가능 -> 이 파일은 바인딩 없이 실행
   late _FakeApi api;
   late TokenStorage storage;
   late ProviderContainer container;

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart' show FlutterNaverMap;
+import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,7 +12,12 @@ import 'core/config/app_config.dart';
 import 'core/storage/guest_store.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // 디버그 빌드에서만 Marionette 바인딩 — MCP 위젯 조회/탭/스크린샷 가능
+  if (kDebugMode) {
+    MarionetteBinding.ensureInitialized();
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
