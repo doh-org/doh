@@ -30,19 +30,33 @@ var regionShort = map[string]string{
 var buildingNoRe = regexp.MustCompile(`^\d+(-\d+)?$`)
 
 // Dedup: 네이버·카카오 양쪽에 나온 동일 장소를 하나로
-// 동일 판정 시: 필드가 더 많은 kakao 항목을 남김
+// 동일 판정 시: 필드가 더 많은 kakao 항목을 naver 인덱스로 승격해
+// 병합 순서(네이버 관련도순)를 보존한다
 func Dedup(places []Place) []Place {
-	removed := make([]bool, len(places))
+	replaceWith := make([]int, len(places)) // naver 자리에 승격할 kakao 인덱스 (-1: 승격 없음)
+	consumed := make([]bool, len(places))   // 승격돼 원래 자리에서 빠지는 kakao
+	removed := make([]bool, len(places))    // 승격 없이 버려지는 naver
+	for i := range replaceWith {
+		replaceWith[i] = -1
+	}
+
 	for i, a := range places {
 		if a.Provider != ProviderNaver {
 			continue
 		}
-		for _, b := range places {
+		for j, b := range places {
 			if b.Provider != ProviderKakao {
 				continue
 			}
 			if matchSignals(a, b) >= dedupMinSignals {
-				removed[i] = true // naver 쪽 제거, kakao 유지
+				// 이미 승격된 kakao → naver만 버림 (응답 중복 방지)
+				// 아니면 → kakao를 이 naver 자리로 승격
+				if consumed[j] {
+					removed[i] = true
+				} else {
+					replaceWith[i] = j
+					consumed[j] = true
+				}
 				break
 			}
 		}
@@ -50,7 +64,11 @@ func Dedup(places []Place) []Place {
 
 	out := make([]Place, 0, len(places))
 	for i, p := range places {
-		if !removed[i] {
+		switch {
+		case removed[i] || consumed[i]: // 버려진 naver / 자리 옮긴 kakao
+		case replaceWith[i] >= 0:
+			out = append(out, places[replaceWith[i]]) // naver 자리에 kakao
+		default:
 			out = append(out, p)
 		}
 	}
