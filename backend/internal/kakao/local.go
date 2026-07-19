@@ -27,10 +27,11 @@ func NewLocalClient(restKey string, client *http.Client) *LocalClient {
 
 // SearchKeyword: 키워드 장소 검색 결과 JSON을 그대로 반환
 // x=경도, y=위도 문자열. 빈 문자열이면 좌표·radius 생략, sort 기본 accuracy
-func (c *LocalClient) SearchKeyword(ctx context.Context, query, x, y string, radius int) ([]byte, error) {
+// size는 결과 개수(카카오 최대 15) — 줌 티어에 따라 호출자가 결정
+func (c *LocalClient) SearchKeyword(ctx context.Context, query, x, y string, radius, size int) ([]byte, error) {
 	q := url.Values{}
 	q.Set("query", query)
-	q.Set("size", "15") // 카카오 최대 15건
+	q.Set("size", strconv.Itoa(size))
 	// 좌표가 있으면 반경 검색(없으면 전국 정확도순)
 	if x != "" && y != "" {
 		q.Set("x", x)

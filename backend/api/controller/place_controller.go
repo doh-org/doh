@@ -14,8 +14,11 @@ import (
 	"doh/backend/internal/place"
 )
 
-// 카카오 반경 검색 기본값(미터). 네이버는 coordinate 기준 정렬만 지원해 미적용.
-const defaultRadiusMeters = 20000
+// 네이버 SDK 카메라 줌 범위 (파라미터 검증용)
+const (
+	minZoomLevel = 0
+	maxZoomLevel = 21
+)
 
 // PlaceController: 네이버+카카오 장소 검색을 병렬 호출해 통일 형식으로 응답
 type PlaceController struct {
@@ -27,8 +30,9 @@ func NewPlaceController(n *naver.Client, k *kakao.LocalClient) *PlaceController 
 	return &PlaceController{naver: n, kakao: k}
 }
 
-// SearchPlaces: 통합 장소 검색. GET /places/search?q=&x=&y=
+// SearchPlaces: 통합 장소 검색. GET /places/search?q=&x=&y=&zoom=
 // x=경도, y=위도 — 쌍으로만 허용되는 선택 파라미터.
+// zoom=카메라 줌(0~21, 연속값) — 카카오 radius·size 티어 결정. 생략 시 20km·15 기본값.
 func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 	query := strings.TrimSpace(c.Query("q"))
 	if query == "" {
@@ -40,8 +44,13 @@ func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 좌표입니다."})
 		return
 	}
+	kp, ok := kakaoParams(strings.TrimSpace(c.Query("zoom")))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 zoom 레벨입니다."})
+		return
+	}
 
-	naverPlaces, naverErr, kakaoPlaces, kakaoErr := pc.searchBoth(c, query, x, y)
+	naverPlaces, naverErr, kakaoPlaces, kakaoErr := pc.searchBoth(c, query, x, y, kp)
 
 	// 둘 다 실패 → 502, 한쪽만 실패 → 성공한 쪽만 응답
 	if naverErr != nil && kakaoErr != nil {
@@ -63,11 +72,16 @@ func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 }
 
 // searchBoth: 두 소스를 병렬 호출하고 정규화까지 마친 결과 리턴
-func (pc *PlaceController) searchBoth(c *gin.Context, query, x, y string) (np []place.Place, ne error, kp []place.Place, ke error) {
+func (pc *PlaceController) searchBoth(c *gin.Context, query, x, y string, params place.KakaoSearchParams) (np []place.Place, ne error, kp []place.Place, ke error) {
 	ctx := c.Request.Context()
 	coordinate := ""
 	if x != "" {
 		coordinate = x + "," + y // 네이버는 "경도,위도" 단일 파라미터
+	}
+	// 전국 뷰 티어 → 카카오: 좌표 생략(기본: 전국 정확도순), 네이버: 유지
+	kx, ky := x, y
+	if !params.UseCoord {
+		kx, ky = "", ""
 	}
 
 	var wg sync.WaitGroup
@@ -83,7 +97,7 @@ func (pc *PlaceController) searchBoth(c *gin.Context, query, x, y string) (np []
 	}()
 	go func() {
 		defer wg.Done()
-		body, err := pc.kakao.SearchKeyword(ctx, query, x, y, defaultRadiusMeters)
+		body, err := pc.kakao.SearchKeyword(ctx, query, kx, ky, params.Radius, params.Size)
 		if err != nil {
 			ke = err
 			return
@@ -92,6 +106,19 @@ func (pc *PlaceController) searchBoth(c *gin.Context, query, x, y string) (np []
 	}()
 	wg.Wait()
 	return np, ne, kp, ke
+}
+
+// kakaoParams: zoom 문자열(카카오 검색 파라미터), 유효 여부(true)
+func kakaoParams(zoom string) (place.KakaoSearchParams, bool) {
+	// 미전달 → 기존 기본값(20km·15건) 유지
+	if zoom == "" {
+		return place.DefaultKakaoParams(), true
+	}
+	z, err := strconv.ParseFloat(zoom, 64)
+	if err != nil || z < minZoomLevel || z > maxZoomLevel {
+		return place.KakaoSearchParams{}, false
+	}
+	return place.KakaoParamsForZoom(z), true
 }
 
 // validCoordPair: x·y는 쌍으로만, 경도 -180~180 / 위도 -90~90.

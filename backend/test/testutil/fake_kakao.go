@@ -9,10 +9,14 @@ import (
 
 // FakeKakao 카카오 로컬 키워드 검색 업스트림 재현
 type FakeKakao struct {
-	Server    *httptest.Server
-	Error     int    // 0은 성공, 그외는 HTTP status
-	LastQuery string // 전달된 검색어(프록시 파라미터 검증용)
-	LastAuth  string // Authorization 헤더(KakaoAK 전달 검증용)
+	Server     *httptest.Server
+	Error      int    // 0은 성공, 그외는 HTTP status
+	LastQuery  string // 전달된 검색어(프록시 파라미터 검증용)
+	LastAuth   string // Authorization 헤더(KakaoAK 전달 검증용)
+	LastX      string // 전달된 경도 — 좌표 생략 티어 검증용
+	LastY      string // 전달된 위도
+	LastRadius string // 전달된 radius — 줌 티어 검증용
+	LastSize   string // 전달된 size
 }
 
 // t: 테스트 핸들(실패 보고·정리용), 반환: 서버 주소·기록 필드를 가진 *FakeKakao
@@ -40,8 +44,11 @@ func NewFakeKakao(t *testing.T) *FakeKakao {
 			return
 		}
 
-		// 성공 → 검색어 저장 후 고정 JSON 1건 응답
-		fk.LastQuery = r.URL.Query().Get("query") // ?query= 값
+		// 성공 → 파라미터 기록 후 고정 JSON 1건 응답
+		q := r.URL.Query()
+		fk.LastQuery = q.Get("query")
+		fk.LastX, fk.LastY = q.Get("x"), q.Get("y")
+		fk.LastRadius, fk.LastSize = q.Get("radius"), q.Get("size")
 		w.Header().Set("Content-Type", "application/json")
 
 		// 실제 카카오 documents 포맷 (WriteHeader 생략 시 200)

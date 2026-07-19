@@ -94,6 +94,71 @@ func TestSearchPlaces_InvalidCoords(t *testing.T) {
 	}
 }
 
+// zoom 미전달 → 반경 및 개수 기본값(radius 20000, size 15) 유지
+func TestSearchPlaces_NoZoom_DefaultParams(t *testing.T) {
+	router, _, fk, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?q=x&x=127.0&y=37.5", tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	if fk.LastRadius != "20000" || fk.LastSize != "15" {
+		t.Errorf("radius=%q size=%q want 20000, 15", fk.LastRadius, fk.LastSize)
+	}
+}
+
+// z=13(동네): radius=R(13)=3051, size=10
+func TestSearchPlaces_ZoomTown(t *testing.T) {
+	router, _, fk, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?q=x&x=127.0&y=37.5&zoom=13", tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	if fk.LastRadius != "3051" || fk.LastSize != "10" {
+		t.Errorf("radius=%q size=%q want 3051, 10", fk.LastRadius, fk.LastSize)
+	}
+	if fk.LastX != "127.0" || fk.LastY != "37.5" {
+		t.Errorf("coords=(%q,%q) want 전달됨", fk.LastX, fk.LastY)
+	}
+}
+
+// z<9(전국): 좌표·radius 생략, size 15, 카카오는 전국 정확도순
+func TestSearchPlaces_ZoomNationwide_NoCoords(t *testing.T) {
+	router, _, fk, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?q=x&x=127.0&y=37.5&zoom=7", tok, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	if fk.LastX != "" || fk.LastY != "" || fk.LastRadius != "" {
+		t.Errorf("x=%q y=%q radius=%q want 모두 생략", fk.LastX, fk.LastY, fk.LastRadius)
+	}
+	if fk.LastSize != "15" {
+		t.Errorf("size=%q want 15", fk.LastSize)
+	}
+}
+
+// zoom 형식·범위(0~21) 밖 → 400
+func TestSearchPlaces_InvalidZoom(t *testing.T) {
+	router, _, _, fs, keys := setupNaver(t)
+	tok := accountToken(t, keys, fs)
+
+	for _, qs := range []string{
+		"q=x&zoom=abc", // 비숫자
+		"q=x&zoom=22",  // 범위 초과
+		"q=x&zoom=-1",  // 음수
+	} {
+		w := doAccount(t, router, http.MethodGet, "/api/v1/places/search?"+qs, tok, nil)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("qs=%q status=%d want 400", qs, w.Code)
+		}
+	}
+}
+
 // 카카오만 실패 → 네이버 결과만 200
 func TestSearchPlaces_KakaoDown_NaverOnly(t *testing.T) {
 	router, _, fk, fs, keys := setupNaver(t)
