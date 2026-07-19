@@ -99,6 +99,34 @@ func TestNormalizeTitle(t *testing.T) {
 	}
 }
 
+// 승격: 중복 판정 시 kakao가 제거된 naver 인덱스를 물려받아 순서 보존
+func TestDedup_PromotionKeepsOrder(t *testing.T) {
+	n2 := Place{Provider: ProviderNaver, Title: "버거킹 역삼점",
+		RoadAddress: "서울 강남구 테헤란로 10", Mapx: 127.03, Mapy: 37.50}
+	k1 := Place{Provider: ProviderKakao, Title: "버거킹 선릉점",
+		RoadAddress: "서울 강남구 선릉로 20", Mapx: 127.05, Mapy: 37.51}
+	// [naver강남, naver역삼, kakao선릉, kakao강남] — 강남끼리만 중복
+	out := Dedup([]Place{naverBurger(), n2, k1, kakaoBurger()})
+	if len(out) != 3 {
+		t.Fatalf("len=%d want 3: %+v", len(out), out)
+	}
+	// naver강남 자리(맨 앞)에 kakao강남이 승격, 나머지 순서 불변
+	if out[0].Provider != ProviderKakao || out[0].Title != "버거킹 강남점" {
+		t.Errorf("out[0]=%+v want kakao 강남점 승격", out[0])
+	}
+	if out[1].Title != "버거킹 역삼점" || out[2].Title != "버거킹 선릉점" {
+		t.Errorf("순서 변형: %+v", out)
+	}
+}
+
+// naver 2개가 같은 kakao와 중복 → 첫 naver 자리에만 승격, 나머지 naver 제거
+func TestDedup_TwoNaverOneKakao(t *testing.T) {
+	out := Dedup([]Place{naverBurger(), naverBurger(), kakaoBurger()})
+	if len(out) != 1 || out[0].Provider != ProviderKakao {
+		t.Fatalf("out=%+v want kakao 1건", out)
+	}
+}
+
 // naver끼리는 제거 안 함 (교차 소스만 판정)
 func TestDedup_SameProviderKept(t *testing.T) {
 	a, b := naverBurger(), naverBurger()

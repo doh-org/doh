@@ -66,7 +66,7 @@ func (pc *PlaceController) SearchPlaces(c *gin.Context) {
 	}
 
 	// 병합 순서: naver 먼저, kakao 뒤
-	// 중복일 경우 kakao 쪽을 살림
+	// 중복이면 kakao가 naver 자리로 승격돼 순서 유지
 	merged := place.Dedup(append(naverPlaces, kakaoPlaces...))
 	c.JSON(http.StatusOK, gin.H{"places": merged})
 }
