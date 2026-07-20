@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/update_error_dialog.dart';
-import '../../../map/data/datasources/naver_local_search_datasource.dart';
-import '../../../map/domain/entities/naver_place.dart';
+import '../../../map/data/datasources/place_search_datasource.dart';
+import '../../../map/domain/entities/place.dart';
 import '../../../map/presentation/widgets/place_add_sheet.dart';
 import '../../../map/presentation/widgets/trip_selector_sheet.dart'
     show tripCoverColor, tripDateRange;
@@ -56,10 +56,9 @@ class _SharePlacePageState extends ConsumerState<SharePlacePage> {
     if (name == null || _resolving) return;
 
     setState(() => _resolving = true);
-    List<NaverPlace> results;
+    List<Place> results;
     try {
-      results =
-          await ref.read(naverLocalSearchDatasourceProvider).search(name);
+      results = await ref.read(placeSearchDatasourceProvider).search(name);
     } catch (_) {
       if (mounted) showUpdateErrorDialog(context, '장소 검색에 실패했습니다.');
       return;
@@ -73,7 +72,7 @@ class _SharePlacePageState extends ConsumerState<SharePlacePage> {
     }
     if (!mounted) return;
 
-    final NaverPlace place = results.first;
+    final Place place = results.first;
     final bool? saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -83,7 +82,7 @@ class _SharePlacePageState extends ConsumerState<SharePlacePage> {
         latitude: place.latitude,
         longitude: place.longitude,
         dayCount: _dayCount(trip),
-        naverPlace: place,
+        place: place,
         source: MarkerSource.share,
       ),
     );

@@ -8,11 +8,15 @@ import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../trips/domain/entities/trip.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../domain/entities/place.dart';
 import '../providers/search_provider.dart';
 
-// naver 카테고리 경로 → DB 카테고리명
-String _naverToDbCategory(String path) {
+// 검색 페이지가 돌려주는 값 — 고른 대상(없으면 null)과 그때 입력돼 있던 검색어.
+// 매칭이 없어도 검색어는 지도로 넘겨서 "현위치에서 검색"에 쓸 수 있게 한다.
+typedef SearchPageResult = (Object? selection, String query);
+
+// 카테고리 경로(네이버·카카오 공통 ">" 구분) → DB 카테고리명
+String _toDbCategory(String path) {
   final String c = path.toLowerCase();
   if (c.contains('카페') || c.contains('디저트')) return '카페';
   if (c.contains('숙박') || c.contains('호텔') || c.contains('펜션')) return '숙소';
@@ -26,12 +30,14 @@ class SearchPage extends ConsumerStatefulWidget {
     required this.tripId,
     required this.trip,
     this.center,
+    this.zoom,
     this.initialQuery,
     super.key,
   });
   final String tripId;
   final Trip? trip;
   final NLatLng? center;
+  final double? zoom; // 지도 카메라 줌 — 검색 티어 결정에 전달
   final String? initialQuery;
 
   @override
@@ -50,8 +56,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (q != null && q.isNotEmpty) {
       _ctrl.text = q;
       _query = q;
+      // 지도에서 검색어를 들고 온 경우 — 엔터 없이 바로 검색
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _onQueryChanged(q);
+        if (mounted) _onSubmitted(q);
       });
     }
   }
@@ -62,21 +69,27 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
+  // 타이핑 중에는 저장된 마커 필터링만 갱신
   void _onQueryChanged(String v) {
     setState(() {
       _query = v;
       _localExpanded = false;
     });
-    if (v.trim().isNotEmpty) {
-      final NLatLng? c = widget.center;
-      final String? coordinate =
-          c != null ? '${c.longitude},${c.latitude}' : null;
-      ref
-          .read(naverSearchNotifierProvider.notifier)
-          .search(v.trim(), coordinate: coordinate);
-    } else {
-      ref.read(naverSearchNotifierProvider.notifier).clear();
-    }
+    // 글자가 바뀌면 이전 결과는 현재 검색어의 답이 아니므로 비운다
+    ref.read(placeSearchNotifierProvider.notifier).clear();
+  }
+
+  // 엔터 → 외부 통합 검색 API 1회 호출
+  void _onSubmitted(String v) {
+    final String q = v.trim();
+    if (q.isEmpty) return; // 공백만 입력한 경우 호출 안 함
+    final NLatLng? c = widget.center;
+    ref.read(placeSearchNotifierProvider.notifier).search(
+          q,
+          x: c?.longitude.toString(),
+          y: c?.latitude.toString(),
+          zoom: widget.zoom,
+        );
   }
 
   List<TripMarker> _filterLocal(List<TripMarker> all) {
@@ -107,16 +120,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         _ => Icons.place_outlined,
       };
 
+  // 어떤 경로로 나가든 검색어를 함께 넘긴다
+  void _pop(Object? selection) {
+    Navigator.pop<SearchPageResult>(context, (selection, _ctrl.text.trim()));
+  }
+
   void _selectLocalMarker(TripMarker marker) {
-    Navigator.pop(context, marker);
+    _pop(marker);
   }
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<TripMarker>> markersAsync =
         ref.watch(markerEntitiesProvider(widget.tripId));
-    final AsyncValue<List<NaverPlace>> naverAsync =
-        ref.watch(naverSearchNotifierProvider);
+    final AsyncValue<List<Place>> placeAsync =
+        ref.watch(placeSearchNotifierProvider);
     final Map<String, Category> categoryMap = {
       for (final Category c
           in ref.watch(categoriesProvider(widget.tripId)).valueOrNull ?? [])
@@ -124,12 +142,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     };
     final List<TripMarker> localAll = markersAsync.valueOrNull ?? [];
     final List<TripMarker> localFiltered = _filterLocal(localAll);
-    final List<NaverPlace> naverResults = naverAsync.valueOrNull ?? [];
+    final List<Place> placeResults = placeAsync.valueOrNull ?? [];
     final List<TripMarker> localShown =
         _localExpanded ? localFiltered : localFiltered.take(5).toList();
-    final int totalCount = localFiltered.length + naverResults.length;
+    final int totalCount = localFiltered.length + placeResults.length;
 
-    return Scaffold(
+    final Widget content = Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
@@ -140,7 +158,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: Row(
                 children: [
                   AppBackButton(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => _pop(null),
                     padding: const EdgeInsets.fromLTRB(20, 0, 12, 0),
                   ),
                   const Expanded(
@@ -166,6 +184,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: _SearchBar(
                 controller: _ctrl,
                 onChanged: _onQueryChanged,
+                onSubmitted: _onSubmitted,
                 onClear: () {
                   _ctrl.clear();
                   _onQueryChanged('');
@@ -185,20 +204,30 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       localShown: localShown,
                       localTotal: localFiltered.length,
                       localExpanded: _localExpanded,
-                      naverResults: naverResults,
-                      naverLoading: naverAsync.isLoading,
+                      placeResults: placeResults,
+                      placeLoading: placeAsync.isLoading,
                       totalCount: totalCount,
                       categoryMap: categoryMap,
                       categoryColor: _categoryColor,
                       categoryIcon: _categoryIcon,
                       onLocalTap: _selectLocalMarker,
-                      onNaverTap: (p) => Navigator.pop(context, p),
+                      onPlaceTap: (Place p) => _pop(p),
                       onExpand: () => setState(() => _localExpanded = true),
                     ),
             ),
           ],
         ),
       ),
+    );
+    // 시스템 뒤로가기·스와이프 백은 Navigator.maybePop을 타므로 여기서 가로채
+    // 검색어를 실어 보낸다. 화면 안의 _pop은 Navigator.pop이라 그대로 통과한다.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _pop(null);
+      },
+      child: content,
     );
   }
 }
@@ -208,10 +237,12 @@ class _SearchBar extends StatelessWidget {
   const _SearchBar({
     required this.controller,
     required this.onChanged,
+    required this.onSubmitted,
     required this.onClear,
   });
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
 
   @override
@@ -233,6 +264,8 @@ class _SearchBar extends StatelessWidget {
               autofocus: true,
               cursorColor: appCursorColor(),
               onChanged: onChanged,
+              onSubmitted: onSubmitted,
+              textInputAction: TextInputAction.search, // 키보드 엔터키 =  검색
               style: const TextStyle(
                 fontFamily: 'Pretendard',
                 fontSize: 15,
@@ -337,28 +370,28 @@ class _ResultList extends StatelessWidget {
     required this.localShown,
     required this.localTotal,
     required this.localExpanded,
-    required this.naverResults,
-    required this.naverLoading,
+    required this.placeResults,
+    required this.placeLoading,
     required this.totalCount,
     required this.categoryMap,
     required this.categoryColor,
     required this.categoryIcon,
     required this.onLocalTap,
-    required this.onNaverTap,
+    required this.onPlaceTap,
     required this.onExpand,
   });
 
   final List<TripMarker> localShown;
   final int localTotal;
   final bool localExpanded;
-  final List<NaverPlace> naverResults;
-  final bool naverLoading;
+  final List<Place> placeResults;
+  final bool placeLoading;
   final int totalCount;
   final Map<String, Category> categoryMap;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
   final void Function(TripMarker) onLocalTap;
-  final void Function(NaverPlace) onNaverTap;
+  final void Function(Place) onPlaceTap;
   final VoidCallback onExpand;
 
   @override
@@ -445,8 +478,8 @@ class _ResultList extends StatelessWidget {
             ),
           ),
 
-        // 네이버 검색 결과 (+ 버튼 없음, 탭 → PlaceAddSheet)
-        if (naverLoading)
+        // 통합 검색 결과 (+ 버튼 없음, 탭 → PlaceAddSheet)
+        if (placeLoading)
           const SliverToBoxAdapter(
             child: Center(
               child: Padding(
@@ -458,13 +491,13 @@ class _ResultList extends StatelessWidget {
         else
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (_, i) => _NaverItem(
-                place: naverResults[i],
+              (_, i) => _PlaceItem(
+                place: placeResults[i],
                 categoryColor: categoryColor,
                 categoryIcon: categoryIcon,
-                onTap: () => onNaverTap(naverResults[i]),
+                onTap: () => onPlaceTap(placeResults[i]),
               ),
-              childCount: naverResults.length,
+              childCount: placeResults.length,
             ),
           ),
 
@@ -514,13 +547,18 @@ class _LocalItem extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            marker.name,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2125),
+                          // 이름이 길면 카테고리 자리를 남기고 말줄임 (Row 오버플로우 방지)
+                          Flexible(
+                            child: Text(
+                              marker.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2125),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -576,22 +614,22 @@ class _LocalItem extends StatelessWidget {
   }
 }
 
-// ── 네이버 장소 아이템 ───────────────────────────────────────────────────────
-class _NaverItem extends StatelessWidget {
-  const _NaverItem({
+// ── 검색 장소 아이템 ─────────────────────────────────────────────────────────
+class _PlaceItem extends StatelessWidget {
+  const _PlaceItem({
     required this.place,
     required this.categoryColor,
     required this.categoryIcon,
     required this.onTap,
   });
-  final NaverPlace place;
+  final Place place;
   final Color Function(String) categoryColor;
   final IconData Function(String) categoryIcon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final String dbCat = _naverToDbCategory(
+    final String dbCat = _toDbCategory(
         place.categoryPath.isNotEmpty ? place.categoryPath : place.category);
     final Color color = categoryColor(dbCat);
     final IconData icon = categoryIcon(dbCat);
@@ -613,13 +651,18 @@ class _NaverItem extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            place.title,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2125),
+                          // 이름이 길면 카테고리 자리를 남기고 말줄임 (Row 오버플로우 방지)
+                          Flexible(
+                            child: Text(
+                              place.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2125),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),

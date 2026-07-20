@@ -7,7 +7,7 @@ import '../../../markers/domain/entities/category.dart';
 import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
-import '../../domain/entities/naver_place.dart';
+import '../../domain/entities/place.dart';
 
 class PlaceAddSheet extends ConsumerStatefulWidget {
   const PlaceAddSheet({
@@ -17,7 +17,7 @@ class PlaceAddSheet extends ConsumerStatefulWidget {
     required this.dayCount,
     this.initialName,
     this.initialAddress,
-    this.naverPlace,
+    this.place,
     this.source = MarkerSource.longpress,
     super.key,
   });
@@ -28,7 +28,7 @@ class PlaceAddSheet extends ConsumerStatefulWidget {
   final int dayCount;
   final String? initialName;
   final String? initialAddress;
-  final NaverPlace? naverPlace;
+  final Place? place;
   final MarkerSource source;
 
   @override
@@ -45,7 +45,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(
-      text: widget.naverPlace?.title ?? widget.initialName ?? '',
+      text: widget.place?.title ?? widget.initialName ?? '',
     );
   }
 
@@ -65,8 +65,8 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
             latitude: widget.latitude,
             longitude: widget.longitude,
             categoryId: _selectedCategoryId,
-            address: widget.naverPlace?.address ?? widget.initialAddress,
-            detail: widget.naverPlace?.toDetail(),
+            address: widget.place?.address ?? widget.initialAddress,
+            detail: widget.place?.toDetail(),
             source: widget.source,
             visitDays: _selectedDays.toList()..sort(),
           );
@@ -121,7 +121,7 @@ class _PlaceAddSheetState extends ConsumerState<PlaceAddSheet> {
           const SizedBox(height: 6),
           TextField(
             controller: _nameCtrl,
-            autofocus: widget.naverPlace == null,
+            autofocus: widget.place == null,
             cursorColor: appCursorColor(),
             decoration: InputDecoration(
               hintText: '장소 이름',
