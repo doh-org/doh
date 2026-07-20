@@ -52,8 +52,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (q != null && q.isNotEmpty) {
       _ctrl.text = q;
       _query = q;
+      // 지도에서 검색어를 들고 온 경우 — 엔터 없이 바로 검색
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _onQueryChanged(q);
+        if (mounted) _onSubmitted(q);
       });
     }
   }
@@ -64,22 +65,27 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
+  // 타이핑 중에는 저장된 마커 필터링만 갱신
   void _onQueryChanged(String v) {
     setState(() {
       _query = v;
       _localExpanded = false;
     });
-    if (v.trim().isNotEmpty) {
-      final NLatLng? c = widget.center;
-      ref.read(placeSearchNotifierProvider.notifier).search(
-            v.trim(),
-            x: c?.longitude.toString(),
-            y: c?.latitude.toString(),
-            zoom: widget.zoom,
-          );
-    } else {
-      ref.read(placeSearchNotifierProvider.notifier).clear();
-    }
+    // 글자가 바뀌면 이전 결과는 현재 검색어의 답이 아니므로 비운다
+    ref.read(placeSearchNotifierProvider.notifier).clear();
+  }
+
+  // 엔터 → 외부 통합 검색 API 1회 호출
+  void _onSubmitted(String v) {
+    final String q = v.trim();
+    if (q.isEmpty) return; // 공백만 입력한 경우 호출 안 함
+    final NLatLng? c = widget.center;
+    ref.read(placeSearchNotifierProvider.notifier).search(
+          q,
+          x: c?.longitude.toString(),
+          y: c?.latitude.toString(),
+          zoom: widget.zoom,
+        );
   }
 
   List<TripMarker> _filterLocal(List<TripMarker> all) {
@@ -169,6 +175,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: _SearchBar(
                 controller: _ctrl,
                 onChanged: _onQueryChanged,
+                onSubmitted: _onSubmitted,
                 onClear: () {
                   _ctrl.clear();
                   _onQueryChanged('');
@@ -211,10 +218,12 @@ class _SearchBar extends StatelessWidget {
   const _SearchBar({
     required this.controller,
     required this.onChanged,
+    required this.onSubmitted,
     required this.onClear,
   });
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
 
   @override
@@ -236,6 +245,8 @@ class _SearchBar extends StatelessWidget {
               autofocus: true,
               cursorColor: appCursorColor(),
               onChanged: onChanged,
+              onSubmitted: onSubmitted,
+              textInputAction: TextInputAction.search, // 키보드 엔터키 =  검색
               style: const TextStyle(
                 fontFamily: 'Pretendard',
                 fontSize: 15,
@@ -517,13 +528,18 @@ class _LocalItem extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            marker.name,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2125),
+                          // 이름이 길면 카테고리 자리를 남기고 말줄임 (Row 오버플로우 방지)
+                          Flexible(
+                            child: Text(
+                              marker.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2125),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -616,13 +632,18 @@ class _PlaceItem extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            place.title,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2125),
+                          // 이름이 길면 카테고리 자리를 남기고 말줄임 (Row 오버플로우 방지)
+                          Flexible(
+                            child: Text(
+                              place.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2125),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
