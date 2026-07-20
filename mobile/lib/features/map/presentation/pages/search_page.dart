@@ -11,6 +11,10 @@ import '../../../trips/domain/entities/trip.dart';
 import '../../domain/entities/place.dart';
 import '../providers/search_provider.dart';
 
+// 검색 페이지가 돌려주는 값 — 고른 대상(없으면 null)과 그때 입력돼 있던 검색어.
+// 매칭이 없어도 검색어는 지도로 넘겨서 "현위치에서 검색"에 쓸 수 있게 한다.
+typedef SearchPageResult = (Object? selection, String query);
+
 // 카테고리 경로(네이버·카카오 공통 ">" 구분) → DB 카테고리명
 String _toDbCategory(String path) {
   final String c = path.toLowerCase();
@@ -116,8 +120,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         _ => Icons.place_outlined,
       };
 
+  // 어떤 경로로 나가든 검색어를 함께 넘긴다
+  void _pop(Object? selection) {
+    Navigator.pop<SearchPageResult>(context, (selection, _ctrl.text.trim()));
+  }
+
   void _selectLocalMarker(TripMarker marker) {
-    Navigator.pop(context, marker);
+    _pop(marker);
   }
 
   @override
@@ -138,7 +147,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         _localExpanded ? localFiltered : localFiltered.take(5).toList();
     final int totalCount = localFiltered.length + placeResults.length;
 
-    return Scaffold(
+    final Widget content = Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
@@ -149,7 +158,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: Row(
                 children: [
                   AppBackButton(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => _pop(null),
                     padding: const EdgeInsets.fromLTRB(20, 0, 12, 0),
                   ),
                   const Expanded(
@@ -202,13 +211,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       categoryColor: _categoryColor,
                       categoryIcon: _categoryIcon,
                       onLocalTap: _selectLocalMarker,
-                      onPlaceTap: (Place p) => Navigator.pop(context, p),
+                      onPlaceTap: (Place p) => _pop(p),
                       onExpand: () => setState(() => _localExpanded = true),
                     ),
             ),
           ],
         ),
       ),
+    );
+    // 시스템 뒤로가기·스와이프 백은 Navigator.maybePop을 타므로 여기서 가로채
+    // 검색어를 실어 보낸다. 화면 안의 _pop은 Navigator.pop이라 그대로 통과한다.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _pop(null);
+      },
+      child: content,
     );
   }
 }

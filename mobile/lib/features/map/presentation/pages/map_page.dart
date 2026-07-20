@@ -39,7 +39,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   NLatLng? _focusTarget;
   NLatLng? _pendingLocation;
   Place? _pendingPlace;
-  String? _searchedPlaceName;
+  String? _searchKeyword; // 사용자가 입력한 검색어 — 표시·현위치 재검색에 함께 쓴다
   NLatLng _cameraCenter = const NLatLng(37.5665, 126.9780);
   double _cameraZoom = 11; // map_view 초기 카메라 줌과 동일
   List<Place> _searchOverlays = [];
@@ -196,7 +196,6 @@ class _MapPageState extends ConsumerState<MapPage> {
       _focusTarget = coord;
       _pendingLocation = coord;
       _pendingPlace = place;
-      _searchedPlaceName = place.title;
       _selectedMarkerId = null;
     });
     _animateSheetTo(_sheetMin);
@@ -322,16 +321,19 @@ class _MapPageState extends ConsumerState<MapPage> {
     }
   }
 
-  Future<void> _handleSearchResult(Object? result, Trip? trip) async {
-    if (!mounted) return;
-    if (result is TripMarker) {
+  Future<void> _handleSearchResult(SearchPageResult? result, Trip? trip) async {
+    if (!mounted || result == null) return;
+    final (Object? selection, String query) = result;
+    // 고른 게 없어도 검색어는 남긴다 → 지도에서 "현위치에서 검색" 가능
+    setState(() => _searchKeyword = query.isEmpty ? null : query);
+    if (selection is TripMarker) {
       final List<TripMarker> latest =
           ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
-      _showDetailSheet(result, latest);
-    } else if (result is Place) {
+      _showDetailSheet(selection, latest);
+    } else if (selection is Place) {
       final List<TripMarker> latest =
           ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
-      await _showAddSheetFromSearch(result, trip, latest);
+      await _showAddSheetFromSearch(selection, trip, latest);
     }
   }
 
@@ -362,7 +364,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     try {
       final List<Place> results =
           await ref.read(placeSearchDatasourceProvider).search(
-                _searchedPlaceName!,
+                _searchKeyword!,
                 x: _cameraCenter.longitude.toString(),
                 y: _cameraCenter.latitude.toString(),
                 zoom: _cameraZoom,
@@ -376,15 +378,15 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   Future<void> _openSearchPage(Trip? trip) async {
-    final Object? result = await Navigator.push<Object?>(
+    final SearchPageResult? result = await Navigator.push<SearchPageResult>(
       context,
-      MaterialPageRoute<Object?>(
+      MaterialPageRoute<SearchPageResult>(
         builder: (_) => SearchPage(
           tripId: _tripId,
           trip: trip,
           center: _cameraCenter,
           zoom: _cameraZoom,
-          initialQuery: _searchedPlaceName,
+          initialQuery: _searchKeyword,
         ),
       ),
     );
@@ -460,11 +462,11 @@ class _MapPageState extends ConsumerState<MapPage> {
           // 검색바 (탭 → SearchPage)
           SafeArea(
             child: MapSearchBar(
-              searchedPlaceName: _searchedPlaceName,
+              keyword: _searchKeyword,
               onBack: () => context.go('/trips'),
               onTap: () => _openSearchPage(trip),
               onClear: () => setState(() {
-                _searchedPlaceName = null;
+                _searchKeyword = null;
                 _searchOverlays = [];
                 _pendingLocation = null;
                 _pendingPlace = null;
@@ -476,7 +478,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           SafeArea(
             child: MapChipBar(
               tripTitle: trip?.title,
-              canSearchHere: _searchedPlaceName != null && !_searchingOverlay,
+              canSearchHere: _searchKeyword != null && !_searchingOverlay,
               onSearchHere: _searchHere,
               onSelectTrip: () =>
                   _showTripSelector(tripsAsync.valueOrNull ?? []),

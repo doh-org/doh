@@ -5,14 +5,14 @@ import '../../../../shared/widgets/app_back_button.dart';
 // 지도 상단 검색바. 탭 → 검색 페이지, X → 검색어 해제.
 class MapSearchBar extends StatelessWidget {
   const MapSearchBar({
-    required this.searchedPlaceName,
+    required this.keyword,
     required this.onBack,
     required this.onTap,
     required this.onClear,
     super.key,
   });
 
-  final String? searchedPlaceName; // null이면 힌트 표시
+  final String? keyword; // null이면 힌트 표시
   final VoidCallback onBack;
   final VoidCallback onTap;
   final VoidCallback onClear;
@@ -50,12 +50,12 @@ class MapSearchBar extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        searchedPlaceName ?? '지하철역, 카페, 식당 ....',
+                        keyword ?? '지하철역, 카페, 식당 ....',
                         style: TextStyle(
                           fontFamily: 'Pretendard',
                           fontSize: 15,
                           fontWeight: FontWeight.w400,
-                          color: searchedPlaceName != null
+                          color: keyword != null
                               ? const Color(0xFF1F2125)
                               : const Color(0xFFB2B2B2),
                         ),
@@ -63,7 +63,7 @@ class MapSearchBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (searchedPlaceName != null)
+                    if (keyword != null)
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: onClear,
