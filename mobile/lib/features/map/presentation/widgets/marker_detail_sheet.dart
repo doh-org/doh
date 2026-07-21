@@ -26,6 +26,7 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
     // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
     // this.isLiked = false,
     this.onMarkerSaved,
+    this.onClose,
     super.key,
   });
 
@@ -35,6 +36,10 @@ class MarkerDetailSheet extends ConsumerStatefulWidget {
   // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
   // final bool isLiked;
   final VoidCallback? onMarkerSaved;
+
+  /// 시트를 닫는 방법. 모달로 띄우면 Navigator.pop, 지도 위 패널이면 상태 해제.
+  /// 이 위젯이 자기가 어떻게 떠 있는지 몰라도 되게 호출자가 주입
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<MarkerDetailSheet> createState() => _MarkerDetailSheetState();
@@ -138,7 +143,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     if (ok == true && mounted) {
       await ref.read(markerRepositoryProvider).deleteMarker(widget.tripId, _marker.id);
       ref.invalidate(markerEntitiesProvider(widget.tripId));
-      if (mounted) Navigator.pop(context);
+      if (mounted) widget.onClose?.call();
     }
   }
 
@@ -227,7 +232,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
         lng: dest?.longitude ?? _marker.longitude,
       );
     }
-    // 스왑으로 출발지가 임시 마커일 수도 있어 같은 조회를 쓴다
+    // 스왑으로 출발지가 임시 마커일 수도 있어 같은 조회를 사용
     final TripMarker? dep =
         _departureId == null ? null : _findMarker(_departureId!);
 
@@ -269,7 +274,8 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(50)),
+        // 좌·우·하 여백을 두고 뜨는 카드라 하단 모서리도 둥글게
+        borderRadius: BorderRadius.all(Radius.circular(50)),
         boxShadow: [
           BoxShadow(
               color: Color(0x1A000000),
@@ -446,7 +452,7 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 }
               }),
               onSwap: () => setState(() {
-                // 현위치(null)도 그대로 목적지로 넘어간다
+                // 현위치(null)도 그대로 목적지로 넘어감
                 final swapped = swapRoutePoints(
                   departureId: _departureId,
                   destinationId: _destinationId,
