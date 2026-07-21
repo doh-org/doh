@@ -70,7 +70,13 @@ class _RouteStopCardState extends State<RouteStopCard>
       duration: const Duration(milliseconds: 220),
       value: widget.selected ? 1 : 0,
     );
-    _reveal = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    // 열림은 easeOut(빠르게 시작·부드럽게 감속). 닫힘에 reverseCurve를 안 주면
+    // easeOut 역재생이라 가속처럼 보임 → easeIn을 줘 닫힘도 같은 감속감으로 대칭 맞춤
+    _reveal = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
   }
 
   @override
