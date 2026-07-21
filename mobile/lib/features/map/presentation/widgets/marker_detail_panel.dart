@@ -19,6 +19,7 @@ class MarkerDetailPanel extends StatefulWidget {
     required this.onPeek,
     required this.onExpand,
     required this.onClose,
+    this.onHeightChanged,
     super.key,
   });
 
@@ -30,6 +31,10 @@ class MarkerDetailPanel extends StatefulWidget {
   final VoidCallback onPeek;
   final VoidCallback onExpand;
   final VoidCallback onClose;
+
+  /// 내용 높이가 확정될 때 그 px 높이를 부모에 알림.
+  /// 부모가 이 높이만큼 지도 하단 패딩을 줘 마커를 시트 위 영역 중앙에 두는 데 씀
+  final ValueChanged<double>? onHeightChanged;
 
   @override
   State<MarkerDetailPanel> createState() => _MarkerDetailPanelState();
@@ -64,6 +69,7 @@ class _MarkerDetailPanelState extends State<MarkerDetailPanel> {
       final double h = box?.size.height ?? 0;
       if (h <= 0 || h == _height) return;
       setState(() => _height = h);
+      widget.onHeightChanged?.call(h); // 부모에 확정 높이 통지
     });
   }
 
