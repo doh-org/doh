@@ -7,6 +7,8 @@ const Color _orangeChip = Color(0xFFFEC181);
 const Color _grayChip = Color(0xFFF1F2F4);
 const Color _ink = Color(0xFF1F2125);
 
+const double _selectorHeight = 35;
+
 const List<TransportMode> _transportOrder = [
   TransportMode.car,
   TransportMode.publictransit,
@@ -22,7 +24,7 @@ String transportLabel(TransportMode m) => switch (m) {
     };
 
 /// 경로 편집 항목: 마커 카드 + 그 마커의 이동수단 카드(페어).
-/// 선택 시 마커 박스를 메인 오렌지로 채우고 이동수단 선택기를 펼친다.
+/// 선택 시 마커 박스를 메인 오렌지로 채우고 이동수단 선택기를 펼침.
 /// 펼침은 왼쪽→오른쪽으로 reveal(ClipRect + widthFactor).
 /// 마지막 stop은 이동수단 카드 없음(showTransport=false).
 class RouteStopCard extends StatefulWidget {
@@ -223,7 +225,7 @@ class _RouteStopCardState extends State<RouteStopCard>
         onTap: () => widget.onTransportSelected(m),
         behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 38,
+          height: _selectorHeight,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? _orangeChip : Colors.transparent,
@@ -252,7 +254,7 @@ class _RouteStopCardState extends State<RouteStopCard>
       child: Row(
         children: [
           Container(
-            height: 30,
+            height: _selectorHeight,
             constraints: const BoxConstraints(minWidth: 60),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             alignment: Alignment.center,

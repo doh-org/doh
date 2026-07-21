@@ -23,6 +23,7 @@ class MapView extends ConsumerStatefulWidget {
     this.onCameraGesture,
     this.onSearchMarkerTap,
     this.onMapTap,
+    this.keepSelectionOnTap = false,
     this.bottomPeekFraction = 0.0,
     this.selectedMarkerId,
     this.focusTarget,
@@ -44,6 +45,11 @@ class MapView extends ConsumerStatefulWidget {
   final VoidCallback? onCameraGesture;
   final void Function(Place)? onSearchMarkerTap;
   final VoidCallback? onMapTap;
+
+  /// 지도 탭 시 마커 선택(빨간 핀)을 그대로 둘지.
+  /// 상세 패널이 떠 있으면 탭은 "패널 내리기"라 선택 유지 필요
+  final bool keepSelectionOnTap;
+
   final double bottomPeekFraction;
   final String? selectedMarkerId;
   final NLatLng? focusTarget;
@@ -231,7 +237,7 @@ class _MapViewState extends ConsumerState<MapView> {
       onSymbolTapped: (NSymbolInfo info) =>
           widget.onSymbolTap?.call(info.caption, info.position),
       onMapTapped: (_, __) {
-        if (_selectedMarkerId != null) {
+        if (!widget.keepSelectionOnTap && _selectedMarkerId != null) {
           setState(() => _selectedMarkerId = null);
           _updateOverlays(_lastMarkers, _lastCategories);
         }

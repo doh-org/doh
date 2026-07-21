@@ -18,6 +18,7 @@ import '../widgets/map_chip_bar.dart';
 import '../widgets/map_search_bar.dart';
 import '../widgets/map_view.dart';
 import '../widgets/marker_delete_dialog.dart';
+import '../widgets/marker_detail_panel.dart';
 import '../widgets/marker_detail_sheet.dart';
 import '../widgets/place_list_sheet.dart';
 import '../widgets/route_edit_sheet.dart';
@@ -36,10 +37,19 @@ class _MapPageState extends ConsumerState<MapPage> {
   late String _tripId;
   int _selectedDay = 0;
   String? _selectedMarkerId;
+
+  // 지도 위에 떠 있는 상세 패널의 대상 마커. null이면 패널 없음
+  String? _detailMarkerId;
+  // 목록에서 사라진 뒤(삭제 등)에도 한 프레임 그릴 수 있게 두는 마지막 스냅샷
+  TripMarker? _detailFallback;
+  bool _detailPeeked = false;
+  // 임시 마커(미저장) 패널일 때만 채워지는 상태
+  VoidCallback? _detailOnSaved; // 저장 성공 시 임시 핀 정리 콜백
+  bool _detailClearPendingOnClose = false; // 닫을 때 임시 핀 제거 여부
   NLatLng? _focusTarget;
   NLatLng? _pendingLocation;
   Place? _pendingPlace;
-  String? _searchKeyword; // 사용자가 입력한 검색어 — 표시·현위치 재검색에 함께 쓴다
+  String? _searchKeyword; // 사용자가 입력한 검색어 — 표시·현위치 재검색에 함께 사용
   NLatLng _cameraCenter = const NLatLng(37.5665, 126.9780);
   double _cameraZoom = 11; // map_view 초기 카메라 줌과 동일
   List<Place> _searchOverlays = [];
@@ -54,10 +64,9 @@ class _MapPageState extends ConsumerState<MapPage> {
   static const double _sheetInitial = 0.45;
   static const double _sheetMin = 0.13;
   static const double _sheetMax = 0.88;
+  static const String _tempMarkerId = '__new__'; // 미저장 임시 마커의 예약 id
 
-  // 현위치(네이티브) 버튼을 시트 상단에 붙이기 위한 하단 여백 비율(0~1).
-  // 시트가 내려가면 버튼도 같이 내려가고, 초깃값 위로 올릴 땐 여기서 멈춰
-  // 시트에 가려지게 둔다(요구사항). 전체 페이지 대신 지도만 리빌드하려고 Notifier 사용.
+  // 현위치(네이티브) 버튼을 시트 상단에 붙이기 위한 하단 여백 비율(0~1)
   final ValueNotifier<double> _sheetPeek =
       ValueNotifier<double>(_sheetInitial);
 
@@ -84,7 +93,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     return trip!.endDate!.difference(trip.startDate!).inDays + 1;
   }
 
-  // 새 마커의 방문일 초기값: 시트에서 선택 중인 Day 탭을 물려준다
+  // 새 마커의 방문일 초기값: 시트에서 선택 중인 Day 탭을 사용
   // (미정 탭(0)이면 비워서 기존처럼 '미정'으로 시작)
   List<int> get _initialVisitDays =>
       _selectedDay == 0 ? const <int>[] : <int>[_selectedDay];
@@ -102,6 +111,7 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   // 지도 제스처 시작 → 시트가 올라와 있으면 최소 높이로 접기
   void _collapseSheetOnMapGesture() {
+    _peekDetail(); // 상세 패널도 같이 내림
     if (!_sheetController.isAttached) return;
     // 이미 최소 높이면 무시 (드래그 중 반복 호출되므로 불필요한 애니메이션 방지)
     if (_sheetController.size <= _sheetMin + 0.01) return;
@@ -128,62 +138,61 @@ class _MapPageState extends ConsumerState<MapPage> {
     );
   }
 
-  Future<void> _showDetailSheet(
-      TripMarker marker, List<TripMarker> allMarkers) async {
+  // 상세 패널 열기. 모달이 아니라 상태만 변경 — 지도는 계속 조작 가능
+  void _showDetailSheet(TripMarker marker) {
     setState(() {
       _selectedMarkerId = marker.id;
       _focusTarget = NLatLng(marker.latitude, marker.longitude);
       _pendingLocation = null;
       _pendingPlace = null;
       _searchOverlays = [];
+      _detailMarkerId = marker.id;
+      _detailFallback = marker;
+      _detailPeeked = false;
+      _detailOnSaved = null; // 저장된 마커엔 임시 정리 콜백 없음
+      _detailClearPendingOnClose = false;
     });
-    _animateSheetTo(_sheetMin);
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MarkerDetailSheet(
-        marker: marker,
-        tripId: _tripId,
-        allMarkers: allMarkers,
-        // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
-        // isLiked: _likedMarkerIds.contains(marker.id),
-      ),
-    );
-    if (mounted) _animateSheetTo(_sheetInitial);
+    _animateSheetTo(_sheetMin); // 뒤쪽 목록 시트는 내려둠
   }
 
-  // 임시 마커(미저장 신규 장소) 상세 시트 공통 흐름:
-  // 시트 축소 → 상세 시트 표시 → 닫히면 목록 갱신·시트 복원
-  Future<void> _openTempMarkerSheet(
-    TripMarker tempMarker,
-    List<TripMarker> allMarkers, {
+  void _closeDetail() {
+    final bool wasTemp = _detailMarkerId == _tempMarkerId; // 임시 마커 여부
+    final bool clearPending = _detailClearPendingOnClose;
+    setState(() {
+      _detailMarkerId = null;
+      _detailFallback = null;
+      _detailPeeked = false;
+      _detailOnSaved = null;
+      _detailClearPendingOnClose = false;
+      _selectedMarkerId = null; // 마커 하이라이트도 함께 해제
+      if (clearPending) _pendingLocation = null; // 심볼 탭 임시 핀 제거
+    });
+    if (wasTemp) ref.invalidate(markerEntitiesProvider(_tripId)); // 목록 갱신
+    _animateSheetTo(_sheetInitial);
+  }
+
+  // 지도 탭·제스처 → 패널을 닫지 않고 아래로만 내림
+  void _peekDetail() {
+    if (_detailMarkerId == null || _detailPeeked) return;
+    setState(() => _detailPeeked = true);
+  }
+
+  // 임시 마커(미저장 신규 장소)를 상세 패널로 띄우기.
+  // 저장된 마커와 같은 패널을 써서 지도 탭·팬·줌에 함께 반응(모달 아님).
+  void _openTempMarkerSheet(
+    TripMarker tempMarker, {
     required VoidCallback onSaved,
     bool clearPendingAfterClose = false,
-  }) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, __) => MarkerDetailSheet(
-          marker: tempMarker,
-          tripId: _tripId,
-          allMarkers: allMarkers,
-          onMarkerSaved: onSaved,
-        ),
-      ),
-    );
-    if (mounted) {
-      ref.invalidate(markerEntitiesProvider(_tripId));
-      if (clearPendingAfterClose) {
-        setState(() => _pendingLocation = null);
-      }
-      _animateSheetTo(_sheetInitial);
-    }
+  }) {
+    setState(() {
+      _selectedMarkerId = null;
+      _detailMarkerId = tempMarker.id; // = _tempMarkerId
+      _detailFallback = tempMarker;
+      _detailPeeked = false;
+      _detailOnSaved = onSaved;
+      _detailClearPendingOnClose = clearPendingAfterClose;
+    });
+    _animateSheetTo(_sheetMin);
   }
 
   Future<void> _showAddSheetFromSearch(
@@ -200,7 +209,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     });
     _animateSheetTo(_sheetMin);
     final TripMarker tempMarker = TripMarker(
-      id: '__new__',
+      id: _tempMarkerId,
       tripId: _tripId,
       name: place.title,
       latitude: place.latitude,
@@ -211,9 +220,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
-    await _openTempMarkerSheet(
+    _openTempMarkerSheet(
       tempMarker,
-      allMarkers,
       onSaved: () {
         if (mounted) {
           setState(() {
@@ -241,7 +249,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     final String name = await _nearbyPlaceName(coord, area) ?? '새 장소';
     if (!mounted) return;
     final TripMarker tempMarker = TripMarker(
-      id: '__new__',
+      id: _tempMarkerId,
       tripId: _tripId,
       name: name,
       latitude: coord.latitude,
@@ -252,9 +260,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
-    await _openTempMarkerSheet(
+    _openTempMarkerSheet(
       tempMarker,
-      allMarkers,
       onSaved: () {
         if (mounted) setState(() => _pendingLocation = null);
       },
@@ -279,7 +286,7 @@ class _MapPageState extends ConsumerState<MapPage> {
         .reverseGeocode(coord.latitude, coord.longitude);
     if (!mounted) return;
     final TripMarker tempMarker = TripMarker(
-      id: '__new__',
+      id: _tempMarkerId,
       tripId: _tripId,
       name: name,
       latitude: coord.latitude,
@@ -290,9 +297,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       visitDays: _initialVisitDays, // 선택된 Day 탭 자동 반영
       createdAt: DateTime.now(),
     );
-    await _openTempMarkerSheet(
+    _openTempMarkerSheet(
       tempMarker,
-      allMarkers,
       onSaved: () {
         if (mounted) setState(() => _pendingLocation = null);
       },
@@ -324,12 +330,10 @@ class _MapPageState extends ConsumerState<MapPage> {
   Future<void> _handleSearchResult(SearchPageResult? result, Trip? trip) async {
     if (!mounted || result == null) return;
     final (Object? selection, String query) = result;
-    // 고른 게 없어도 검색어는 남긴다 → 지도에서 "현위치에서 검색" 가능
+    // 고른 게 없어도 검색어는 유지 → 지도에서 "현위치에서 검색" 가능
     setState(() => _searchKeyword = query.isEmpty ? null : query);
     if (selection is TripMarker) {
-      final List<TripMarker> latest =
-          ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
-      _showDetailSheet(selection, latest);
+      _showDetailSheet(selection);
     } else if (selection is Place) {
       final List<TripMarker> latest =
           ref.read(markerEntitiesProvider(_tripId)).valueOrNull ?? [];
@@ -411,10 +415,24 @@ class _MapPageState extends ConsumerState<MapPage> {
     final List<TripMarker> filteredMarkers =
         _filterByDay(allMarkers, _selectedDay);
 
-    return Scaffold(
+    // 패널이 항상 최신 마커를 그리도록 id로 다시 조회 (카테고리·Day 수정 즉시 반영).
+    // 목록에서 사라졌으면 마지막 스냅샷으로 대체
+    final TripMarker? detailMarker = _detailMarkerId == null
+        ? null
+        : allMarkers.where((TripMarker m) => m.id == _detailMarkerId).firstOrNull ??
+            _detailFallback;
+
+    return PopScope(
+      // 상세 패널이 떠 있으면 뒤로가기는 페이지 이탈이 아니라 패널 닫기
+      canPop: _detailMarkerId == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _closeDetail();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       // 시트 드래그(높이 변화) 알림을 받아 현위치 버튼 여백에 반영.
-      // 초깃값 위로는 올리지 않아(clamp) 시트에 가려지게 둔다.
+      // 초깃값 위로는 올리지 않아(clamp) 시트에 가려지게 둠.
       body: NotificationListener<DraggableScrollableNotification>(
         onNotification: (DraggableScrollableNotification n) {
           _sheetPeek.value =
@@ -432,7 +450,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                 initialLocation: const NLatLng(37.5665, 126.9780),
                 tripId: _tripId,
                 markers: filteredMarkers,
-                onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+                onMarkerTap: _showDetailSheet,
                 onLongTap: (coord) => _showAddSheet(coord, trip, allMarkers),
                 onSymbolTap: (name, coord) =>
                     _showAddSheetFromSymbol(name, coord, trip, allMarkers),
@@ -449,12 +467,20 @@ class _MapPageState extends ConsumerState<MapPage> {
                 searchOverlays: _searchOverlays,
                 onSearchMarkerTap: (place) =>
                     _showAddSheetFromSearch(place, trip, allMarkers),
-                onMapTap: () => setState(() {
-                  _selectedMarkerId = null;
-                  _pendingLocation = null;
-                  _pendingPlace = null;
-                  _searchOverlays = [];
-                }),
+                keepSelectionOnTap: _detailMarkerId != null,
+                onMapTap: () {
+                  // 상세 패널이 떠 있음 → 닫지 말고 아래로만 내림
+                  if (_detailMarkerId != null) {
+                    _peekDetail();
+                    return;
+                  }
+                  setState(() {
+                    _selectedMarkerId = null;
+                    _pendingLocation = null;
+                    _pendingPlace = null;
+                    _searchOverlays = [];
+                  });
+                },
               ),
             ),
           ),
@@ -522,7 +548,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                     canEditRoute: _selectedDay != 0,
                     onEditRoute: () => setState(() => _routeEdit = true),
                     onSearchTap: () => _openSearchPage(trip),
-                    onMarkerTap: (m) => _showDetailSheet(m, allMarkers),
+                    onMarkerTap: _showDetailSheet,
                     // v0 제외: 마커 좋아요(찜) 토글 — 추후 복구
                     // onLikeTap: (id) =>
                     //     setState(() => _likedMarkerIds.contains(id)
@@ -531,8 +557,28 @@ class _MapPageState extends ConsumerState<MapPage> {
                     onDelete: _confirmDelete,
                   ),
           ),
+
+          // 마커 상세 패널
+          if (detailMarker != null)
+            MarkerDetailPanel(
+              key: ValueKey<String>(detailMarker.id),
+              peeked: _detailPeeked,
+              onPeek: () => setState(() => _detailPeeked = true),
+              onExpand: () => setState(() => _detailPeeked = false),
+              onClose: _closeDetail,
+              child: MarkerDetailSheet(
+                marker: detailMarker,
+                tripId: _tripId,
+                allMarkers: allMarkers,
+                onClose: _closeDetail,
+                onMarkerSaved: _detailOnSaved, // 임시 마커 저장 시 임시 핀 정리
+                // v0 제외: 마커 좋아요(찜) 기능 — 추후 복구
+                // isLiked: _likedMarkerIds.contains(detailMarker.id),
+              ),
+            ),
         ],
         ),
+      ),
       ),
     );
   }
