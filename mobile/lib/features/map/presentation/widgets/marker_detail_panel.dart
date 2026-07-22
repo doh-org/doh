@@ -8,10 +8,7 @@ const double _dragZone = 40;
 const double _flingVelocity = 700;
 const Duration _settleDuration = Duration(milliseconds: 250);
 
-/// 마커 상세시트를 지도 위에 얹는 슬라이드 패널.
-/// 모달이 아니라서 지도를 덮는 배리어가 없음 — 지도 팬·줌·탭이 그대로 살아있음.
-/// 높이는 자식(상세시트) 내용이 결정. 세 자리를 오감:
-///   펼침(0) ↔ 엿보기(지도 탭) → 손잡이를 아래로 끌면 닫힘
+///   펼침(0) ↔ 엿보기(지도 탭)
 class MarkerDetailPanel extends StatefulWidget {
   const MarkerDetailPanel({
     required this.child,
@@ -19,17 +16,22 @@ class MarkerDetailPanel extends StatefulWidget {
     required this.onPeek,
     required this.onExpand,
     required this.onClose,
+    this.onHeightChanged,
     super.key,
   });
 
   final Widget child;
 
-  /// 아래로 내려 일부만 보이는 상태인지. 부모(MapPage)가 지도 탭·제스처로 켬
+  /// 아래로 내려 일부만 보이는 상태인지
   final bool peeked;
 
   final VoidCallback onPeek;
   final VoidCallback onExpand;
   final VoidCallback onClose;
+
+  /// 내용 높이가 확정될 때 그 px 높이를 부모에 알리는 역할
+  /// 부모가 이 높이만큼 지도 하단 패딩을 줘 마커를 시트 위 영역 중앙에 두는 데 사용
+  final ValueChanged<double>? onHeightChanged;
 
   @override
   State<MarkerDetailPanel> createState() => _MarkerDetailPanelState();
@@ -64,6 +66,7 @@ class _MarkerDetailPanelState extends State<MarkerDetailPanel> {
       final double h = box?.size.height ?? 0;
       if (h <= 0 || h == _height) return;
       setState(() => _height = h);
+      widget.onHeightChanged?.call(h); // 부모에 확정 높이 통지
     });
   }
 

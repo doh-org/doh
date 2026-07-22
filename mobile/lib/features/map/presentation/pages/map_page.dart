@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +22,7 @@ import '../widgets/map_view.dart';
 import '../widgets/marker_delete_dialog.dart';
 import '../widgets/marker_detail_panel.dart';
 import '../widgets/marker_detail_sheet.dart';
+import '../providers/map_provider.dart';
 import '../widgets/place_list_sheet.dart';
 import '../widgets/route_edit_sheet.dart';
 import '../widgets/trip_selector_sheet.dart';
@@ -43,6 +46,10 @@ class _MapPageState extends ConsumerState<MapPage> {
   // 목록에서 사라진 뒤(삭제 등)에도 한 프레임 그릴 수 있게 두는 마지막 스냅샷
   TripMarker? _detailFallback;
   bool _detailPeeked = false;
+  // 상세 패널 높이만큼 지도 하단에 줄 패딩 비율(0~1). 마커를 시트 위 영역 중앙에 두는 용도
+  double _detailBottomFraction = 0;
+  // 열릴 때 1회만 재중심하기 위한 플래그. peek/드래그로 높이가 바뀌어도 무시
+  bool _detailCentered = false;
   // 임시 마커(미저장) 패널일 때만 채워지는 상태
   VoidCallback? _detailOnSaved; // 저장 성공 시 임시 핀 정리 콜백
   bool _detailClearPendingOnClose = false; // 닫을 때 임시 핀 제거 여부
@@ -142,13 +149,16 @@ class _MapPageState extends ConsumerState<MapPage> {
   void _showDetailSheet(TripMarker marker) {
     setState(() {
       _selectedMarkerId = marker.id;
-      _focusTarget = NLatLng(marker.latitude, marker.longitude);
+      // 카메라 이동은 상세 패널 높이 확정 후 재중심(_onDetailHeight)에서 1회 처리 →
+      // 마커가 시트 위 영역 중앙에 오도록. 여기서 전체중심으로 먼저 옮기면 두 번 움직임
       _pendingLocation = null;
       _pendingPlace = null;
       _searchOverlays = [];
       _detailMarkerId = marker.id;
       _detailFallback = marker;
       _detailPeeked = false;
+      _detailBottomFraction = 0;
+      _detailCentered = false;
       _detailOnSaved = null; // 저장된 마커엔 임시 정리 콜백 없음
       _detailClearPendingOnClose = false;
     });
@@ -162,6 +172,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       _detailMarkerId = null;
       _detailFallback = null;
       _detailPeeked = false;
+      _detailBottomFraction = 0; // 지도 하단 패딩 원복
+      _detailCentered = false;
       _detailOnSaved = null;
       _detailClearPendingOnClose = false;
       _selectedMarkerId = null; // 마커 하이라이트도 함께 해제
@@ -177,6 +189,27 @@ class _MapPageState extends ConsumerState<MapPage> {
     setState(() => _detailPeeked = true);
   }
 
+  // 상세 패널 높이가 확정되면 그 높이만큼 지도 하단 패딩을 주고 마커를 그 위 영역
+  // 중앙으로 1회 재중심. peek/드래그로 높이가 다시 바뀌어도 무시(_detailCentered)
+  void _onDetailHeight(double panelHeight) {
+    if (_detailCentered) return; // 이번 열림에서 이미 중심 맞춤
+    final TripMarker? m = _detailFallback;
+    if (m == null || panelHeight <= 0) return;
+    final double screenH = MediaQuery.sizeOf(context).height;
+    if (screenH <= 0) return;
+    _detailCentered = true;
+    // contentPadding.bottom = screenH * fraction = panelHeight → 마커가 시트 위 중앙
+    setState(() =>
+        _detailBottomFraction = (panelHeight / screenH).clamp(0.0, 0.9));
+    // 패딩이 지도에 반영된 다음 프레임에 재중심 (갱신된 패딩 기준 scrollAndZoomTo)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(mapControllerProvider.notifier)
+          .moveCamera(NLatLng(m.latitude, m.longitude), zoom: 15);
+    });
+  }
+
   // 임시 마커(미저장 신규 장소)를 상세 패널로 띄우기.
   // 저장된 마커와 같은 패널을 써서 지도 탭·팬·줌에 함께 반응(모달 아님).
   void _openTempMarkerSheet(
@@ -189,6 +222,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       _detailMarkerId = tempMarker.id; // = _tempMarkerId
       _detailFallback = tempMarker;
       _detailPeeked = false;
+      _detailBottomFraction = 0;
+      _detailCentered = false;
       _detailOnSaved = onSaved;
       _detailClearPendingOnClose = clearPendingAfterClose;
     });
@@ -459,7 +494,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                   _cameraZoom = zoom;
                 },
                 onCameraGesture: _collapseSheetOnMapGesture,
-                bottomPeekFraction: peek,
+                // 상세 패널이 떠 있으면 그 높이(_detailBottomFraction)만큼 하단 패딩 →
+                // 마커가 시트 위 영역 중앙. 없으면 목록 시트 peek 그대로
+                bottomPeekFraction: math.max(peek, _detailBottomFraction),
                 selectedMarkerId: _selectedMarkerId,
                 focusTarget: _focusTarget,
                 pendingLocation: _pendingLocation,
@@ -566,6 +603,7 @@ class _MapPageState extends ConsumerState<MapPage> {
               onPeek: () => setState(() => _detailPeeked = true),
               onExpand: () => setState(() => _detailPeeked = false),
               onClose: _closeDetail,
+              onHeightChanged: _onDetailHeight,
               child: MarkerDetailSheet(
                 marker: detailMarker,
                 tripId: _tripId,
