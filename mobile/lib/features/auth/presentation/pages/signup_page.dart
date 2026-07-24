@@ -26,8 +26,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     super.dispose();
   }
 
-  // 1단계: 이메일 검증 → 확인 코드 발송 요청 → 코드 입력 단계로 이동.
-  // 비번·닉네임은 코드 검증 후 다음 단계에서 받는다.
+  // 1단계: 이메일 검증 → 확인 코드 발송 요청 → 코드 입력 단계로 이동
   Future<void> _onRequestCode() async {
     if (_sending) return;
     final String email = _emailCtrl.text.trim();
@@ -94,7 +93,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
               _LabeledField(
                 label: '이메일',
                 controller: _emailCtrl,
-                hintText: '이메일을 입력하세요',
+                hintText: 'memotrip@google.com',
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 8),

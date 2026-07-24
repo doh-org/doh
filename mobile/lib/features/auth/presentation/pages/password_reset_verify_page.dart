@@ -9,15 +9,16 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../utils/password_policy.dart';
 import '../widgets/auth_text_field.dart';
 
-// 입력칸 선택(포커스) 시 배경 (로그인 화면과 동일한 peach)
 const Color _focusFill = Color(0xFFFEDFBF);
+const Color _accent = Color(0xCC2A6FDB);
+const Color _accentDisabled = Color(0x662A6FDB);
 
-/// 비밀번호 찾기 2단계: 메일로 받은 6자리 코드와 새 비밀번호를 받아 재설정한다.
-/// 성공하면 안내 모달 후 로그인 화면으로 보낸다(새 비밀번호로 재로그인).
+/// 비밀번호 찾기 2단계: 메일로 받은 6자리 코드와 새 비밀번호를 받아 재설정
+/// 성공하면 안내 모달 후 로그인 화면으로
 class PasswordResetVerifyPage extends ConsumerStatefulWidget {
   const PasswordResetVerifyPage({required this.email, super.key});
 
-  /// 1단계에서 코드를 발송한 이메일. 재전송에도 쓴다.
+  /// 1단계에서 코드를 발송한 이메일로 재전송에도 사용
   final String email;
 
   @override
@@ -35,8 +36,8 @@ class _PasswordResetVerifyPageState
   bool _verifying = false; // 코드 확인 요청 중 중복 탭 방지
   bool _obscurePw = true;
 
-  // 코드 확인 성공 시 받는 recovery 세션 토큰. 비밀번호 재설정에만 쓴다.
-  // null = 아직 미확인. 코드는 1회용이라 확인 후 입력칸을 잠근다.
+  // 코드 확인 성공 시 받는 recovery 세션 토큰으로 비밀번호 재설정에만 사용
+  // null = 아직 미확인 상태, 코드는 1회용이라 확인 후 입력칸을 닫음
   String? _recoveryToken;
 
   bool get _codeVerified => _recoveryToken != null;
@@ -50,7 +51,7 @@ class _PasswordResetVerifyPageState
   }
 
 
-  // 코드 즉시 확인. 성공하면 recovery 세션 토큰을 받아 보관하고 코드칸을 잠근다.
+  // 코드 즉시 확인. 성공하면 recovery 세션 토큰을 받아 보관하고 코드칸을 닫음
   Future<void> _onVerifyCode() async {
     if (_verifying || _codeVerified) return;
     final String code = _codeCtrl.text.trim();
@@ -119,8 +120,7 @@ class _PasswordResetVerifyPageState
     }
   }
 
-  // 코드 재전송. 안내는 기존 인라인 문구 자리(_errorMessage)에 표시,
-  // 429(재전송 제한 초과)도 같은 자리에 서버 문구 그대로.
+  // 코드 재전송. 안내는 기존 인라인 문구 자리(_errorMessage)에 표시
   Future<void> _resend() async {
     if (_submitting || _verifying) return;
     try {
@@ -181,7 +181,7 @@ class _PasswordResetVerifyPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    // 확인 완료 후엔 코드가 소모된 상태라 수정 불가로 잠근다
+                    // 확인 완료 후엔 코드가 소모된 상태라 수정 불가로 닫음
                     child: AbsorbPointer(
                       absorbing: _codeVerified,
                       child: Opacity(
@@ -241,7 +241,7 @@ class _PasswordResetVerifyPageState
               const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Text(
-                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
+                  '영문 대소문자ㆍ숫자 | 8자 이상',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 15,
@@ -281,11 +281,9 @@ class _PasswordResetVerifyPageState
                 child: ElevatedButton(
                   onPressed: _submitting ? null : _onSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        AppColors.folderOrange.withValues(alpha: 0.8),
+                    backgroundColor: _accent,
                     foregroundColor: AppColors.white,
-                    disabledBackgroundColor:
-                        AppColors.folderOrange.withValues(alpha: 0.4),
+                    disabledBackgroundColor: _accentDisabled,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(17),
@@ -382,9 +380,7 @@ class _VerifyCodeButton extends StatelessWidget {
         width: 72,
         height: 50, // AuthTextField 높이와 맞춤
         decoration: BoxDecoration(
-          color: verified
-              ? AppColors.background
-              : AppColors.folderOrange.withValues(alpha: 0.8),
+          color: verified ? AppColors.background : _accent,
           borderRadius: BorderRadius.circular(17),
         ),
         alignment: Alignment.center,

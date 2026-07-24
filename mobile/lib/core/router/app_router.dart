@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/password_reset_request_page.dart';
 import '../../features/auth/presentation/pages/password_reset_verify_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
+import '../../features/auth/presentation/pages/signup_terms_page.dart';
 import '../../features/auth/presentation/pages/signup_verify_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -73,7 +74,7 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/signup/verify',
-        // extra로 1단계 이메일을 받는다. 없이 직접 진입하면 1단계부터.
+        // extra로 1단계 이메일을 받고 없이 직접 진입하면 1단계부터
         builder: (_, state) {
           final String? email = state.extra as String?;
           return email == null
@@ -82,12 +83,21 @@ GoRouter appRouter(Ref ref) {
         },
       ),
       GoRoute(
+        path: '/signup/terms',
+        // extra로 앞 단계의 가입 확정 값(토큰·비번·닉네임)을 받고 없이 직접 진입하면 1단계부터
+        builder: (_, state) {
+          final Object? args = state.extra;
+          return args is SignupCompletionArgs
+              ? SignupTermsPage(args: args)
+              : const SignupPage();
+        },
+      ),
+      GoRoute(
         path: '/password-reset',
         builder: (_, __) => const PasswordResetRequestPage(),
       ),
       GoRoute(
         path: '/password-reset/verify',
-        // extra로 1단계 이메일을 받는다. 없이 직접 진입하면 1단계부터.
         builder: (_, state) {
           final String? email = state.extra as String?;
           return email == null

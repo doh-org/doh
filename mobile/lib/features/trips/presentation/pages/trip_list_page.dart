@@ -159,9 +159,16 @@ class _TripListPageState extends ConsumerState<TripListPage> {
                   onRetry: () => ref.invalidate(tripsProvider),
                 ),
                 data: (trips) {
+                  // 폴더가 하나도 없으면 → 생성 유도 버튼을 중앙에
+                  if (trips.isEmpty) {
+                    return _EmptyCreatePrompt(
+                      onTap: () => context.push('/trips/create'),
+                    );
+                  }
                   final filtered = _query.isEmpty
                       ? trips
                       : trips.where((t) => t.title.contains(_query)).toList();
+                  // 검색 결과만 없는 경우 → 목록 영역은 비워둔다
                   if (filtered.isEmpty) return const SizedBox.shrink();
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
@@ -182,6 +189,52 @@ class _TripListPageState extends ConsumerState<TripListPage> {
         ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// 폴더가 하나도 없을 때 중앙에 뜨는 "폴더 생성하기" 버튼.
+// 탭하면 헤더의 + 버튼과 동일하게 생성 화면으로 이동한다.
+class _EmptyCreatePrompt extends StatelessWidget {
+  const _EmptyCreatePrompt({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // 지도 탭의 CreateFolderDialog와 동일한 구성(제목 + 주황 + 버튼).
+    // 모달·흰 박스만 걷어내고 배경 위에 그대로 얹는다.
+    return Align(
+      // 정중앙보다 살짝 위로 (세로 -1=맨위, 0=중앙)
+      alignment: const Alignment(0, -0.35),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '여행 폴더 생성하기',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Pretendard',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF070707),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: onTap, // + 탭 → 여행 생성 페이지로
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.folderOrange,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.add, size: 24, color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
