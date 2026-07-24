@@ -15,11 +15,12 @@ import (
 	"doh/backend/domain"
 )
 
-// FakeSupabase는 Supabase Auth + PostgREST 엔드포인트를 시뮬레이션한다.
+// FakeSupabase는 Supabase Auth + PostgREST 엔드포인트를 시뮬레이션
 type FakeSupabase struct {
-	Server       *httptest.Server
-	SignupError  string // "user_already_exists" 등 error_code; 빈 문자열이면 성공
-	SignupCalls  int    // /auth/v1/signup 호출 횟수
+	Server         *httptest.Server
+	SignupError    string // "user_already_exists" 등 error_code; 빈 문자열이면 성공
+	SignupRepeated bool   // 확정 이메일 재가입 재현: 200 + identities:[] (열거 방지 가짜 응답)
+	SignupCalls    int    // /auth/v1/signup 호출 횟수
 	LoginError   bool
 	RefreshError bool // refresh grant 실패 재현
 	SessionValid bool   // GET /auth/v1/user 응답 (true=200, false=401)
@@ -79,10 +80,20 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 			json.NewEncoder(w).Encode(map[string]string{"error_code": fs.SignupError})
 			return
 		}
+		// 확정 재가입: 200이지만 identities는 빈 배열(가짜 응답), 실제 GoTrue 동작 재현
+		if fs.SignupRepeated {
+			json.NewEncoder(w).Encode(map[string]any{
+				"id":                   "fake-existing-id",
+				"email":                "test@example.com",
+				"confirmation_sent_at": "2024-01-01T00:00:00Z", // 가짜 응답에도 채워짐(판별 기준 아님)
+				"identities":           []any{},
+			})
+			return
+		}
+		// 신규·미확정 재가입: identities 최소 1개 → 정상 발송
 		json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  "fake-access-token",
-			"refresh_token": "fake-refresh-token",
-			"user":          map[string]string{"id": "fake-user-id"},
+			"id":         "fake-user-id",
+			"identities": []map[string]string{{"id": "fake-identity-id"}},
 		})
 	})
 
@@ -174,7 +185,8 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 	// GET /auth/v1/admin/users?filter={email} — 중복 계정이 있는 상태면 그 계정을 돌려준다
 	mux.HandleFunc("/auth/v1/admin/users", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if fs.SignupError != "user_already_exists" {
+		// 4xx 경로(user_already_exists)든 200 identities:[] 경로(SignupRepeated)든 기존 계정을 돌려주도록
+		if fs.SignupError != "user_already_exists" && !fs.SignupRepeated {
 			json.NewEncoder(w).Encode(map[string]any{"users": []any{}})
 			return
 		}
@@ -193,7 +205,9 @@ func NewFakeSupabase(t *testing.T) *FakeSupabase {
 		}
 		id := strings.TrimPrefix(r.URL.Path, "/auth/v1/admin/users/")
 		fs.DeletedAuthIDs = append(fs.DeletedAuthIDs, id)
+		// 삭제 후 재가입은 신규 계정
 		fs.SignupError = ""
+		fs.SignupRepeated = false
 		w.WriteHeader(http.StatusOK)
 	})
 

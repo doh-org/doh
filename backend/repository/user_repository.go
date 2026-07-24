@@ -26,8 +26,14 @@ type supabaseSession struct {
 	RefreshToken string `json:"refresh_token"`
 	User         struct {
 		ID    string `json:"id"`
-		Email string `json:"email"` // refresh 시 프로필 재조회에 필요
+		Email string `json:"email"` // refresh 시 프로필 재조회에 사용
 	} `json:"user"`
+}
+
+// signupResponse: POST /auth/v1/signup 200 응답(유저 객체)에서 identities 파싱
+// identities가 빈 배열이면 재가입으로 판정
+type signupResponse struct {
+	Identities []json.RawMessage `json:"identities"`
 }
 
 type userRepository struct {
@@ -49,27 +55,55 @@ func NewUserRepository(supabaseURL, anonKey, serviceRoleKey string, client *http
 	}
 }
 
-// StartEmailSignup은 확인 코드 발송을 트리거한다(1단계). POST /auth/v1/signup.
-// 비번은 3단계에서 받으므로 여기선 임시 비밀번호로 계정을 선생성한다.
-// 임시 비번은 CompleteSignup의 PUT /auth/v1/user로 곧바로 교체된다.
-// Confirm email이 켜져 있어 응답 세션은 비어 있고(코드 검증 전) 계정은 미확정으로 생성된다.
+// StartEmailSignup: 확인 코드 발송을 트리거 POST /auth/v1/signup
+// 비번은 3단계에서 받기 전, 임시 비밀번호로 계정 선생성
+// 임시 비번은 CompleteSignup의 PUT /auth/v1/user로 교체
 func (r *userRepository) StartEmailSignup(ctx context.Context, email string) error {
 	tempPassword, err := randomPassword()
 	if err != nil {
 		return err
 	}
-	body := map[string]any{
+	req, err := r.jsonReq(ctx, http.MethodPost, "/auth/v1/signup", map[string]any{
 		"email":    email,
 		"password": tempPassword,
-	}
-	if _, err := r.callAuth(ctx, http.MethodPost, "/auth/v1/signup", body, ""); err != nil {
+	}, "")
+	if err != nil {
 		return err
+	}
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		// 4xx user_already_exists 경로도 유지(교차검증)
+		slog.Error("startEmailSignup rejected", "status", resp.StatusCode)
+		var supaErr supabaseError
+		if json.Unmarshal(respBody, &supaErr) == nil && supaErr.ErrorCode == "user_already_exists" {
+			return domain.ErrEmailExists
+		}
+		return fmt.Errorf("startEmailSignup: status %d", resp.StatusCode)
+	}
+
+	// 200: identities 빈 배열 → 이미 확정된 이메일의 재가입(가짜 응답, 메일 미발송) → 차단
+	var out signupResponse
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return err
+	}
+	if len(out.Identities) == 0 {
+		return domain.ErrEmailExists
 	}
 	return nil
 }
 
-// VerifySignupCode는 확인 코드를 검증한다(2단계). POST /auth/v1/verify (type=signup).
-// 성공 시 계정이 확정되고 가입 세션 토큰(access_token)이 발급된다.
+// VerifySignupCode: 확인 코드를 검증 POST /auth/v1/verify (type=signup)
+// 성공 시 계정이 확정되고 가입 세션 토큰(access_token) 발급
 func (r *userRepository) VerifySignupCode(ctx context.Context, email, code string) (string, error) {
 	body := map[string]any{
 		"type":  "signup",
@@ -107,9 +141,8 @@ func (r *userRepository) VerifySignupCode(ctx context.Context, email, code strin
 	return session.AccessToken, nil
 }
 
-// SetSignupCredentials는 가입 세션으로 비번·닉네임을 설정한다(3단계). PUT /auth/v1/user.
-// data.nickname은 raw_user_meta_data에 저장되며, public.users 갱신은 별도(UpdateProfileNickname).
-// 확정된 계정의 userID·email을 응답에서 파싱해 돌려준다.
+// SetSignupCredentials: 가입 세션으로 비번·닉네임을 설정한다(3단계). PUT /auth/v1/user
+// data.nickname은 raw_user_meta_data에 저장, public.users 갱신은 별도(UpdateProfileNickname)
 func (r *userRepository) SetSignupCredentials(ctx context.Context, accessToken, password, nickname string) (string, string, error) {
 	body := map[string]any{
 		"password": password,
@@ -142,7 +175,6 @@ func (r *userRepository) SetSignupCredentials(ctx context.Context, accessToken, 
 		return "", "", fmt.Errorf("setSignupCredentials: status %d", resp.StatusCode)
 	}
 
-	// PUT /auth/v1/user 응답은 유저 객체를 루트에 담는다(세션 아님).
 	var u struct {
 		ID    string `json:"id"`
 		Email string `json:"email"`
@@ -153,8 +185,8 @@ func (r *userRepository) SetSignupCredentials(ctx context.Context, accessToken, 
 	return u.ID, u.Email, nil
 }
 
-// UpsertProfile은 public.users 프로필을 생성/갱신한다(service key로 RLS 우회).
-// POST /rest/v1/users (Prefer: resolution=merge-duplicates).
+// UpsertProfile은 public.users 프로필을 생성/갱신(service key로 RLS 우회)
+// POST /rest/v1/users (Prefer: resolution=merge-duplicates)
 func (r *userRepository) UpsertProfile(ctx context.Context, userID, nickname string) error {
 	b, err := json.Marshal(map[string]any{"id": userID, "nickname": nickname})
 	if err != nil {
@@ -180,8 +212,8 @@ func (r *userRepository) UpsertProfile(ctx context.Context, userID, nickname str
 	return nil
 }
 
-// FindAuthUserIDByEmail은 이메일로 auth 계정 ID를 조회한다. 없으면 "".
-// GET /auth/v1/admin/users?filter={email} — filter는 부분일치라 정확히 같은 것만 채택.
+// FindAuthUserIDByEmail: 이메일로 auth 계정 ID를 조회, 없으면 ""
+// GET /auth/v1/admin/users?filter={email}
 func (r *userRepository) FindAuthUserIDByEmail(ctx context.Context, email string) (string, error) {
 	reqURL := fmt.Sprintf("%s/auth/v1/admin/users?filter=%s", r.supabaseURL, neturl.QueryEscape(email))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
@@ -222,8 +254,8 @@ func (r *userRepository) FindAuthUserIDByEmail(ctx context.Context, email string
 	return "", nil
 }
 
-// ProfileExists는 public.users에 해당 ID의 행이 있는지 확인한다(service key).
-// GET /rest/v1/users?id=eq.{userID}&select=id.
+// ProfileExists: public.users에 해당 ID의 행이 있는지 확인(service key).
+// GET /rest/v1/users?id=eq.{userID}&select=id
 func (r *userRepository) ProfileExists(ctx context.Context, userID string) (bool, error) {
 	reqURL := fmt.Sprintf("%s/rest/v1/users?id=eq.%s&select=id", r.supabaseURL, neturl.QueryEscape(userID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
@@ -254,8 +286,8 @@ func (r *userRepository) ProfileExists(ctx context.Context, userID string) (bool
 	return len(rows) > 0, nil
 }
 
-// DeleteAuthUser는 auth 계정을 삭제한다(service key).
-// DELETE /auth/v1/admin/users/{userID}.
+// DeleteAuthUser: auth 계정을 삭제(service key)
+// DELETE /auth/v1/admin/users/{userID}
 func (r *userRepository) DeleteAuthUser(ctx context.Context, userID string) error {
 	reqURL := fmt.Sprintf("%s/auth/v1/admin/users/%s", r.supabaseURL, neturl.PathEscape(userID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)

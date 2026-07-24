@@ -77,6 +77,42 @@ func TestSignup_IncompleteAccountRecreated(t *testing.T) {
 	}
 }
 
+// 확정 이메일 재가입(200 + identities:[]) + 프로필 있음 → 409 Conflict.
+// enumeration 보호가 켜진 프로젝트에서 Supabase가 4xx 대신 200을 주는 경로
+func TestSignup_ConfirmedRepeat_Identities(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.SignupRepeated = true
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusConflict {
+		t.Errorf("status=%d want 409", w.Code)
+	}
+	assertErrorMsg(t, w, "이미 존재하는 이메일입니다.")
+	if len(fs.DeletedAuthIDs) != 0 {
+		t.Errorf("DeletedAuthIDs=%v want empty", fs.DeletedAuthIDs)
+	}
+}
+
+// 확정 재가입(identities:[]) + 프로필 없음(미완료 가입) → 계정 삭제 후 재가입 성공(200)
+func TestSignup_IncompleteRepeat_Identities(t *testing.T) {
+	router, fs, _ := setupAccount(t)
+	fs.SignupRepeated = true
+	fs.ProfileRowExists = false
+	w := doAccount(t, router, http.MethodPost, "/api/v1/auth/signup", "", map[string]string{
+		"email": "test@example.com",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body)
+	}
+	if len(fs.DeletedAuthIDs) != 1 || fs.DeletedAuthIDs[0] != "existing-user-id" {
+		t.Errorf("DeletedAuthIDs=%v want [existing-user-id]", fs.DeletedAuthIDs)
+	}
+	if fs.SignupCalls != 2 {
+		t.Errorf("SignupCalls=%d want 2", fs.SignupCalls)
+	}
+}
+
 // 메일 발송 실패(발송 한도·SMTP 오류 등) → 503 + 재시도 안내
 func TestSignup_EmailSendFailure(t *testing.T) {
 	router, fs, _ := setupAccount(t)
