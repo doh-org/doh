@@ -6,14 +6,11 @@ import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
-import '../../domain/entities/user.dart';
 import '../../utils/password_policy.dart';
-import '../providers/auth_provider.dart';
 import '../widgets/auth_text_field.dart';
+import 'signup_terms_page.dart';
 
-// 입력칸 선택(포커스) 시 배경 (회원가입 화면과 동일한 peach)
 const Color _focusFill = Color(0xFFFEDFBF);
-// 회원가입 강조색 (버튼)
 const Color _accent = Color(0xCC2A6FDB);
 const Color _accentDisabled = Color(0x662A6FDB);
 
@@ -41,8 +38,8 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
   bool _verifying = false; // 코드 확인 요청 중 중복 탭 방지
   bool _obscurePw = true;
 
-  // 코드 확인 성공 시 받는 가입 세션 토큰. 비번·닉네임 설정에만 쓴다.
-  // null = 아직 미확인. 코드는 1회용이라 확인 후 입력칸을 잠근다.
+  // 코드 확인 성공 시 받는 가입 세션 토큰. 비번·닉네임 설정에만 사용
+  // null = 아직 미확인. 코드는 1회용이라 확인 후 입력칸을 닫음
   String? _signupToken;
 
   bool get _codeVerified => _signupToken != null;
@@ -56,14 +53,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
     super.dispose();
   }
 
-  String _messageFromError(Object error) {
-    return switch (error) {
-      AppException e => e.message,
-      _ => '연결에 실패했습니다. 다시 시도해주세요.',
-    };
-  }
-
-  // 코드 즉시 확인. 성공하면 가입 세션 토큰을 받아 보관하고 코드칸을 잠근다.
+  // 코드 즉시 확인. 성공하면 가입 세션 토큰을 받아 보관하고 코드칸 닫음
   Future<void> _onVerifyCode() async {
     if (_verifying || _codeVerified) return;
     final String code = _codeCtrl.text.trim();
@@ -89,8 +79,8 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
     }
   }
 
-  // 비번·닉네임 설정 → 성공 시 자동 로그인(라우터가 /trips로 이동).
-  Future<void> _onSubmit() async {
+  // 검증 통과 시 약관 동의 단계로 이동
+  void _onSubmit() {
     final String? token = _signupToken;
     final String pw = _pwCtrl.text;
     final String nickname = _nicknameCtrl.text.trim();
@@ -112,13 +102,18 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
       return;
     }
     setState(() => _errorMessage = null);
-    await ref
-        .read(authNotifierProvider.notifier)
-        .completeSignup(token, pw, nickname);
+    // 검증된 값을 약관 페이지로 넘겨, 동의 후 그쪽에서 completeSignup 호출
+    context.push(
+      '/signup/terms',
+      extra: SignupCompletionArgs(
+        token: token,
+        password: pw,
+        nickname: nickname,
+      ),
+    );
   }
 
-  // 코드 재전송. 안내는 "코드 재전송" 링크 아랫줄(_resendMessage)에 표시,
-  // 429(재전송 제한 초과)도 같은 자리에 서버 문구 그대로.
+  // 코드 재전송. 안내는 "코드 재전송" 링크 아랫줄(_resendMessage)에 표시
   Future<void> _resend() async {
     if (_verifying) return;
     try {
@@ -138,15 +133,6 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
 
   @override
   Widget build(BuildContext context) {
-    // completeSignup 결과: 에러면 안내, 성공(로그인)은 라우터 redirect가 처리.
-    ref.listen<AsyncValue<User?>>(authNotifierProvider, (_, next) {
-      if (next.hasError) {
-        setState(() => _errorMessage = _messageFromError(next.error!));
-      }
-    });
-
-    final bool submitting = ref.watch(authNotifierProvider).isLoading;
-
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -189,7 +175,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    // 확인 완료 후엔 코드가 소모된 상태라 수정 불가로 잠근다
+                    // 확인 완료 후엔 코드가 소모된 상태라 수정 불가로 닫음
                     child: AbsorbPointer(
                       absorbing: _codeVerified,
                       child: Opacity(
@@ -249,7 +235,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
               const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Text(
-                  '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
+                  '영문 대소문자ㆍ숫자 | 8자 이상',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
                     fontSize: 15,
@@ -296,7 +282,7 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: submitting ? null : _onSubmit,
+                  onPressed: _onSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _accent,
                     foregroundColor: AppColors.white,
@@ -306,24 +292,15 @@ class _SignupVerifyPageState extends ConsumerState<SignupVerifyPage> {
                       borderRadius: BorderRadius.circular(17),
                     ),
                   ),
-                  child: submitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: AppColors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          '가입 완료',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFFDFDFD),
-                          ),
-                        ),
+                  child: const Text(
+                    '다음',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFDFDFD),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
