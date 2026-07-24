@@ -228,7 +228,7 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                         const TextStyle(fontFamily: 'Pretendard', fontSize: 15),
                     decoration: const InputDecoration(
                       counterText: '',
-                      hintText: '서울 맛집 여행, 수원 가을 여행...',
+                      hintText: '2026년 설악산 단풍 여행',
                       hintStyle: TextStyle(
                         fontFamily: 'Pretendard',
                         fontSize: 15,
