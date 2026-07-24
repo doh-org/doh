@@ -8,8 +8,9 @@ import '../../../../shared/widgets/app_back_button.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../widgets/auth_text_field.dart';
 
-// 입력칸 선택(포커스) 시 배경 (로그인 화면과 동일한 peach)
 const Color _focusFill = Color(0xFFFEDFBF);
+const Color _accent = Color(0xCC2A6FDB);
+const Color _accentDisabled = Color(0x662A6FDB);
 
 /// 비밀번호 찾기 1단계: 가입 이메일을 받아 재설정 코드 메일 발송을 요청한다.
 /// 성공하면 2단계(코드+새 비번 입력)로 이동한다.
@@ -137,11 +138,9 @@ class _PasswordResetRequestPageState
                 child: ElevatedButton(
                   onPressed: _sending ? null : _onSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        AppColors.folderOrange.withValues(alpha: 0.8),
+                    backgroundColor: _accent,
                     foregroundColor: AppColors.white,
-                    disabledBackgroundColor:
-                        AppColors.folderOrange.withValues(alpha: 0.4),
+                    disabledBackgroundColor: _accentDisabled,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(17),
