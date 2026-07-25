@@ -17,6 +17,7 @@ class MarkerDetailPanel extends StatefulWidget {
     required this.onExpand,
     required this.onClose,
     this.onHeightChanged,
+    this.onVisibleHeightChanged,
     super.key,
   });
 
@@ -32,6 +33,9 @@ class MarkerDetailPanel extends StatefulWidget {
   /// 내용 높이가 확정될 때 그 px 높이를 부모에 알리는 역할
   /// 부모가 이 높이만큼 지도 하단 패딩을 줘 마커를 시트 위 영역 중앙에 두는 데 사용
   final ValueChanged<double>? onHeightChanged;
+
+  /// 보이는 높이(px = _height - dy). 부모의 현위치 버튼 여백용
+  final ValueChanged<double>? onVisibleHeightChanged;
 
   @override
   State<MarkerDetailPanel> createState() => _MarkerDetailPanelState();
@@ -55,6 +59,13 @@ class _MarkerDetailPanelState extends State<MarkerDetailPanel> {
   void didUpdateWidget(MarkerDetailPanel old) {
     super.didUpdateWidget(old);
     _scheduleMeasure(); // 카테고리·연락처 유무로 내용 높이가 바뀔 수 있음
+    // 탭 기반 토글(_onDragEnd 미발화). build 중 부모 갱신 회피 위해 다음 프레임 통지
+    if (old.peeked != widget.peeked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onVisibleHeightChanged?.call(_height - _restDy);
+      });
+    }
   }
 
   // 레이아웃이 끝난 뒤에야 크기를 알 수 있어 다음 프레임으로 미룸
@@ -86,6 +97,7 @@ class _MarkerDetailPanelState extends State<MarkerDetailPanel> {
 
   void _onDragUpdate(DragUpdateDetails d) {
     setState(() => _dragDy = (_dragDy + d.delta.dy).clamp(0.0, _height));
+    widget.onVisibleHeightChanged?.call(_height - _dragDy); // 드래그 실시간
   }
 
   void _onDragEnd(DragEndDetails d) {
@@ -95,22 +107,34 @@ class _MarkerDetailPanelState extends State<MarkerDetailPanel> {
 
     // 위로 던짐 → 무조건 펼침
     if (velocity < -_flingVelocity) {
-      widget.onExpand();
+      _settleExpand();
       return;
     }
     // 아래로 던짐 → 엿보기 아래였으면 시트 닫고, 위였으면 엿보기까지만
     if (velocity > _flingVelocity) {
-      dy >= _peekDy ? widget.onClose() : widget.onPeek();
+      dy >= _peekDy ? widget.onClose() : _settlePeek();
       return;
     }
     // 천천히 놓음 → 손 뗀 위치에서 가장 가까운 자리로
     if (dy > (_peekDy + _height) / 2) {
       widget.onClose();
     } else if (dy > _peekDy / 2) {
-      widget.onPeek();
+      _settlePeek();
     } else {
-      widget.onExpand();
+      _settleExpand();
     }
+  }
+
+  // 펼침 정착 목표 높이 (스냅백: 상태 불변이어도 버튼 복귀용)
+  void _settleExpand() {
+    widget.onExpand();
+    widget.onVisibleHeightChanged?.call(_height); // dy=0
+  }
+
+  // 엿보기 정착 높이(_height - _peekDy)
+  void _settlePeek() {
+    widget.onPeek();
+    widget.onVisibleHeightChanged?.call(_height - _peekDy);
   }
 
   @override
