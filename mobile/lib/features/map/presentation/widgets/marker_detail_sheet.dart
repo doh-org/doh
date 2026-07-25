@@ -13,6 +13,7 @@ import '../../../../core/storage/map_app_store.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../data/repositories/map_repository_impl.dart';
+import '../utils/location_consent_gate.dart';
 import '../utils/map_navigation.dart';
 import 'marker_delete_dialog.dart';
 import 'marker_edit_chips_sheet.dart';
@@ -216,12 +217,23 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
     return widget.allMarkers.where((m) => m.id == id).firstOrNull;
   }
 
+  // 현위치 좌표 조회. 앱 동의 게이트를 먼저 통과시키고, 미동의면 서울 폴백을
+  // 유지한다(기존 동작 — 결정: 미해결질문 1 유지). 동의 시 getCurrentLocation이
+  // OS 권한 거부까지 서울 폴백으로 처리한다.
+  static const NLatLng _seoulFallback = NLatLng(37.5665, 126.9780);
+
+  Future<NLatLng> _resolveCurrentLocation() async {
+    final bool consented = await ensureLocationConsent(context, ref);
+    if (!consented || !mounted) return _seoulFallback;
+    return ref.read(mapRepositoryProvider).getCurrentLocation();
+  }
+
   Future<void> _openNavigation() async {
     final NavPoint destination;
     if (_destinationId == null) {
-      // 목적지가 현위치(스왑 결과) → 기기 좌표 조회 (권한 거부 시 기본 좌표 폴백)
-      final NLatLng pos =
-          await ref.read(mapRepositoryProvider).getCurrentLocation();
+      // 목적지가 현위치(스왑 결과) → 동의 게이트 후 기기 좌표 조회
+      final NLatLng pos = await _resolveCurrentLocation();
+      if (!mounted) return;
       destination =
           NavPoint(name: '현위치', lat: pos.latitude, lng: pos.longitude);
     } else {

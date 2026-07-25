@@ -46,8 +46,6 @@ class MapView extends ConsumerStatefulWidget {
   final void Function(Place)? onSearchMarkerTap;
   final VoidCallback? onMapTap;
 
-  /// 지도 탭 시 마커 선택(빨간 핀)을 그대로 둘지.
-  /// 상세 패널이 떠 있으면 탭은 "패널 내리기"라 선택 유지 필요
   final bool keepSelectionOnTap;
 
   final double bottomPeekFraction;
@@ -220,7 +218,9 @@ class _MapViewState extends ConsumerState<MapView> {
           target: widget.initialLocation,
           zoom: 11,
         ),
-        locationButtonEnable: true,
+        // 네이티브 현위치 버튼은 탭을 가로챌 수 없어 동의 게이트를 못 건다.
+        // → 끄고 map_page가 커스텀 FAB로 게이트→권한→카메라 이동을 제어(대안1).
+        locationButtonEnable: false,
         contentPadding: EdgeInsets.only(
           bottom: screenHeight * widget.bottomPeekFraction,
         ),
