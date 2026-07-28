@@ -4,15 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/storage/location_consent_store.dart';
 import '../widgets/location_consent_dialog.dart';
 
-/// 위치 사용 직전에 통과시키는 단일 관문(앱 자체 동의)
 /// 반환 true = 위치 써도 됨, false = 스킵
 ///
 /// 분기:
 ///   granted → 모달 없이 통과
 ///   unset/denied → 매번 모달. 거부 후에도 재탭 시 다시 물어 재동의 기회 제공
-///
-/// 주의: 이 게이트는 우리 약관 동의만 담당
-/// 통과(true) 후의 OS 위치권한은 별개 층이라 호출부에서 따로 처리
+/// 통과(true) 후의 OS 위치권한은 별개 층으로 호출부에서 따로 처리
 Future<bool> ensureLocationConsent(BuildContext context, WidgetRef ref) async {
   final LocationConsent current =
       await ref.read(locationConsentPrefProvider.future);
