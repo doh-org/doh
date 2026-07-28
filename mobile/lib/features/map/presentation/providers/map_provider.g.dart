@@ -23,12 +23,12 @@ final currentLocationProvider = AutoDisposeFutureProvider<NLatLng>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CurrentLocationRef = AutoDisposeFutureProviderRef<NLatLng>;
-String _$mapControllerHash() => r'173239458611ee8b78fe9dfadee921ba8bcd027e';
+String _$mapControllerHash() => r'f911728c3aa663b5a48b01c27a8eb835eb44e355';
 
 /// See also [MapController].
 @ProviderFor(MapController)
 final mapControllerProvider =
-    AutoDisposeNotifierProvider<MapController, NaverMapController?>.internal(
+    NotifierProvider<MapController, NaverMapController?>.internal(
   MapController.new,
   name: r'mapControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -38,6 +38,6 @@ final mapControllerProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$MapController = AutoDisposeNotifier<NaverMapController?>;
+typedef _$MapController = Notifier<NaverMapController?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

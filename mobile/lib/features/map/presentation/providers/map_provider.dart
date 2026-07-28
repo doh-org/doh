@@ -10,7 +10,7 @@ part 'map_provider.g.dart';
 Future<NLatLng> currentLocation(Ref ref) =>
     ref.watch(mapRepositoryProvider).getCurrentLocation();
 
-@riverpod
+@Riverpod(keepAlive: true)
 class MapController extends _$MapController {
   @override
   NaverMapController? build() => null;
