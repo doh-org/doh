@@ -4,14 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'location_consent_store.g.dart';
 
-/// 위치정보 사용 동의 상태
-/// unset = 아직 안 물어본 상태 / granted = 동의 / denied = 거부
-/// "거부"와 "미설정"을 굳이 구별하는 이유: 게이트가 둘을 로그·디버그에서
-/// 나눠 볼 수 있게 하기 위함(동작은 둘 다 모달 재노출로 같다)
 enum LocationConsent { unset, granted, denied }
 
-// 위치정보 사용 동의 저장소.
-// 계정과 무관한 기기 취향이라 서버 없이 로컬(SharedPreferences)에만 둔다.
 class LocationConsentStore {
   LocationConsentStore(this._prefs);
   final SharedPreferencesAsync _prefs;
