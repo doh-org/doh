@@ -40,6 +40,7 @@ class LocationConsentDialog extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.my_location, size: 36, color: _iconOrange),
             const SizedBox(height: 12),
@@ -51,7 +52,7 @@ class LocationConsentDialog extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF070707),
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
             const SizedBox(height: 10),
             const _BodyText(),
@@ -63,10 +64,9 @@ class LocationConsentDialog extends StatelessWidget {
                 '위치기반서비스 이용약관 보기',
                 style: TextStyle(
                   fontFamily: 'Pretendard',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: _accentBlue,
-                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
@@ -111,12 +111,12 @@ class _BodyText extends StatelessWidget {
       '위치는 저장하지 않고 그 순간에만 사용하며, 동의는 선택이에요.',
       style: TextStyle(
         fontFamily: 'Pretendard',
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w500,
         color: Color(0xFF7E7E7E),
         height: 1.5,
       ),
-      textAlign: TextAlign.center,
+      textAlign: TextAlign.left,
     );
   }
 }
@@ -163,7 +163,7 @@ class _LocationTermsCard extends StatelessWidget {
                     locationServiceTermsText,
                     style: TextStyle(
                       fontFamily: 'Pretendard',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF1F2125),
                       height: 1.5,

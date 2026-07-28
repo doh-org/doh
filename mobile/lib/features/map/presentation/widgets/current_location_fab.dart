@@ -11,6 +11,7 @@ class CurrentLocationFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: const ValueKey<String>('current_location_fab'),
       onTap: onTap,
       child: Container(
         width: 44,
@@ -29,7 +30,7 @@ class CurrentLocationFab extends StatelessWidget {
         child: const Icon(
           Icons.my_location,
           size: 22,
-          color: Color(0xFF1F2125),
+          color: Color(0xFFFE8505), // 현위치 아이콘 오렌지
         ),
       ),
     );

@@ -36,6 +36,7 @@ class LocationPermissionDialog extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.location_off_outlined,
                 size: 36, color: _iconOrange),
@@ -48,7 +49,7 @@ class LocationPermissionDialog extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF070707),
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
             const SizedBox(height: 8),
             const Text(
@@ -60,7 +61,7 @@ class LocationPermissionDialog extends StatelessWidget {
                 color: Color(0xFF7E7E7E),
                 height: 1.5,
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
             const SizedBox(height: 20),
             Row(
