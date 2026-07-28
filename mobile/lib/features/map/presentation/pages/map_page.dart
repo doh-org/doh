@@ -465,10 +465,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       if (openSettings == true) await repo.openLocationSettings();
       return;
     }
-    // 3) 실제 좌표로 카메라 이동
-    final NLatLng pos = await repo.getCurrentPosition();
-    if (!mounted) return;
-    ref.read(mapControllerProvider.notifier).moveCamera(pos);
+    // 3) 추적 모드 on — 좌표 조회·오버레이·카메라 이동을 SDK가 처리
+    ref.read(mapControllerProvider.notifier).startLocationTracking();
   }
 
   @override

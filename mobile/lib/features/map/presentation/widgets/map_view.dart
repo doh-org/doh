@@ -61,10 +61,18 @@ class MapView extends ConsumerStatefulWidget {
 
 class _MapViewState extends ConsumerState<MapView> {
   NaverMapController? _controller;
+  MapController? _controllerStore;
   String? _selectedMarkerId;
   List<TripMarker> _lastMarkers = [];
   List<Category> _lastCategories = [];
   final Map<String, Size> _assetSizeCache = {};
+
+  @override
+  void dispose() {
+    final NaverMapController? c = _controller;
+    if (c != null) _controllerStore?.clearController(c);
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(MapView oldWidget) {
@@ -227,7 +235,9 @@ class _MapViewState extends ConsumerState<MapView> {
       ),
       onMapReady: (NaverMapController controller) async {
         _controller = controller;
-        ref.read(mapControllerProvider.notifier).setController(controller);
+        final MapController store = ref.read(mapControllerProvider.notifier);
+        _controllerStore = store;
+        store.setController(controller);
         final List<Category> categories =
             ref.read(categoriesProvider(widget.tripId)).valueOrNull ?? [];
         await _updateOverlays(widget.markers, categories);

@@ -19,8 +19,18 @@ class MapController extends _$MapController {
     state = controller;
   }
 
+  // 지도 위젯이 사라질 때 호출
+  void clearController(NaverMapController controller) {
+    if (identical(state, controller)) state = null;
+  }
+
   void moveCamera(NLatLng target, {double zoom = 15}) {
     state?.updateCamera(NCameraUpdate.scrollAndZoomTo(target: target, zoom: zoom));
+  }
+
+  // 위치 오버레이 표시·좌표 조회·카메라 따라가기
+  void startLocationTracking() {
+    state?.setLocationTrackingMode(NLocationTrackingMode.follow);
   }
 }
 
