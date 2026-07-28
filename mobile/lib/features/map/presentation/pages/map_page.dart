@@ -13,9 +13,14 @@ import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../../trips/domain/entities/trip.dart';
 import '../../data/datasources/place_search_datasource.dart';
 import '../../data/datasources/naver_reverse_geocode_datasource.dart';
+import '../../data/repositories/map_repository_impl.dart';
 import '../../domain/entities/place.dart';
+import '../../domain/repositories/map_repository.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../utils/geo_distance.dart';
+import '../utils/location_consent_gate.dart';
+import '../widgets/current_location_fab.dart';
+import '../widgets/location_permission_dialog.dart';
 import '../widgets/map_chip_bar.dart';
 import '../widgets/map_search_bar.dart';
 import '../widgets/map_view.dart';
@@ -445,6 +450,25 @@ class _MapPageState extends ConsumerState<MapPage> {
     await _handleSearchResult(result, trip);
   }
 
+  // 현위치 FAB 탭 처리. 네이티브 버튼을 대신해 동의 흐름을 직접 제어한다.
+  Future<void> _moveToCurrentLocation() async {
+    // 1) 앱 자체 동의(우리 약관) 게이트 — 미동의면 위치 사용 안 함
+    final bool consented = await ensureLocationConsent(context, ref);
+    if (!consented || !mounted) return;
+    // 2) OS 위치 권한 — 앱 동의와 별개 층
+    final MapRepository repo = ref.read(mapRepositoryProvider);
+    final bool granted = await repo.requestLocationPermission();
+    if (!mounted) return;
+    if (!granted) {
+      // 권한 거부 → OS 설정 안내. [설정 열기] 선택 시 앱 설정으로 이동
+      final bool? openSettings = await showLocationPermissionDialog(context);
+      if (openSettings == true) await repo.openLocationSettings();
+      return;
+    }
+    // 3) 추적 모드 on — 좌표 조회·오버레이·카메라 이동을 SDK가 처리
+    ref.read(mapControllerProvider.notifier).startLocationTracking();
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<TripMarker>> markersAsync =
@@ -558,6 +582,29 @@ class _MapPageState extends ConsumerState<MapPage> {
               onSearchHere: _searchHere,
               onSelectTrip: () =>
                   _showTripSelector(tripsAsync.valueOrNull ?? []),
+            ),
+          ),
+
+          // 현위치 FAB. 시트 peek 높이 위에 떠 있고, 시트가 커지면 그 아래
+          // 레이어라 가려진다(네이티브 버튼이 시트에 가려지던 동작 유지).
+          Positioned.fill(
+            child: ListenableBuilder(
+              listenable: _peekListenable,
+              builder: (BuildContext ctx, _) {
+                final double screenH = MediaQuery.sizeOf(ctx).height;
+                final double peek =
+                    math.max(_sheetPeek.value, _detailPeek.value);
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: screenH * peek + 16,
+                    right: 16,
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: CurrentLocationFab(onTap: _moveToCurrentLocation),
+                  ),
+                );
+              },
             ),
           ),
 

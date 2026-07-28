@@ -223,7 +223,7 @@ Future<MapApp?> showMapAppPicker(BuildContext context) {
 }
 
 /// 네이버지도/카카오맵 중 하나를 고르는 모달.
-/// 여기서 고른 값은 이번 실행에만 쓰고 저장하지 않는다(고정은 내 정보에서).
+/// 여기서 고른 값은 이번 실행에만 쓰고 저장하지 않는다(고정은 설정에서).
 class MapAppPickerDialog extends StatelessWidget {
   const MapAppPickerDialog({super.key});
 
@@ -255,7 +255,7 @@ class MapAppPickerDialog extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              '내 정보에서 지도 앱을 고정할 수 있어요.',
+              '설정에서 지도 앱을 고정할 수 있어요.',
               style: TextStyle(
                 fontFamily: 'Pretendard',
                 fontSize: 12,
