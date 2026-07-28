@@ -23,7 +23,7 @@ final currentLocationProvider = AutoDisposeFutureProvider<NLatLng>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CurrentLocationRef = AutoDisposeFutureProviderRef<NLatLng>;
-String _$mapControllerHash() => r'f911728c3aa663b5a48b01c27a8eb835eb44e355';
+String _$mapControllerHash() => r'333ebb0b9ccf2253e3d6a86b4353cea151cb4938';
 
 /// See also [MapController].
 @ProviderFor(MapController)
