@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/guest_mode_provider.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/storage/location_consent_store.dart';
 import '../../../../core/storage/map_app_store.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_cursor.dart';
+import '../../../../features/map/presentation/widgets/location_consent_dialog.dart';
 import '../../../../shared/widgets/app_back_button.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
@@ -18,7 +20,7 @@ const Color _fieldBg = AppColors.background; // 평소: 회색 #F1F2F4
 const Color _focusBg = Color(0x80FEC181); // 눌렀을 때(포커스): 주황
 const Color _saveBg = Color(0xCC2A6FDB);
 
-// 계정 및 설정 페이지. 하단바 '내 정보'로 진입.
+// 설정 페이지. 하단바 '설정'으로 진입. 앱 설정·계정 설정 두 구역으로 나뉜다.
 class AccountInfoPage extends ConsumerStatefulWidget {
   const AccountInfoPage({super.key});
 
@@ -153,24 +155,46 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
             _Header(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(15, 12, 15, 0),
+                padding: const EdgeInsets.only(top: 12, bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  // 게스트: 계정(이메일·비번·탈퇴)이 없으므로 닉네임 수정만
-                  children: isGuest
-                      ? [
+                  children: [
+                    // 앱 설정은 기기 로컬값이라 계정 유무와 무관 → 게스트·회원 공통으로 맨 위
+                    const _SettingsSection(
+                      title: '앱 설정',
+                      children: [
+                        _MapAppSelector(),
+                        SizedBox(height: 20),
+                        _LocationConsentToggle(),
+                      ],
+                    ),
+                    const _SectionDivider(),
+                    // 게스트 → 계정(이메일·비번·탈퇴)이 없으므로 닉네임 수정만
+                    if (isGuest)
+                      _SettingsSection(
+                        title: '계정 설정',
+                        children: [
                           _EditField(
                             label: '닉네임',
                             controller: _nicknameCtrl,
                             obscure: false,
                           ),
+                        ],
+                      )
+                    // 회원 → 프로필 조회 + 비밀번호 변경 + 탈퇴
+                    else
+                      _SettingsSection(
+                        title: '계정 설정',
+                        children: [
+                          _InfoField(
+                            label: '닉네임',
+                            value: user?.nickname ?? '',
+                          ),
                           const SizedBox(height: 20),
-                          const _MapAppSelector(),
-                        ]
-                      : [
-                          _InfoField(label: '닉네임', value: user?.nickname ?? ''),
-                          const SizedBox(height: 20),
-                          _InfoField(label: '이메일', value: user?.email ?? ''),
+                          _InfoField(
+                            label: '이메일',
+                            value: user?.email ?? '',
+                          ),
                           const SizedBox(height: 20),
                           _EditField(
                             label: '기존 비밀번호',
@@ -180,7 +204,7 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
                           _EditField(
                             label: '새 비밀번호',
                             controller: _newPwCtrl,
-                            helper: '8자 이상, 영문 대문자ㆍ소문자ㆍ숫자 포함 (한글 불가)',
+                            helper: '영문 대소문자ㆍ숫자 | 8자 이상',
                             onChanged: () => setState(() {}),
                           ),
                           const SizedBox(height: 20),
@@ -190,12 +214,11 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
                             error: _pwMismatch ? '비밀번호가 일치하지 않습니다.' : null,
                             onChanged: () => setState(() {}),
                           ),
-                          const SizedBox(height: 20),
-                          const _MapAppSelector(),
                           const SizedBox(height: 16),
                           _WithdrawLink(onTap: _confirmWithdraw),
-                          const SizedBox(height: 24), // 저장 버튼과 간격
                         ],
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -226,7 +249,7 @@ class _Header extends StatelessWidget {
           ),
           const Expanded(
             child: Text(
-              '계정 및 설정',
+              '설정',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Pretendard',
@@ -239,6 +262,68 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 52),
         ],
       ),
+    );
+  }
+}
+
+// ── 구역 제목(계정 설정 / 앱 설정) ───────────────────────────────────────────
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontFamily: 'Pretendard',
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: AppColors.dark,
+        ),
+      ),
+    );
+  }
+}
+
+// ── 설정 구역 패널 ────────────────────────────────────────────────────────────
+// 좌우 여백 없이 화면 폭을 꽉 채운다. 구역 경계는 _SectionDivider가 담당.
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(15, 18, 15, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(title),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+// 구역 사이 얇은 구분선. 흰 배경 위 회색 1px 한 줄만.
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+      height: 1,
+      thickness: 1,
+      indent: 15,
+      endIndent: 15,
+      color: AppColors.background,
     );
   }
 }
@@ -431,7 +516,7 @@ class _MapAppSelector extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _FieldLabel('지도 앱 고정하기'),
+        const _FieldLabel('지도 앱 고정'),
         const SizedBox(height: 4),
         Row(
           children: [
@@ -451,10 +536,6 @@ class _MapAppSelector extends ConsumerWidget {
               ),
             ),
           ],
-        ),
-        const _FieldHint(
-          '외부 지도 앱을 설정합니다.',
-          color: AppColors.gray,
         ),
       ],
     );
@@ -500,6 +581,57 @@ class _MapAppOption extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── 위치 정보 동의 토글 ──────────────────────────────────────────────────────
+// 위치 사용 동의를 켜고 끄는 스위치. 계정과 무관한 기기 로컬값이라 탭 즉시 저장.
+// 켜기 → 약관 모달로 정식 재동의(동의해야만 granted 저장)
+// 끄기 → 별도 확인 없이 철회(unset). 게이트가 다음 위치 사용 때 다시 물음
+class _LocationConsentToggle extends ConsumerWidget {
+  const _LocationConsentToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 로딩 중(null)엔 미설정으로 간주 → 스위치 꺼짐
+    final LocationConsent consent =
+        ref.watch(locationConsentPrefProvider).valueOrNull ??
+            LocationConsent.unset;
+    final bool granted = consent == LocationConsent.granted;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const _FieldLabel('위치 정보 동의'),
+        Switch(
+          value: granted,
+          activeThumbColor: Colors.white,
+          activeTrackColor: _saveBg, // 켜짐: 동의 모달 '동의' 버튼과 같은 파랑
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: AppColors.gray, // 꺼짐: 7E7E7E
+          trackOutlineColor: const WidgetStatePropertyAll(
+            Colors.transparent,
+          ), // 테두리 없음
+          onChanged: (bool on) => _onToggle(context, ref, on),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onToggle(BuildContext context, WidgetRef ref, bool on) async {
+    // 끄기 → 즉시 철회(미설정으로 되돌림)
+    if (!on) {
+      await ref
+          .read(locationConsentPrefProvider.notifier)
+          .save(LocationConsent.unset);
+      return;
+    }
+    // 켜기 → 약관 모달로 정식 재동의. 동의해야만 granted 저장(바깥 탭·거부는 유지)
+    final bool? agreed = await showLocationConsentDialog(context);
+    if (agreed == true) {
+      await ref
+          .read(locationConsentPrefProvider.notifier)
+          .save(LocationConsent.granted);
+    }
   }
 }
 

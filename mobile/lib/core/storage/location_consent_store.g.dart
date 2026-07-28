@@ -28,7 +28,7 @@ typedef LocationConsentStoreRef = AutoDisposeProviderRef<LocationConsentStore>;
 String _$locationConsentPrefHash() =>
     r'e937d5b631a902d99dbb820eabb0cd58d8c703d1';
 
-/// 현재 위치정보 동의 상태. 계정 무관 기기 로컬값이라 keepAlive로 유지.
+/// 현재 위치정보 동의 상태, 계정 무관 기기 로컬값이라 keepAlive로 유지
 ///
 /// Copied from [LocationConsentPref].
 @ProviderFor(LocationConsentPref)
