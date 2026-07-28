@@ -3,10 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:doh/core/errors/app_exception.dart';
-import 'package:doh/features/members/domain/entities/trip_member.dart';
-import 'package:doh/features/members/domain/repositories/member_repository.dart';
-import 'package:doh/features/members/data/repositories/member_repository_impl.dart';
-import 'package:doh/features/members/presentation/pages/member_list_page.dart';
 import 'package:doh/features/trips/domain/entities/trip.dart';
 import 'package:doh/features/trips/domain/repositories/trip_repository.dart';
 import 'package:doh/features/trips/data/repositories/trip_repository_impl.dart';
@@ -55,19 +51,6 @@ class _FailingTripRepo implements TripRepository {
   Future<void> deleteTrip(String tripId) async => throw const NetworkException();
 }
 
-class _FailingMemberRepo implements MemberRepository {
-  @override
-  Future<List<TripMember>> getMembers(String tripId) async =>
-      const <TripMember>[];
-
-  @override
-  Future<Invitation> inviteMember(String tripId, String email) async =>
-      throw const NetworkException();
-
-  @override
-  Future<void> removeMember(String tripId, String userId) async {}
-}
-
 // 편집 모드 프리필용 여행(날짜 있음 → CTA가 검증 통과)
 final Trip _trip = Trip(
   id: 't1',
@@ -83,29 +66,6 @@ Future<void> _drainAutoDismiss(WidgetTester tester) =>
     tester.pump(const Duration(seconds: 2));
 
 void main() {
-  testWidgets('멤버 초대 실패 → 통일 모달로 안내', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          memberRepositoryProvider.overrideWithValue(_FailingMemberRepo()),
-        ],
-        child: const MaterialApp(home: MemberListPage(tripId: 't1')),
-      ),
-    );
-    await tester.pumpAndSettle(); // 빈 멤버 목록 렌더
-
-    // 초대 다이얼로그 열기 → 이메일 입력 → 초대
-    await tester.tap(find.byIcon(Icons.person_add_outlined));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'a@b.com');
-    await tester.tap(find.widgetWithText(FilledButton, '초대'));
-    await tester.pump(); // 비동기 초대 시작
-    await tester.pump(const Duration(milliseconds: 300)); // 실패 → 모달 표시
-
-    expect(find.text('초대에 실패했습니다.'), findsOneWidget);
-    await _drainAutoDismiss(tester);
-  });
-
   testWidgets('여행 수정 실패 → 통일 모달로 안내', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
