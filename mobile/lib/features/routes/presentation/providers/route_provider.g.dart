@@ -6,7 +6,7 @@ part of 'route_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dayStopsHash() => r'15a329898e5b6866f62577d580a5c666ec2e1ff0';
+String _$dayStopsHash() => r'300dd3d1b82c23d920bfce5c27d4b5cc20a5bd82';
 
 /// Copied from Dart SDK
 class _SystemHash {
