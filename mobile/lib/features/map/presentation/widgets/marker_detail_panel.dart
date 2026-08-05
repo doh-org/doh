@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 // 엿보기 상태에서 화면에 남겨둘 높이(px). 손잡이 + 카테고리 칩 + 장소명 정도 노출
 const double _peekVisible = 120;
-// 손잡이 근처만 드래그를 받는 영역 높이(px). 본문 스크롤·버튼 탭과 겹치지 않게 좁게 제한
-const double _dragZone = 40;
+// 손잡이 근처만 드래그를 받는 영역 높이(px). 본문 스크롤·버튼 탭과 겹치지 않게 좁게 제한.
+// 40이면 그 아래 카테고리·Day 칩 행 상단까지 덮어(opaque) 칩 탭이 먹히지 않는다
+const double _dragZone = 26;
 // 이 속도(px/s)를 넘기면 손을 뗀 위치와 무관하게 던진 방향으로 결정
 const double _flingVelocity = 700;
 const Duration _settleDuration = Duration(milliseconds: 250);

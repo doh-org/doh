@@ -315,41 +315,45 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
 
             // 카테고리 + Day 배지
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
+              // 칩 높이가 20뿐이라 위아래 여백까지 탭 영역으로 쓴다(총 48 = 최소 터치 타깃).
+              // opaque가 아니면 칩 사이 6px 간격과 투명 여백은 탭이 통과해버린다
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => _showEditSheet(context, categories, dayCount),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _InfoChip(
-                      label: category?.name ?? '없음',
-                      color: categoryChipColor(category?.name),
-                    ),
-                    if (dayCount > 0) ...[
-                      if (_marker.visitDays.isEmpty) ...[
-                        const SizedBox(width: 6),
-                        const _InfoChip(
-                          label: '미정',
-                          color: Color(0x808A847B),
-                        ),
-                      ] else
-                        for (final d in _marker.visitDays) ...[
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _InfoChip(
+                        label: category?.name ?? '없음',
+                        color: categoryChipColor(category?.name),
+                      ),
+                      if (dayCount > 0) ...[
+                        if (_marker.visitDays.isEmpty) ...[
                           const SizedBox(width: 6),
-                          _InfoChip(
-                            label: 'Day$d',
-                            color: const Color(0xCCFE8505),
+                          const _InfoChip(
+                            label: '미정',
+                            color: Color(0x808A847B),
                           ),
-                        ],
+                        ] else
+                          for (final d in _marker.visitDays) ...[
+                            const SizedBox(width: 6),
+                            _InfoChip(
+                              label: 'Day$d',
+                              color: const Color(0xCCFE8505),
+                            ),
+                          ],
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
 
             // 장소명 + 삭제(쓰레기통)/네이버지도 전환(스위치)
             Padding(
