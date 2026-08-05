@@ -29,22 +29,26 @@ class _SystemHash {
   }
 }
 
-/// 선택 Day의 stop 목록(정렬 적용).
+/// tripId·day의 stop 목록을 sort 기준으로 반환.
+/// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
 ///
 /// Copied from [dayStops].
 @ProviderFor(dayStops)
 const dayStopsProvider = DayStopsFamily();
 
-/// 선택 Day의 stop 목록(정렬 적용).
+/// tripId·day의 stop 목록을 sort 기준으로 반환.
+/// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
 ///
 /// Copied from [dayStops].
 class DayStopsFamily extends Family<AsyncValue<List<RouteStop>>> {
-  /// 선택 Day의 stop 목록(정렬 적용).
+  /// tripId·day의 stop 목록을 sort 기준으로 반환.
+  /// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
   ///
   /// Copied from [dayStops].
   const DayStopsFamily();
 
-  /// 선택 Day의 stop 목록(정렬 적용).
+  /// tripId·day의 stop 목록을 sort 기준으로 반환.
+  /// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
   ///
   /// Copied from [dayStops].
   DayStopsProvider call(
@@ -85,11 +89,13 @@ class DayStopsFamily extends Family<AsyncValue<List<RouteStop>>> {
   String? get name => r'dayStopsProvider';
 }
 
-/// 선택 Day의 stop 목록(정렬 적용).
+/// tripId·day의 stop 목록을 sort 기준으로 반환.
+/// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
 ///
 /// Copied from [dayStops].
 class DayStopsProvider extends AutoDisposeFutureProvider<List<RouteStop>> {
-  /// 선택 Day의 stop 목록(정렬 적용).
+  /// tripId·day의 stop 목록을 sort 기준으로 반환.
+  /// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
   ///
   /// Copied from [dayStops].
   DayStopsProvider(

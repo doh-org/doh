@@ -7,7 +7,8 @@ import '../../domain/entities/route_stop.dart';
 
 part 'route_provider.g.dart';
 
-/// 선택 Day의 stop 목록(정렬 적용).
+/// tripId·day의 stop 목록을 sort 기준으로 반환.
+/// markerEntities(tripId)를 구독해 마커 목록이 무효화되면 함께 재조회된다.
 @riverpod
 Future<List<RouteStop>> dayStops(
   Ref ref,
@@ -15,10 +16,6 @@ Future<List<RouteStop>> dayStops(
   int day,
   RouteSort sort,
 ) async {
-  // 마커가 바뀌면(추가·삭제·방문일 수정) 이 목록도 다시 조회되도록 의존을 건다.
-  // 값 자체는 안 쓰고 "갱신 신호"로만 구독한다.
-  // .future로 기다리는 이유: AsyncValue를 watch하면 loading→data 두 번 재계산돼
-  // 서버를 두 번 부른다.
   await ref.watch(markerEntitiesProvider(tripId).future);
   return ref.watch(routeRepositoryProvider).getDayStops(tripId, day, sort: sort);
 }

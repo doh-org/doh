@@ -10,6 +10,7 @@ import '../../../markers/presentation/utils/category_colors.dart';
 import '../../../routes/domain/entities/route_stop.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
 import '../../../../core/storage/map_app_store.dart';
+import '../../../../shared/widgets/app_back_button.dart';
 import '../../../../shared/widgets/update_error_dialog.dart';
 import '../../../../shared/widgets/bookmark_saved_dialog.dart';
 import '../../data/repositories/map_repository_impl.dart';
@@ -316,42 +317,50 @@ class _MarkerDetailSheetState extends ConsumerState<MarkerDetailSheet> {
               ),
             ),
 
-            // 카테고리 + Day 배지
+            // 뒤로가기 + 카테고리 + Day 배지
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
-              // 칩 높이가 20뿐이라 위아래 여백까지 탭 영역으로 쓴다(총 48 = 최소 터치 타깃).
-              // opaque가 아니면 칩 사이 6px 간격과 투명 여백은 탭이 통과해버린다
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _showEditSheet(context, categories, dayCount),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _InfoChip(
-                        label: category?.name ?? '없음',
-                        color: categoryChipColor(category?.name),
-                      ),
-                      if (dayCount > 0) ...[
-                        if (_marker.visitDays.isEmpty) ...[
-                          const SizedBox(width: 6),
-                          const _InfoChip(
-                            label: '미정',
-                            color: Color(0x808A847B),
+              child: Row(
+                children: [
+                  if (widget.onClose != null)
+                    AppBackButton(
+                      onTap: widget.onClose!,
+                      padding: const EdgeInsets.fromLTRB(0, 14, 12, 14), // 아이콘 20 + 상하 14 = 48
+                    ),
+                  // 탭 영역 = 칩 20 + 상하 패딩 14 = 48. opaque라 칩 사이 여백도 포함
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _showEditSheet(context, categories, dayCount),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _InfoChip(
+                            label: category?.name ?? '없음',
+                            color: categoryChipColor(category?.name),
                           ),
-                        ] else
-                          for (final d in _marker.visitDays) ...[
-                            const SizedBox(width: 6),
-                            _InfoChip(
-                              label: 'Day$d',
-                              color: const Color(0xCCFE8505),
-                            ),
+                          if (dayCount > 0) ...[
+                            if (_marker.visitDays.isEmpty) ...[
+                              const SizedBox(width: 6),
+                              const _InfoChip(
+                                label: '미정',
+                                color: Color(0x808A847B),
+                              ),
+                            ] else
+                              for (final d in _marker.visitDays) ...[
+                                const SizedBox(width: 6),
+                                _InfoChip(
+                                  label: 'Day$d',
+                                  color: const Color(0xCCFE8505),
+                                ),
+                              ],
                           ],
-                      ],
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
 
