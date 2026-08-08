@@ -131,7 +131,7 @@ class TripCard extends StatelessWidget {
                 onTap: onEditTap,
                 child: const Padding(
                   padding: EdgeInsets.fromLTRB(15, 13, 15, 13),
-                  child: Icon(Icons.edit_outlined, size: 30, color: AppColors.gray),
+                  child: Icon(Icons.edit_outlined, size: 25, color: AppColors.gray),
                 ),
               ),
             ),
