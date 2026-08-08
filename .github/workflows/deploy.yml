@@ -25,6 +25,14 @@ jobs:
     defaults:
       run:
         working-directory: mobile
+    # 빌드 설정값은 전부 여기서 주입 — 없는 채로 빌드되면 앱이 런타임에 조용히 깨진다
+    env:
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+      NAVER_MAP_CLIENT_ID: ${{ vars.NAVER_MAP_CLIENT_ID }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -36,8 +44,41 @@ jobs:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      # 빈 값이면 빌드는 성공하고 앱만 망가지므로, 빌드 전에 크게 실패시킨다
+      - name: Check build config
+        run: |
+          fail() { echo "::error::$1 미설정 — 리포 설정에서 채워야 한다"; exit 1; }
+          [ -n "$API_BASE_URL" ] || fail "variable API_BASE_URL"
+          [ -n "$NAVER_MAP_CLIENT_ID" ] || fail "variable NAVER_MAP_CLIENT_ID"
+          [ -n "$ANDROID_KEYSTORE_BASE64" ] || fail "secret ANDROID_KEYSTORE_BASE64"
+          [ -n "$ANDROID_KEYSTORE_PASSWORD" ] || fail "secret ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$ANDROID_KEY_PASSWORD" ] || fail "secret ANDROID_KEY_PASSWORD"
+          [ -n "$ANDROID_KEY_ALIAS" ] || fail "secret ANDROID_KEY_ALIAS"
+
+      # 로컬의 dart_defines.json(gitignore)과 같은 파일을 CI에서 만들어 준다
+      - name: Write dart_defines.json
+        run: |
+          cat > dart_defines.json <<EOF
+          {
+            "API_BASE_URL": "$API_BASE_URL",
+            "NAVER_MAP_CLIENT_ID": "$NAVER_MAP_CLIENT_ID"
+          }
+          EOF
+
+      # base64 시크릿 → 키스토어 파일 + key.properties (build.gradle.kts가 읽는 경로)
+      - name: Set up release signing
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=$GITHUB_WORKSPACE/mobile/android/release-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          EOF
+
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: flutter build apk --release --dart-define-from-file=dart_defines.json
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
