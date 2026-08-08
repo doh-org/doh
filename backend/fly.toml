@@ -20,6 +20,15 @@ primary_region = 'nrt'
   min_machines_running = 0
   processes = ['app']
 
+  # 배포 시 이 체크가 통과해야 새 버전이 트래픽을 받는다 (깨진 릴리스 자동 차단).
+  # grace_period는 컨테이너 기동 여유분.
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/health'
+
 [[vm]]
   memory = '256mb'
   cpu_kind = 'shared'
