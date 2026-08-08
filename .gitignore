@@ -124,6 +124,9 @@ $RECYCLE.BIN/
 .env.production
 /mobile/dart_defines.json
 
+# Android 서명 키 (CI는 시크릿에서 생성)
+**/android/*.jks
+
 # Supabase
 supabase/
 
