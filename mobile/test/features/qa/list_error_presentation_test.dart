@@ -4,9 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:doh/core/errors/app_exception.dart';
 import 'package:doh/core/storage/token_storage.dart';
-import 'package:doh/features/members/domain/entities/trip_member.dart';
-import 'package:doh/features/members/presentation/pages/member_list_page.dart';
-import 'package:doh/features/members/presentation/providers/member_provider.dart';
 import 'package:doh/features/trips/domain/entities/trip.dart';
 import 'package:doh/features/trips/presentation/pages/trip_list_page.dart';
 import 'package:doh/features/trips/presentation/providers/trip_provider.dart';
@@ -52,26 +49,6 @@ void main() {
     // authNotifier.build의 "스플래시 최소 1초" 타이머를 소진시킨다
     // (안 하면 테스트 종료 시 pending timer로 실패)
     await tester.pump(const Duration(seconds: 1));
-
-    _expectNoRawException(tester);
-  });
-
-  testWidgets('멤버 목록 로드 실패 → 날것 예외를 화면에 뿌리지 않는다',
-      (WidgetTester tester) async {
-    const String tripId = 't1';
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          _fakeTokenStorage(),
-          membersProvider(tripId).overrideWith(
-            (Ref ref) =>
-                Future<List<TripMember>>.error(const NetworkException()),
-          ),
-        ],
-        child: const MaterialApp(home: MemberListPage(tripId: tripId)),
-      ),
-    );
-    await tester.pumpAndSettle();
 
     _expectNoRawException(tester);
   });

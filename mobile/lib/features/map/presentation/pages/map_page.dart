@@ -17,6 +17,7 @@ import '../../data/repositories/map_repository_impl.dart';
 import '../../domain/entities/place.dart';
 import '../../domain/repositories/map_repository.dart';
 import '../../../trips/presentation/providers/trip_provider.dart';
+import '../utils/detail_panel_key.dart';
 import '../utils/geo_distance.dart';
 import '../utils/location_consent_gate.dart';
 import '../widgets/current_location_fab.dart';
@@ -77,6 +78,8 @@ class _MapPageState extends ConsumerState<MapPage> {
   static const double _sheetMin = 0.13;
   static const double _sheetMax = 0.88;
   static const String _tempMarkerId = '__new__'; // 미저장 임시 마커의 예약 id
+
+  int _detailSession = 0;
 
   // 현위치(네이티브) 버튼을 시트 상단에 붙이기 위한 하단 여백 비율(0~1)
   final ValueNotifier<double> _sheetPeek =
@@ -165,6 +168,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       _pendingPlace = null;
       _searchOverlays = [];
       _detailMarkerId = marker.id;
+      _detailSession++;
       _detailFallback = marker;
       _detailPeeked = false;
       _detailCentered = false;
@@ -239,6 +243,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     setState(() {
       _selectedMarkerId = null;
       _detailMarkerId = tempMarker.id; // = _tempMarkerId
+      _detailSession++;
       _detailFallback = tempMarker;
       _detailPeeked = false;
       _detailCentered = false;
@@ -658,7 +663,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           // 마커 상세 패널
           if (detailMarker != null)
             MarkerDetailPanel(
-              key: ValueKey<String>(detailMarker.id),
+              key: detailPanelKey(detailMarker.id, _detailSession),
               peeked: _detailPeeked,
               onPeek: () => setState(() => _detailPeeked = true),
               onExpand: () => setState(() => _detailPeeked = false),
