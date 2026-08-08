@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/errors/app_exception.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_back_button.dart';
+import '../../../../shared/widgets/legal_document_box.dart';
 import '../../domain/entities/user.dart';
 import '../../utils/legal_documents.dart';
 import '../providers/auth_provider.dart';
@@ -132,7 +133,7 @@ class _SignupTermsPageState extends ConsumerState<SignupTermsPage> {
                 onTap: () => setState(() => _agreeTerms = !_agreeTerms),
               ),
               const SizedBox(height: 8),
-              const _DocumentBox(text: termsOfServiceText),
+              const LegalDocumentBox(text: termsOfServiceText),
               const SizedBox(height: 20),
               _ConsentRow(
                 label: '[필수] 개인정보 수집·이용 동의',
@@ -140,7 +141,7 @@ class _SignupTermsPageState extends ConsumerState<SignupTermsPage> {
                 onTap: () => setState(() => _agreePrivacy = !_agreePrivacy),
               ),
               const SizedBox(height: 8),
-              const _DocumentBox(text: privacyPolicyText),
+              const LegalDocumentBox(text: privacyPolicyText),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 8),
                 Padding(
@@ -249,39 +250,6 @@ class _ConsentRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// 약관 원문을 담는 고정 높이 스크롤 박스
-class _DocumentBox extends StatelessWidget {
-  const _DocumentBox({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(17),
-      ),
-      child: Scrollbar(
-        child: SingleChildScrollView(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontFamily: 'Pretendard',
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColors.dark,
-              height: 1.5,
-            ),
-          ),
-        ),
       ),
     );
   }
