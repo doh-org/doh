@@ -58,6 +58,13 @@ class _MoreMenu extends ConsumerWidget {
     await ref.read(authNotifierProvider.notifier).logout();
   }
 
+  // 메뉴를 닫은 뒤 약관 전문 화면으로. pop 전에 잡아둔 router로 이동한다.
+  void _goTerms(BuildContext context) {
+    final GoRouter router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push('/terms');
+  }
+
   // 게스트 플래그는 그대로 두고 로그인 화면으로만 이동
   void _goLogin(BuildContext context) {
     Navigator.of(context).pop();
@@ -93,7 +100,9 @@ class _MoreMenu extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _MenuItem(
-                      label: '약관 정보', onTap: () => Navigator.pop(context)),
+                    label: '약관 정보',
+                    onTap: () => _goTerms(context),
+                  ),
                   const _MenuDivider(),
                   // 게스트: 로그아웃할 세션이 없음 → 로그인 진입으로 대체
                   if (isGuest)

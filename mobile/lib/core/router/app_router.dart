@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/account_info_page.dart';
+import '../../features/auth/presentation/pages/legal_info_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/password_reset_request_page.dart';
 import '../../features/auth/presentation/pages/password_reset_verify_page.dart';
@@ -123,6 +124,11 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/account',
         builder: (_, __) => const AccountInfoPage(),
+      ),
+      // 약관 전문 읽기 전용 화면 (더보기 메뉴 '약관 정보')
+      GoRoute(
+        path: '/terms',
+        builder: (_, __) => const LegalInfoPage(),
       ),
       // 외부 앱 공유 수신 → 담을 여행 선택 (비로그인은 redirect가 /login으로)
       GoRoute(
