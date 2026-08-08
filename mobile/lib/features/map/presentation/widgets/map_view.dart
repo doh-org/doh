@@ -10,6 +10,7 @@ import '../../../markers/domain/entities/marker.dart';
 import '../../../markers/presentation/providers/marker_provider.dart';
 import '../../domain/entities/place.dart';
 import '../providers/map_provider.dart';
+import 'map_extent.dart';
 
 class MapView extends ConsumerStatefulWidget {
   const MapView({
@@ -219,18 +220,18 @@ class _MapViewState extends ConsumerState<MapView> {
       _updateOverlays(_lastMarkers, next.valueOrNull ?? []);
     });
 
-    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final Size screen = MediaQuery.sizeOf(context);
     return NaverMap(
       options: NaverMapViewOptions(
         initialCameraPosition: NCameraPosition(
           target: widget.initialLocation,
           zoom: 11,
         ),
-        // 네이티브 현위치 버튼은 탭을 가로챌 수 없어 동의 게이트를 못 건다.
-        // → 끄고 map_page가 커스텀 FAB로 게이트→권한→카메라 이동을 제어(대안1).
+        extent: koreaExtent,
+        minZoom: minZoomToCover(koreaExtent, screen),
         locationButtonEnable: false,
         contentPadding: EdgeInsets.only(
-          bottom: screenHeight * widget.bottomPeekFraction,
+          bottom: screen.height * widget.bottomPeekFraction,
         ),
       ),
       onMapReady: (NaverMapController controller) async {
