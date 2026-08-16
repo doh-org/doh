@@ -12,6 +12,9 @@ import '../../data/repositories/trip_repository_impl.dart';
 import '../../domain/entities/trip.dart';
 import '../providers/trip_provider.dart';
 
+const int _calendarPastYears = 10;
+const int _calendarFutureYears = 10;
+
 class TripCreatePage extends ConsumerStatefulWidget {
   const TripCreatePage({this.tripId, super.key});
   final String? tripId;
@@ -26,13 +29,18 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   DateTime? _startDate;
   DateTime? _endDate;
   bool _loading = false;
-  bool _deleting = false; // 삭제 진행 중 (수정 버튼과 별도 스피너 표시용)
+  bool _deleting = false;
+  late final DateTime _firstDay;
+  late final DateTime _lastDay;
 
   bool get _isEdit => widget.tripId != null;
 
   @override
   void initState() {
     super.initState();
+    final DateTime now = DateTime.now();
+    _firstDay = DateTime(now.year - _calendarPastYears);
+    _lastDay = DateTime(now.year + _calendarFutureYears, 12, 31);
     if (_isEdit) _loadExisting();
   }
 
@@ -57,6 +65,13 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
   void dispose() {
     _titleCtrl.dispose();
     super.dispose();
+  }
+
+  DateTime get _focusedDay {
+    final DateTime base = _startDate ?? DateTime.now();
+    if (base.isBefore(_firstDay)) return _firstDay;
+    if (base.isAfter(_lastDay)) return _lastDay;
+    return base;
   }
 
   String _nightsLabel() {
@@ -295,9 +310,9 @@ class _TripCreatePageState extends ConsumerState<TripCreatePage> {
                 ],
               ),
               child: TableCalendar(
-                firstDay: DateTime(2020),
-                lastDay: DateTime(2030),
-                focusedDay: _startDate ?? DateTime.now(),
+                firstDay: _firstDay,
+                lastDay: _lastDay,
+                focusedDay: _focusedDay,
                 rangeStartDay: _startDate,
                 rangeEndDay: _endDate,
                 rangeSelectionMode: RangeSelectionMode.enforced,
